@@ -16,17 +16,28 @@ Nadeem skriver norsk, så svar på norsk. Hele planen – moduler, faser, arkite
 Oppdater denne seksjonen i hver PR som endrer status, så neste økt alltid vet hvor vi er.
 
 Ferdig:
-- Repoet er opprettet (heter fortsatt `Callsenter`, kan døpes om til `veriqall`). Et ruleset på `main` krever PR.
-- AWS-konto i `eu-north-1`. IAM-roller for GitHub Actions via OIDC er laget ifølge Nadeem. Verifiser navn, trust policy og rettigheter før første deploy.
-- Modul 1: logo, symbol, app-ikoner og fargepalett ligger i `public/brand/`, med oversikt i `docs/brand-preview.png`. Ikke formelt godkjent ennå.
+- Repoet er opprettet (heter fortsatt `Callsenter`, kan døpes om til `veriqall`). Rulesettet `main-protection` er aktivt på `main` og krever PR, og forbyr sletting og force-push. `staging` finnes og er ubeskyttet.
+- AWS-konto i `eu-north-1`. OIDC mot AWS virker fra Environment `staging` (kjøring #5 av `deploy-staging.yml` gikk grønt 26. sep. etter å ha rettet trust policy). Rollenavn og rettigheter er ikke gjennomgått.
+- `deploy-staging.yml` og `deploy-production.yml` ligger på `staging`. De logger bare inn i AWS og kjører `sts get-caller-identity`; migrasjoner og øvrige deploy-steg er TODO (PR 4). Ingenting av dette ligger på `main` ennå, så produksjons-workflowen har aldri kjørt.
 - Hele planen i `docs/plan.md`.
+- Fase 0, PR 1 (skjelett og design): monorepo med npm workspaces, Next.js 16 i `apps/web` med Tailwind 4, designtokens i lys og mørk modus (system, lys, mørk, huskes i nettleseren), Schibsted Grotesk via `@fontsource-variable` (selvhostet), `/design` med paletten og AI-flagg, og `ci.yml` (lint, typecheck, test og build på hver PR, ingen deploy). Tokens og kontrast er dekket av tester.
 
 Ikke gjort:
-- Ingen applikasjonskode, migrasjoner eller workflows.
-- Usikkert om `staging`-branchen og GitHub Environments `staging` og `production` finnes. Sjekk det først.
-- Ingen AWS-ressurser (RDS, S3, Amplify, KMS) er opprettet.
+- **Brandfilene i `public/brand/` er plassholdere.** De godkjente logofilene, `apple-touch-icon.png`, `icon-512.png`, `docs/brand-preview.png` og `tools/brand/`-skriptene lå ikke i repoet. Overskriv plassholderne med de ekte filene (se `public/brand/README.md`). Logoen er ikke formelt godkjent.
+- Ingen migrasjoner, API-kode, innlogging eller AWS-ressurser (RDS, S3, Amplify, KMS).
+- Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.
 
-**Neste steg:** fase 0, delt i fire PR-er mot `staging` (se `docs/plan.md`, seksjon 2). Start med PR 1.
+**Neste steg:** fase 0, PR 2 (datamodell og tilgang), se `docs/plan.md`, seksjon 2 og 4.
+
+## Kommandoer
+
+Node 22 (se `.nvmrc`). Kjør fra reporoten:
+
+- `npm ci`: installer
+- `npm run dev`: utviklingsserver for `apps/web`
+- `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`: det samme som `ci.yml` kjører
+
+`public/brand/` i reporoten er kilden til logoer og ikoner; `apps/web` kopierer den til `apps/web/public/brand/` (gitignorert) ved `dev` og `build`.
 
 ## Regler for hver endring
 
