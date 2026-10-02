@@ -38,7 +38,7 @@ export function corsHeaders(event: APIGatewayProxyEventV2, appOrigin: string): R
   return {
     "access-control-allow-origin": appOrigin,
     "access-control-allow-credentials": "true",
-    "access-control-allow-methods": "GET, POST, OPTIONS",
+    "access-control-allow-methods": "GET, POST, PATCH, DELETE, OPTIONS",
     "access-control-allow-headers": "content-type",
     "access-control-max-age": "600",
     vary: "origin",

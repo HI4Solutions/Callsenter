@@ -194,7 +194,8 @@ Logoen kan genereres på nytt med `tools/brand/`: last ned fonten til `tools/bra
 - **Bedrock:** hvilke Claude-modeller er tilgjengelige direkte i `eu-north-1`, og krever noen EU cross-region inference (behandling i andre EU-regioner)?
 - **Lovkrav:** sjekk hva angrerettloven krever av bekreftelse og skriftlig aksept ved telefonsalg. Modul 8 bør bygges rundt det.
 - **Lagringstid** for opptak og transkripsjoner, og sletting på forespørsel.
-- **Fakturamodul:** antatt at det er callsentrene som faktureres for bruk av VeriQall. Bekreft.
+- **Fakturamodul:** besluttet 2. oktober at callsentrene betaler med både faktura og Stripe (se seksjon 10).
+- **E-post for invitasjoner:** Amazon SES med `veriqall.no` (DNS-poster hos one.com). Til da kopierer superadmin lenken selv.
 - **Logo:** venter på Nadeems godkjenning.
 - **Repo:** døpe om til `veriqall`, og gjøre det privat før ekte nøkler eller kundedata.
 
@@ -221,3 +222,28 @@ Kostnader i tomgang (USD per måned, `eu-north-1`). Priser merket * er slått op
 | **Sum** | **ca. 25–28 (260–300 kr)** | **ca. 72–82 (750–860 kr)** |
 
 Etter bruk kommer i tillegg: Soniox (0,10 USD per time lyd), Bedrock (avhenger av modell, anslag 50–100 USD ved 100 samtaler om dagen), NAT-trafikk (0,046 USD* per GB), lydlagring i S3, og per innlogging hos Idura og Vipps samt SMS etter avtale. Utenfor AWS: domenet og GitHub Pro når repoet gjøres privat.
+
+## 10. Superadmin-portalen
+
+Besluttet 2. oktober 2026, etter mønster fra adminportalen i MedSide. Forskjellen er at kundene er callsentre, ikke enkeltbrukere. Portalen ligger på `/admin` i web-appen og bruker `/admin/*` i API-et. Bare superadmins i en økt startet med BankID kommer inn, og alt kjører som `app_user` under RLS: arbeid i ett callsenter setter det som gjeldende callsenter, så de samme policyene, vernene og revisjonsloggen gjelder som for callsenterets egen admin (`audit_log.as_platform_admin` markerer superadmin).
+
+**Beslutninger:**
+- **Betaling:** både faktura (egen fakturamodul som i MedSide) og Stripe. Kommer i fase 4.
+- **Superadmin kan gjøre andre til superadmin fra portalen,** i en BankID-økt, og det logges. Man kan ikke fjerne sin egen tilgang, og det må alltid finnes minst én superadmin.
+- **Invitasjoner:** portalen viser lenken som superadmin sender selv. E-post via Amazon SES kommer i egen PR.
+- **Ingen pakker:** moduler slås av og på per callsenter. Et callsenter er aktivt, i prøveperiode (aktivt med sluttdato) eller suspendert. Etter prøveperioden og ved suspensjon stenges callsenteret for brukerne, men ikke for superadmin.
+
+**Faner:**
+
+| Fane | Innhold | Når |
+|---|---|---|
+| Callsentre | Liste med søk og status, nytt callsenter (navn, org.nr., kontaktperson, faktura-e-post og -adresse, notat, prøveperiode), moduler per callsenter, brukerne i callsenteret, invitere med rolle (admin som standard), invitasjoner som kan trekkes tilbake | Fase 1, PR A |
+| Brukere | Søk på tvers av callsentre, detaljer med medlemskap og koblede innlogginger (BankID og Vipps), deaktivere, fjerne en innloggingsmetode, aktive økter og tvangsutlogging, gi og fjerne superadmin, CSV-eksport | Fase 1, PR B |
+| Sikkerhet | Mislykkede innlogginger per IP og bruker, revisjonslogg og tilgangslogg med filter, CSV og PDF, IP-blokkering | Fase 1, PR C |
+| Meldinger | Kunngjøringer til alle eller valgte callsentre (tittel, tekst, lenke, av og på), og samtaletråder med admin i callsentrene | Fase 1, PR C |
+| Vekst | Callsentre og brukere over tid, og samtaler fra fase 2 | Fase 1, PR C |
+| Roller og moduler | Modulkatalogen, standardrollene nye callsentre får, og rettighetskatalogen (lesbar) | Fase 1, PR B |
+| System | Innloggingsmetoder av og på, AI-modell og prompt per funksjon, Soniox-ordliste, kvoter for Bedrock og Soniox | Fase 2 |
+| Økonomi | Forbruk per callsenter (lydminutter, AI-tokens, BankID-innlogginger), Stripe, faktura og regnskap (MRR, kostnader, netto) | Forbruk i fase 2, resten i fase 4 |
+
+Fra MedSide tas ikke med: passord og 2FA (vi har bare BankID og Vipps), legespesialiteter og PreVisit-nivåer, og globale roller (roller er per callsenter her).

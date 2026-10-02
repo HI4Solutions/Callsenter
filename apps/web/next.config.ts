@@ -7,6 +7,8 @@ const repoRoot = path.join(import.meta.dirname, "../..");
 
 const config: NextConfig = {
   reactStrictMode: true,
+  // Workspace package shipped as TypeScript source (permission and module catalogs).
+  transpilePackages: ["@veriqall/shared"],
   outputFileTracingRoot: repoRoot,
   turbopack: { root: repoRoot },
 };
