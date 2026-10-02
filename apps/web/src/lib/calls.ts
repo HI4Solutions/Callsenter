@@ -48,6 +48,8 @@ export interface CallDetail extends CallSummary {
   requiredPoints: RequiredPoint[];
   // The signed-in member made the call (only they adjust its notes).
   isOwn: boolean;
+  // The note templates chosen in the studio (one note each after the call).
+  noteTemplateIds: string[];
   segments: { seq: number; speaker: string | null; startMs: number; endMs: number; text: string }[];
   analyses: {
     id: string;

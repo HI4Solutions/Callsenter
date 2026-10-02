@@ -3,8 +3,10 @@
 -- - The note (a report) is written by AI from the transcript, the product template and the
 --   seller's additional information. The seller may adjust it: the AI text is kept unchanged in
 --   reports, and each adjustment is a new row in report_edits (append-only).
--- - More notes can be made from the same call with another note template ("Regenerer"): the API
---   adds a pending report and the worker writes it.
+-- - The note templates (notatmaler) take the place of Notatstudio's add-on templates: the seller
+--   switches one or more on under the product template, and each gives its own note. They are
+--   kept on the call (note_templates) for the note written after the call, and "Regenerer" asks
+--   for new ones: the API adds pending reports and the worker writes them.
 -- - Each member picks a default product (the template) for the studio.
 
 -- --- Notes made on request ---------------------------------------------------------------------
@@ -21,15 +23,19 @@ alter table reports
   add constraint reports_id_call_key unique (id, call_id, organization_id);
 create index reports_pending_idx on reports (created_at) where status = 'pending';
 
--- At most 10 notes per call, and one being written at a time.
+-- The note templates chosen in the studio, used for the notes written after the call.
+alter table calls add column note_templates uuid[] not null default '{}' check (cardinality(note_templates) <= 5);
+grant update (note_templates) on calls to app_user;
+
+-- At most 10 notes per call, and 5 being written at a time.
 create function app.reports_limit() returns trigger
   language plpgsql
   as $$
   begin
     if new.status = 'pending' then
       perform pg_advisory_xact_lock(hashtext('reports:' || new.call_id::text));
-      if exists (select 1 from reports where call_id = new.call_id and status = 'pending') then
-        raise exception 'a note is already being written for this call';
+      if (select count(*) from reports where call_id = new.call_id and status = 'pending') >= 5 then
+        raise exception 'notes are already being written for this call';
       end if;
       if (select count(*) from reports where call_id = new.call_id) >= 10 then
         raise exception 'too many notes for this call';

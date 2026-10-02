@@ -281,17 +281,18 @@ describe("calls: studio", () => {
     await processCall(workerDeps, id);
 
     const template = await call(s.admin, "POST", "/org/report-templates", { name: "Kort notat", instructions: "Tre linjer." });
-    const asked = await call(seller, "POST", `/org/calls/${id}/notes`, { templateId: template.body.id });
+    const asked = await call(seller, "POST", `/org/calls/${id}/notes`, { templateIds: [template.body.id] });
     expect(asked.status).toBe(201);
-    expect(startedNotes).toContain(asked.body.id);
-    expect((await call(seller, "POST", `/org/calls/${id}/notes`, {})).body.error).toBe(
-      "Et notat lages allerede for denne samtalen. Vent til det er ferdig.",
+    const askedId = asked.body.ids[0] as string;
+    expect(startedNotes).toContain(askedId);
+    expect((await call(seller, "POST", `/org/calls/${id}/notes`, { templateIds: ["00000000-0000-4000-8000-000000000000"] })).body.error).toBe(
+      "Ukjent notatmal.",
     );
     let status = await call(seller, "GET", `/org/calls/${id}`, undefined, { status: "1" });
     expect(status.body).toMatchObject({ reports: 1, pendingReports: 1 });
 
     prompts.length = 0;
-    await processReport(workerDeps, asked.body.id);
+    await processReport(workerDeps, askedId);
     expect(prompts[0]).toContain("<report_instructions>\nTre linjer.");
     status = await call(seller, "GET", `/org/calls/${id}`, undefined, { status: "1" });
     expect(status.body).toMatchObject({ reports: 2, pendingReports: 0 });
@@ -322,14 +323,34 @@ describe("calls: studio", () => {
     const seller = await sessionFor(await member(s.org, "seller"), s.org);
     const { id } = await record(seller, {});
     await processCall(workerDeps, id);
-    const asked = await call(seller, "POST", `/org/calls/${id}/notes`, {});
-    await owner.query("update reports set created_at = now() - interval '5 minutes' where id = $1", [asked.body.id]);
-    expect(await pendingReports(worker)).toContain(asked.body.id);
+    const asked = (await call(seller, "POST", `/org/calls/${id}/notes`, {})).body.ids[0] as string;
+    await owner.query("update reports set created_at = now() - interval '5 minutes' where id = $1", [asked]);
+    expect(await pendingReports(worker)).toContain(asked);
     await owner.query("update organization_modules set enabled = false where organization_id = $1 and module = 'reports'", [s.org]);
-    await processReport(workerDeps, asked.body.id);
-    const note = (await call(seller, "GET", `/org/calls/${id}`)).body.reports.find((r: { id: string }) => r.id === asked.body.id);
+    await processReport(workerDeps, asked);
+    const note = (await call(seller, "GET", `/org/calls/${id}`)).body.reports.find((r: { id: string }) => r.id === asked);
     expect(note).toMatchObject({ status: "failed", error: "Rapporter er ikke slått på for callsenteret." });
     expect((await call(seller, "POST", `/org/calls/${id}/notes`, {})).body.code).toBe("modul_av");
+  });
+
+  it("writes one note per note template chosen in the studio", async () => {
+    const s = await setup();
+    const seller = await sessionFor(await member(s.org, "seller"), s.org);
+    const first = await call(s.admin, "POST", "/org/report-templates", { name: "Kundenotat", instructions: "Til kunden." });
+    const second = await call(s.admin, "POST", "/org/report-templates", { name: "Ledernotat", instructions: "Til lederen." });
+    expect((await call(seller, "POST", "/org/calls", { source: "tab", mime: "audio/webm", noteTemplateIds: ["x"] })).status).toBe(400);
+    const { id } = await record(seller, { noteTemplateIds: [first.body.id] });
+    // Changed while recording or before the call is processed.
+    expect((await call(seller, "PATCH", `/org/calls/${id}`, { noteTemplateIds: [second.body.id, first.body.id] })).status).toBe(200);
+    prompts.length = 0;
+    await processCall(workerDeps, id);
+    const detail = (await call(seller, "GET", `/org/calls/${id}`)).body;
+    expect(detail.noteTemplateIds).toEqual([second.body.id, first.body.id]);
+    expect(detail.reports.map((r: { templateName: string }) => r.templateName).sort()).toEqual(["Kundenotat", "Ledernotat"]);
+    expect(prompts.filter((p) => p.includes("Til lederen."))).toHaveLength(1);
+    // "Regenerer" with both gives two more.
+    const again = await call(seller, "POST", `/org/calls/${id}/notes`, { templateIds: [first.body.id, second.body.id] });
+    expect(again.body.ids).toHaveLength(2);
   });
 
   it("remembers each member's default product", async () => {

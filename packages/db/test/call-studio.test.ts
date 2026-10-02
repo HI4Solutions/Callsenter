@@ -36,11 +36,13 @@ const REQUEST = `insert into reports (organization_id, call_id, template_name, r
   values ($1, $2, 'Kort notat', $3, 'pending') returning id`;
 
 describe("call studio: notes", () => {
-  it("lets the seller ask for another note, one at a time, and the worker write it", async () => {
+  it("lets the seller ask for more notes, five at a time, and the worker write them", async () => {
     const s = await setup();
     await as(api, { userId: s.seller, orgId: s.org }, async (db) => {
-      await db.query(REQUEST, [s.org, s.call, s.seller]);
+      for (let i = 0; i < 5; i++) await db.query(REQUEST, [s.org, s.call, s.seller]);
       await rejects(db, REQUEST, [s.org, s.call, s.seller], /already being written/);
+      // The note templates chosen in the studio are kept on the call.
+      await db.query("update calls set note_templates = array[gen_random_uuid()] where id = $1", [s.call]);
       // Not a finished note made up by the API.
       await rejects(
         db,

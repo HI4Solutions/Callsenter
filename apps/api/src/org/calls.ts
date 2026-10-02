@@ -87,17 +87,19 @@ export async function createCall(db: pg.Pool, session: Session, services: CallSe
   const customerId = uuidOrNull(body, "customerId", "kunde") ?? null;
   const saleId = uuidOrNull(body, "saleId", "salg") ?? null;
   const productId = uuidOrNull(body, "productId", "produkt") ?? null;
+  const notes = body.noteTemplateIds === undefined ? [] : noteTemplateIds(body.noteTemplateIds);
 
   const created = await withSession(db, session, async (c) => {
     if (!(await moduleEnabled(c, "transcription"))) throw new BadRequest("Transkribering er ikke slått på for callsenteret.");
+    if (notes.length) await activeTemplates(c, notes);
     const settings = await transcriptionMode(c);
     // An uploaded file has no live text.
     const mode = source === "upload" ? "chunked" : settings.mode;
     try {
       const { rows } = await c.query<{ id: string; expires_at: Date }>(
-        `insert into calls (organization_id, user_id, source, transcription_mode, audio_mime, title, customer_id, sale_id, product_id)
-         values (app.current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8) returning id, expires_at`,
-        [session.userId, source, mode, mime, title, customerId, saleId, productId],
+        `insert into calls (organization_id, user_id, source, transcription_mode, audio_mime, title, customer_id, sale_id, product_id, note_templates)
+         values (app.current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9) returning id, expires_at`,
+        [session.userId, source, mode, mime, title, customerId, saleId, productId, notes],
       );
       return { id: rows[0]!.id, expiresAt: rows[0]!.expires_at, mode, terms: settings.terms };
     } catch (error) {
@@ -308,7 +310,7 @@ export async function getCall(db: pg.Pool, session: Session, callId: string, met
       `select ${SUMMARY}, c.note, c.transcription_mode as "transcriptionMode", c.audio_key is not null as "hasAudio",
               coalesce(c.lease_until > now(), false) as working,
               c.template_version_id as "templateVersionId", coalesce(tv.required_points, '[]') as "requiredPoints",
-              c.user_id = app.current_user_id() as "isOwn"
+              c.user_id = app.current_user_id() as "isOwn", c.note_templates as "noteTemplateIds"
        ${FROM} where c.id = $1`,
       [callId],
     );
@@ -377,6 +379,7 @@ export async function updateCall(db: pg.Pool, session: Session, services: CallSe
     customer_id: uuidOrNull(body, "customerId", "kunde"),
     sale_id: uuidOrNull(body, "saleId", "salg"),
     product_id: uuidOrNull(body, "productId", "produkt"),
+    note_templates: body.noteTemplateIds === undefined ? undefined : noteTemplateIds(body.noteTemplateIds),
   };
   const sets = Object.entries(values).filter(([, v]) => v !== undefined);
   const analyse = await withSession(db, session, async (c) => {
@@ -386,6 +389,7 @@ export async function updateCall(db: pg.Pool, session: Session, services: CallSe
     );
     if (!rows[0]) throw new NotFound();
     if (!sets.length) return false;
+    if (values.note_templates) await activeTemplates(c, values.note_templates as string[]);
     try {
       const updated = await c.query<{ template_version_id: string | null }>(
         `update calls set ${sets.map(([k], i) => `${k} = $${i + 2}`).join(", ")} where id = $1 returning template_version_id`,
@@ -425,41 +429,63 @@ export async function reviewAnalysis(db: pg.Pool, session: Session, callId: stri
 
 function translateNote(error: unknown): never {
   const message = (error as Error).message ?? "";
-  if (message.includes("already being written")) throw new BadRequest("Et notat lages allerede for denne samtalen. Vent til det er ferdig.");
-  if (message.includes("too many notes")) throw new BadRequest("Samtalen har allerede 10 notater.");
+  if (message.includes("already being written")) throw new BadRequest("Det lages allerede notater for denne samtalen. Vent til de er ferdige.");
+  if (message.includes("too many notes")) throw new BadRequest("Samtalen kan ha høyst 10 notater.");
   throw error;
 }
 
 // Another note from the same transcript, with the chosen note template (or the call centre's
 // default). The worker writes it; the studio checks the status until it is done.
 export async function requestNote(db: pg.Pool, session: Session, services: CallServices, callId: string, body: Body) {
-  const templateId = uuidOrNull(body, "templateId", "notatmal") ?? null;
-  const id = await withSession(db, session, async (c) => {
+  // Several note templates (the studio's chosen ones), one, or none for the default.
+  const ids = body.templateIds !== undefined ? noteTemplateIds(body.templateIds) : [uuidOrNull(body, "templateId", "notatmal") ?? null].filter((v) => v !== null);
+  const created = await withSession(db, session, async (c) => {
     const call = await c.query<{ status: string }>("select status from calls where id = $1", [callId]);
     if (!call.rows[0]) throw new NotFound();
     if (!["transcribed", "analyzed"].includes(call.rows[0].status)) throw new BadRequest("Samtalen er ikke ferdig transkribert ennå.");
-    const template = (
-      await c.query<{ id: string; name: string }>(
-        templateId
-          ? "select id, name from report_templates where id = $1 and archived_at is null"
-          : "select id, name from report_templates where organization_id = app.current_org_id() and is_default and archived_at is null",
-        templateId ? [templateId] : [],
-      )
-    ).rows[0];
-    if (templateId && !template) throw new BadRequest("Ukjent notatmal.");
+    const chosen = ids.length ? await activeTemplates(c, ids) : [await defaultTemplate(c)];
+    const made: string[] = [];
     try {
-      const { rows } = await c.query<{ id: string }>(
-        `insert into reports (organization_id, call_id, template_id, template_name, requested_by, status)
-         values (app.current_org_id(), $1, $2, $3, app.current_user_id(), 'pending') returning id`,
-        [callId, template?.id ?? null, template?.name ?? DEFAULT_REPORT.name],
-      );
-      return rows[0]!.id;
+      for (const template of chosen) {
+        const { rows } = await c.query<{ id: string }>(
+          `insert into reports (organization_id, call_id, template_id, template_name, requested_by, status)
+           values (app.current_org_id(), $1, $2, $3, app.current_user_id(), 'pending') returning id`,
+          [callId, template.id, template.name],
+        );
+        made.push(rows[0]!.id);
+      }
     } catch (error) {
       translateNote(error);
     }
+    return made;
   });
-  await services.startWorker(undefined, id);
-  return { id, status: "pending" };
+  for (const id of created) await services.startWorker(undefined, id);
+  return { ids: created, status: "pending" };
+}
+
+// The call centre's default note template, or VeriQall's built-in one.
+async function defaultTemplate(c: pg.PoolClient): Promise<{ id: string | null; name: string }> {
+  const { rows } = await c.query<{ id: string; name: string }>(
+    "select id, name from report_templates where organization_id = app.current_org_id() and is_default and archived_at is null",
+  );
+  return rows[0] ?? { id: null, name: DEFAULT_REPORT.name };
+}
+
+// Note templates in use, in the order chosen; an unknown or archived one is refused.
+async function activeTemplates(c: pg.PoolClient, ids: string[]): Promise<{ id: string; name: string }[]> {
+  const { rows } = await c.query<{ id: string; name: string }>(
+    "select id, name from report_templates where id = any($1::uuid[]) and archived_at is null",
+    [ids],
+  );
+  if (rows.length !== ids.length) throw new BadRequest("Ukjent notatmal.");
+  return ids.map((id) => rows.find((r) => r.id === id)!);
+}
+
+function noteTemplateIds(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length > 5 || !value.every((v) => typeof v === "string" && isUuid(v))) {
+    throw new BadRequest("Velg høyst fem notatmaler.");
+  }
+  return [...new Set(value as string[])];
 }
 
 // The seller adjusts the note. The AI text stays as it was; each adjustment is kept.

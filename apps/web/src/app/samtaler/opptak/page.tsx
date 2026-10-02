@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { AdditionalInfo } from "@/components/calls/additional-info";
+import { NoteTemplatePicker, useNoteTemplates } from "@/components/calls/note-templates";
 import { NotesPanel } from "@/components/calls/notes-panel";
 import { TranscriptPanel } from "@/components/calls/transcript-panel";
 import { useCall } from "@/components/calls/use-call";
@@ -43,6 +44,26 @@ function writeTabProduct(id: string) {
   }
 }
 
+// The note templates switched on in this tab, kept the same way.
+const TAB_NOTES = "veriqall.studio.notes";
+
+function readTabNotes(): string[] | null {
+  try {
+    const value: unknown = JSON.parse(sessionStorage.getItem(TAB_NOTES) ?? "null");
+    return Array.isArray(value) && value.every((v) => typeof v === "string") ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeTabNotes(ids: string[]) {
+  try {
+    sessionStorage.setItem(TAB_NOTES, JSON.stringify(ids));
+  } catch {
+    // As above.
+  }
+}
+
 // Samtalestudio (docs/plan.md, section 18): record the call, see the transcript and the warning
 // lamps for the product template, add information that was not said, and get the note. The
 // transcript is made from the recording and cannot be changed; the seller may adjust the note.
@@ -74,6 +95,14 @@ export default function StudioPage() {
   const [tabSupported] = useState(() => tabAudioSupported());
   const [tabShared, setTabShared] = useState(() => tabShareActive());
   const { call, load, waiting } = useCall(doneId);
+  const noteTemplates = useNoteTemplates(me?.modules?.includes("reports") ?? false);
+  const [notes, setNotes] = useState<string[] | null>(null);
+  // Before anything is chosen in this tab: the call centre's default note template.
+  const chosenNotes =
+    notes ??
+    (noteTemplates ? (readTabNotes() ?? noteTemplates.filter((t) => t.isDefault).map((t) => t.id)) : []).filter((id) =>
+      noteTemplates?.some((t) => t.id === id),
+    );
 
   // Products with a published template, and which one to start with: the one chosen in this tab,
   // then the member's own default (the star).
@@ -155,6 +184,7 @@ export default function StudioPage() {
     customerId: customer?.id ?? null,
     saleId: saleId || null,
     productId: saleId ? null : productId || null,
+    noteTemplateIds: chosenNotes,
   });
 
   // Saves what was typed before the call existed.
@@ -180,6 +210,16 @@ export default function StudioPage() {
     setSales([]);
     setSaleId("");
     setTitle("");
+  }
+
+  async function chooseNotes(ids: string[]) {
+    setError(null);
+    setNotes(ids);
+    writeTabNotes(ids);
+    // Until the notes after the call are written, they follow the choice.
+    if (activeId && !call?.reports.length) {
+      await orgFetch(`/calls/${activeId}`, { method: "PATCH", body: { noteTemplateIds: ids } }).catch((e: Error) => setError(e.message));
+    }
   }
 
   async function chooseProduct(id: string) {
@@ -346,6 +386,9 @@ export default function StudioPage() {
             </button>
           )}
         </div>
+        {me.modules?.includes("reports") && (
+          <NoteTemplatePicker templates={noteTemplates} chosen={chosenNotes} onChange={(ids) => void chooseNotes(ids)} />
+        )}
         <div className="flex flex-wrap items-center gap-3">
           {recording ? (
             <button type="button" className={primaryButton} disabled={state.step === "stopping"} onClick={stop}>
@@ -495,7 +538,7 @@ export default function StudioPage() {
         </div>
         <div className="flex min-w-0 flex-col gap-6">
           {call ? (
-            <NotesPanel call={call} onChanged={load} />
+            <NotesPanel call={call} onChanged={load} chosen={chosenNotes} />
           ) : (
             <Card title="Notater">
               <p className="text-muted">Notatet lages av AI når samtalen er transkribert, ut fra transkripsjonen og malen.</p>

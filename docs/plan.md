@@ -495,27 +495,27 @@ Forskjeller fra Notatstudio (besluttet av Nadeem 2. oktober):
 - **Selgeren kan justere notatet.** AI-teksten beholdes uendret, og hver justering lagres som en ny versjon med navn og tidspunkt (`report_edits`, append-only). Ledere og dokumentasjonen viser det justerte notatet, merket «Justert av …», med AI-versjonen ved siden av.
 - **Varsellamper.** Hvert obligatorisk punkt i produktmalen er en lampe. Før og under samtalen er lampene grå («Husk»), så selgeren ser hva som må sies. Etter AI-kontrollen er de grønne, gule eller røde, med sitat og tidspunkt. Forbudte formuleringer, feil pris eller vilkår og andre alvorlige forhold får egne lamper. Betydningen står alltid også som tekst.
 - **Malen er produktmalen**, ikke en journalmal. Den velges i listen «Mal» øverst, med stjerne for egen standardmal («Sett som standardmal for Samtalestudio»). Valget huskes i fanen. Velges et salg, brukes malversjonen salget ble gjort på. Malen kan byttes under og etter opptaket, til AI-kontrollen har kjørt.
-- **Tilleggsmaler kommer senere.** Notatet bygges allerede av malens instruksjoner, produktmalen, transkripsjonen og tilleggsinformasjonen, så tilleggsmaler kan legges til som flere instruksjoner i samme kall.
+- **Notatmaler i stedet for tilleggsmaler** (Nadeem 2. oktober: «Hovedvalget skal være produktmal. Tilleggsmal kan her erstattes av notatmal.»). Rett under «Mal» slår selgeren notatmaler av og på, flere samtidig (høyst fem). Hver notatmal som er på, gir sitt eget notat etter samtalen, og «Regenerer» lager nye notater med dem som er på. Er ingen valgt, brukes callsenterets standard notatmal (eller VeriQalls standardnotat). Valget huskes i fanen og lagres på samtalen (`calls.note_templates`), og kan endres til notatene er skrevet.
 - **Ingen fraser og ikke språkvalg.** Notatet skrives på norsk bokmål.
 
 Skjermbildet:
 
-- **Øverst:** opptaksknappen (mikrofon eller fanelyd), «Last opp lydfil», «Mal» med stjerne, og kunde, salg og tittel (valgfritt, kan kobles etterpå).
+- **Øverst:** «Mal» (produktmalen) med stjerne, notatmalene rett under, opptaksknappen (mikrofon eller fanelyd), «Last opp lydfil», og kunde, salg og tittel (valgfritt, kan kobles etterpå).
 - **Midten:** Varsellamper, Transkripsjon (sanntidstekst under opptaket, den lagrede transkripsjonen etterpå, med søk) og Tilleggsinformasjon.
-- **Til høyre:** Notater, med alle notatene fra samtalen, «Regenerer» med valg av notatmal, «Kopier» og «Rediger» (bare selgerens egen samtale).
+- **Til høyre:** Notater, med alle notatene fra samtalen, «Regenerer» (med notatmalene som er på), «Kopier» og «Rediger» (bare selgerens egen samtale). På samtalesiden velges notatmalene i panelet.
 - **Etter opptaket** blir selgeren i studioet til notatet er klart, med «Åpne samtalen» og «Ny samtale». Samtalesiden (`/samtaler/[id]`) har de samme panelene, i tillegg til avspilling og behandling av flagg.
 
 Regler:
 
 - **Tilleggsinformasjon** er kontekst som ikke ble sagt i samtalen (for eksempel en avtale kunden har fra før). Den tas med når notatet lages, og AI-en skal merke den som selgerens opplysning. **AI-kontrollen bruker den aldri**, så lampene bygger bare på det som ble sagt.
-- **Regenerer** lager et nytt notat fra den samme transkripsjonen med valgt notatmal (eller standardmalen). Selgeren som hadde samtalen, eller den som har `report_templates.manage`, kan be om det. Høyst ett notat skrives om gangen, og høyst 10 notater per samtale. Workeren skriver notatet (Bedrock), og studioet sjekker status til det er ferdig.
+- **Regenerer** lager nye notater fra den samme transkripsjonen med notatmalene som er på (eller standardmalen). Selgeren som hadde samtalen, eller den som har `report_templates.manage`, kan be om det. Høyst fem notater skrives om gangen, og høyst 10 notater per samtale. Workeren skriver notatet (Bedrock), og studioet sjekker status til det er ferdig.
 - **Bare selgeren som hadde samtalen, kan justere notatet.** Andre ser det.
 - **Rapportmaler heter nå notatmaler** i appen, og standardnotatet heter «Standardnotat». Rettigheten og modulen har samme nøkkel som før.
 - **Alt spores:** forespørsler om notat og justeringer skrives til `audit_log` uten teksten, så teksten ikke overlever lagringstiden. Notater og justeringer slettes med samtalen.
 
 | Del | Innhold |
 |---|---|
-| Database | `0022_call_studio.sql`: `reports` får status (`pending`, `done`, `failed`), `requested_by`, lease og forsøk; `report_edits` (append-only); `studio_preferences` (standardmal per medlem); grense på 10 notater og ett om gangen |
+| Database | `0022_call_studio.sql`: `calls.note_templates`; `reports` får status (`pending`, `done`, `failed`), `requested_by`, lease og forsøk; `report_edits` (append-only); `studio_preferences` (standardmal per medlem); grense på 10 notater og ett om gangen |
 | API | `POST /org/calls/{id}/notes`, `PATCH /org/calls/{id}/notes/{noteId}`, `GET /org/calls/{id}/notes/{noteId}/history`, `GET`/`PUT /org/studio`; `GET /org/calls/{id}` gir `requiredPoints`, `isOwn` og notatene med justeringer |
 | Worker | `{reportId}` skriver et notat; notater som ble hengende, plukkes opp av ryddejobben |
 | Web | `/samtaler/opptak` (Samtalestudio), `components/calls/` (varsellamper, transkripsjon, tilleggsinformasjon, notater), samtalesiden og dokumentasjonen |

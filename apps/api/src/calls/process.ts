@@ -32,6 +32,8 @@ interface CallRow {
   title: string | null;
   // The seller's additional information (Tilleggsinformasjon), used for the note only.
   note: string | null;
+  // The note templates chosen in the studio; one note each (the default when none).
+  note_templates: string[];
   attempts: number;
   soniox_file_id: string | null;
   soniox_transcription_id: string | null;
@@ -96,7 +98,7 @@ export async function processCall(deps: WorkerDeps, callId: string): Promise<voi
             or (c.status = 'analyzed' and c.template_version_id is not null
                 and not exists (select 1 from call_analyses a where a.call_id = c.id)))
      returning id, organization_id, status, transcription_mode, audio_key, audio_mime, duration_ms,
-               template_version_id, product_id, customer_id, title, note, attempts, soniox_file_id, soniox_transcription_id`,
+               template_version_id, product_id, customer_id, title, note, note_templates, attempts, soniox_file_id, soniox_transcription_id`,
     [callId],
   );
   const call = claimed.rows[0];
@@ -425,21 +427,27 @@ async function analyse(deps: WorkerDeps, call: CallRow, enabled: Set<string>) {
   }
 
   if (report && ai) {
-    const noteTemplate = (
+    // The note templates chosen in the studio, in that order; else the call centre's default,
+    // else VeriQall's built-in one.
+    const chosen = (
       await deps.db.query<{ id: string; name: string; instructions: string }>(
-        `select id, name, instructions from report_templates
-         where organization_id = $1 and is_default and archived_at is null`,
-        [call.organization_id],
+        call.note_templates.length
+          ? `select t.id, t.name, t.instructions from unnest($2::uuid[]) with ordinality c(id, n)
+             join report_templates t on t.id = c.id and t.organization_id = $1 and t.archived_at is null order by c.n`
+          : `select id, name, instructions from report_templates where organization_id = $1 and is_default and archived_at is null`,
+        call.note_templates.length ? [call.organization_id, call.note_templates] : [call.organization_id],
       )
-    ).rows[0];
-    const chosen = noteTemplate ?? { id: null, ...DEFAULT_REPORT };
-    const result = await ai.text(model, REPORT_SYSTEM, notePrompt(chosen.instructions, template, transcript, call.note));
-    await deps.db.query(
-      `insert into reports (organization_id, call_id, template_id, template_name, content, model, input_tokens, output_tokens)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [call.organization_id, call.id, chosen.id, chosen.name, result.data.trim(), result.model, result.inputTokens, result.outputTokens],
-    );
-    await usage(deps.db, call, "report", result);
+    ).rows;
+    const templates: { id: string | null; name: string; instructions: string }[] = chosen.length ? chosen : [{ id: null, ...DEFAULT_REPORT }];
+    for (const t of templates) {
+      const result = await ai.text(model, REPORT_SYSTEM, notePrompt(t.instructions, template, transcript, call.note));
+      await deps.db.query(
+        `insert into reports (organization_id, call_id, template_id, template_name, content, model, input_tokens, output_tokens)
+         values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [call.organization_id, call.id, t.id, t.name, result.data.trim(), result.model, result.inputTokens, result.outputTokens],
+      );
+      await usage(deps.db, call, "report", result);
+    }
   }
   await deps.db.query("update calls set status = 'analyzed', error = null where id = $1", [call.id]);
 }

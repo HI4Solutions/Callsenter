@@ -1,48 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import { ErrorMessage, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import { NoteTemplatePicker, useNoteTemplates } from "@/components/calls/note-templates";
 import { useWorkMe } from "@/components/work/work-shell";
 import type { CallDetail, Note } from "@/lib/calls";
 import { formatDateTime } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 
-interface NoteTemplate {
-  id: string;
-  name: string;
-  isDefault: boolean;
-  archivedAt: string | null;
-}
-
 // Notatpanelet: every note from the call, newest first. A note is written by AI from the
 // transcript, the product template and the seller's additional information. The seller may
-// adjust it; the AI text is kept and shown beside it. "Regenerer" makes another note from the
-// same transcript, with the note template chosen.
-export function NotesPanel({ call, onChanged }: { call: CallDetail; onChanged: () => Promise<unknown> }) {
+// adjust it; the AI text is kept and shown beside it. "Regenerer" makes new notes from the same
+// transcript with the note templates chosen: in the studio those chosen at the top (chosen), on
+// the call page those picked here.
+export function NotesPanel({
+  call,
+  onChanged,
+  chosen,
+}: {
+  call: CallDetail;
+  onChanged: () => Promise<unknown>;
+  chosen?: string[];
+}) {
   const me = useWorkMe();
-  const [templates, setTemplates] = useState<NoteTemplate[]>([]);
-  const [templateId, setTemplateId] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
   const reportsOn = me?.modules?.includes("reports") ?? false;
   const canRequest =
     reportsOn &&
     (call.isOwn || (me?.permissions.includes("report_templates.manage") ?? false)) &&
     (call.status === "transcribed" || call.status === "analyzed") &&
     call.segments.length > 0;
-
-  useEffect(() => {
-    if (!canRequest) return;
-    let cancelled = false;
-    orgFetch<NoteTemplate[]>("/report-templates")
-      .then((rows) => !cancelled && setTemplates(rows.filter((t) => !t.archivedAt)))
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [canRequest]);
+  const templates = useNoteTemplates(canRequest && !chosen);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const pending = call.reports.some((r) => r.status === "pending");
 
@@ -50,10 +41,7 @@ export function NotesPanel({ call, onChanged }: { call: CallDetail; onChanged: (
     setError(null);
     setBusy(true);
     try {
-      await orgFetch(`/calls/${call.id}/notes`, {
-        method: "POST",
-        body: { templateId: templateId || null },
-      });
+      await orgFetch(`/calls/${call.id}/notes`, { method: "POST", body: { templateIds: chosen ?? picked } });
       await onChanged();
     } catch (e) {
       setError((e as Error).message);
@@ -74,25 +62,15 @@ export function NotesPanel({ call, onChanged }: { call: CallDetail; onChanged: (
         ))}
         {canRequest && (
           <div className="flex flex-col gap-3 border-t border-line pt-4">
-            <Field label="Notatmal" hint="Samme transkripsjon, med en annen mal. Det nye notatet legges til over.">
-              <select className={inputClass} value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
-                <option value="">
-                  Standard
-                  {templates.find((t) => t.isDefault) ? ` (${templates.find((t) => t.isDefault)!.name})` : ""}
-                </option>
-                {templates
-                  .filter((t) => !t.isDefault)
-                  .map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-              </select>
-            </Field>
+            {chosen ? (
+              <p className="text-sm text-muted">Lager nye notater fra samme transkripsjon med notatmalene som er valgt øverst.</p>
+            ) : (
+              <NoteTemplatePicker templates={templates} chosen={picked} onChange={setPicked} />
+            )}
             <ErrorMessage message={error} />
             <div>
               <button type="button" className={secondaryButton} disabled={busy || pending} onClick={regenerate}>
-                {pending ? "Lager notat …" : "Regenerer"}
+                {pending ? "Lager notater …" : "Regenerer"}
               </button>
             </div>
           </div>
