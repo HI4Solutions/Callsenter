@@ -190,7 +190,7 @@ Logoen kan genereres på nytt med `tools/brand/`: last ned fonten til `tools/bra
 
 - **Hvordan kommer lydopptakene inn?** Opplasting etter samtalen, eller integrasjon med callsenterets telefonisystem? Dette avgjør fase 2.
 - **Kontooppsett:** egne AWS-kontoer for staging og produksjon (anbefalt) eller én konto med tagger. I dag ligger begge i samme konto.
-- **SMS-leverandør** for salgsverifisering (modul 8). Til da sender selgeren lenken selv (seksjon 14).
+- ~~SMS-leverandør~~: trengs ikke. Besluttet 2. oktober at bekreftelse og signering av salg ikke gjøres av VeriQall (seksjon 14).
 - **Bedrock:** hvilke Claude-modeller er tilgjengelige direkte i `eu-north-1`, og krever noen EU cross-region inference (behandling i andre EU-regioner)?
 - **Lovkrav:** sjekk hva angrerettloven krever av bekreftelse og skriftlig aksept ved telefonsalg. Modul 8 er bygget som skriftlig aksept med BankID eller Vipps (seksjon 14), men trenger en juridisk vurdering.
 - **Lagringstid** for opptak og transkripsjoner, og sletting på forespørsel.
@@ -329,7 +329,9 @@ Beslutninger 2. oktober (til godkjenning):
 
 Modulene Salgsverifisering, Dokumentasjon og Klagehåndtering slås på per callsenter og sjekkes i API-et. «Åpnet» på en lenke betyr at lenken er åpnet, ikke nødvendigvis av kunden (selgeren kan ha åpnet den selv).
 
-Må sjekkes før produksjon: at lenke med BankID- eller Vipps-aksept oppfyller kravet om skriftlig aksept (juridisk vurdering), hvilken tekst bekreftelsessiden skal ha om angreretten (angrerettskjema), og om Vipps Logg inn er godkjent brukt til aksept (Vipps sier selv at Login ikke er en elektronisk ID; BankID er sikrest).
+**Besluttet 2. oktober (Nadeem):** bekreftelse og signering av salg gjøres ikke av VeriQall foreløpig. Modulen Salgsverifisering står av, koden blir liggende, og salg settes til «bekreftet» for hånd. Ingen SMS.
+
+Må sjekkes hvis modulen tas i bruk: at lenke med BankID- eller Vipps-aksept oppfyller kravet om skriftlig aksept (juridisk vurdering), hvilken tekst bekreftelsessiden skal ha om angreretten (angrerettskjema), og om Vipps Logg inn er godkjent brukt til aksept (Vipps sier selv at Login ikke er en elektronisk ID; BankID er sikrest).
 
 ## 15. Dashboard og coaching
 
@@ -362,7 +364,7 @@ Beslutninger 2. oktober (til godkjenning):
 - **Betaling** registreres for hånd (beløp, dato, bank, Stripe eller annet, og referanse). Fakturaen blir betalt når betalingene dekker den, og en sendt faktura etter forfall vises som forfalt. Betalinger kan ikke endres eller slettes.
 - **Faste avtaler** (månedlig, kvartalsvis, halvårlig eller årlig) telles fra startdatoen, så en avtale fra den 31. ikke glir til den 28. De blir utkast per periode når superadmin trykker «Lag utkast som forfaller». Det skjer ikke automatisk, så ingenting sendes uten at noen har sett på det.
 - **Forbruk** (timer lyd og antall AI-kontroller for en måned) kan legges til et utkast til prisene under Innstillinger. Hver samtale faktureres én gang, også om den ble behandlet på nytt etter en feil.
-- **Ingen e-post og ingen Stripe ennå.** Fakturaen skrives ut eller lagres som PDF og sendes av superadmin. E-post kommer med Amazon SES. Stripe (kortbetaling og automatisk avstemming) trenger en Stripe-konto og nøkler i Secrets Manager, og er en egen PR når Nadeem har bestemt seg. Betalingsmåten «Stripe» finnes allerede for manuell registrering.
+- **Ingen e-post og ingen Stripe ennå.** Fakturaen skrives ut eller lagres som PDF og sendes av superadmin. Stripe-nøkler kommer fra Nadeem senere og legges i Secrets Manager. Nadeem lager en egen beskrivelse av fakturamodulen, så denne seksjonen kan endres. Betalingsmåten «Stripe» finnes allerede for manuell registrering.
 - **Nøkkeltall** under Økonomi: faste inntekter per måned (MRR, eks. mva), fakturert denne måneden og i år, utestående og forfalt.
 - **Oppbevaring:** fakturaer kan ikke slettes, heller ikke når callsenteret slettes (bokføringsloven krever fem år). Fremmednøkkelen hindrer at et callsenter med fakturaer slettes.
 
@@ -372,4 +374,4 @@ Beslutninger 2. oktober (til godkjenning):
 | API | `/admin/billing/overview` og `/admin/billing/settings`, `/admin/invoices` (opprette, endre utkast, slette utkast, `send`, `payments`, `credit`, `usage`), `/admin/recurring-invoices` (og `generate`), og `/org/invoices` |
 | Web | Økonomi med Oversikt og forbruk, Fakturaer, Faste avtaler og Innstillinger. Fakturaen kan skrives ut. Administrasjon → Fakturaer for callsenteret |
 
-Må sjekkes før bruk: at fakturaen oppfyller kravene i bokføringsforskriften (blant annet at «Foretaksregisteret» står ved organisasjonsnummeret for aksjeselskap, som kan legges i bunnteksten), og om KID skal brukes.
+Må sjekkes før bruk: at fakturaen oppfyller kravene i bokføringsforskriften (blant annet at «Foretaksregisteret» står ved organisasjonsnummeret for aksjeselskap, som kan legges i bunnteksten), KID brukes ikke foreløpig (besluttet 2. oktober).
