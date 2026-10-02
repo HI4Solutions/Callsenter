@@ -38,6 +38,10 @@ Produksjons-workflowen gjør ingenting før repo-variabelen `PRODUCTION_ENABLED`
 - Fyll inn verdiene i hemmeligheten `callsenter/<miljø>/app` (Vipps, Idura, Soniox) i Secrets Manager. CloudFormation lager den tom og overskriver den aldri.
 - Hovedbrukeren i RDS (`veriqall_owner`) har et passord som AWS lager og roterer selv. Lambdaene for API og innlogging logger inn med IAM, uten passord.
 
+## Hvis en stack feiler første gang
+
+Feiler en stack allerede ved opprettelsen, havner den i `ROLLBACK_COMPLETE` og kan bare slettes. GitHub-rollen har ikke lov til å slette stacker, så en admin sletter den (den inneholder ingen ressurser da), og neste deploy oppretter den på nytt.
+
 ## Ressurser som ikke slettes med stacken
 
 KMS-nøkkelen, lydbøtta, app-hemmeligheten og artefaktbøtta beholdes hvis stacken slettes, og databasen får et siste øyeblikksbilde. Databasen har i tillegg slettebeskyttelse.

@@ -36,6 +36,15 @@ aws s3 cp apps/api/lambda.zip "s3://$bucket/$artifact_key" --region "$region" --
 deploy() {
   local stack="$1" template="$2"
   shift 2
+  local status
+  status=$(aws cloudformation describe-stacks --region "$region" --stack-name "veriqall-$env-$stack" \
+    --query "Stacks[0].StackStatus" --output text 2>/dev/null || true)
+  if [[ "$status" == "ROLLBACK_COMPLETE" ]]; then
+    # A stack whose first creation failed can only be deleted. The deploy role may not delete
+    # stacks, so an administrator does it (it holds no resources in this state).
+    echo "veriqall-$env-$stack is in ROLLBACK_COMPLETE; an administrator must delete it before redeploying" >&2
+    exit 1
+  fi
   echo "::group::deploy veriqall-$env-$stack"
   aws cloudformation deploy --region "$region" \
     --stack-name "veriqall-$env-$stack" \
