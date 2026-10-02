@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { ErrorMessage, Field, inputClass } from "@/components/admin/field";
+import { EconomyNav } from "@/components/billing/economy-nav";
 import { adminFetch } from "@/lib/admin";
+import { type BillingOverview, kr } from "@/lib/billing";
 
 interface UsageRow {
   organizationId: string;
@@ -23,12 +25,23 @@ function monthName(month: string) {
   return new Intl.DateTimeFormat("nb-NO", { month: "long", year: "numeric" }).format(new Date(y!, m! - 1, 1));
 }
 
-// Usage per call centre (docs/plan.md, section 10): audio minutes and AI tokens per month.
-// Invoicing comes in phase 4.
+// Key figures for invoicing, and usage per call centre (audio minutes and AI tokens per month).
+// docs/plan.md, sections 10 and 16.
 export default function EconomyPage() {
   const [months, setMonths] = useState("3");
   const [rows, setRows] = useState<UsageRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [overview, setOverview] = useState<BillingOverview | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    adminFetch<BillingOverview>("/billing/overview")
+      .then((o) => !cancelled && setOverview(o))
+      .catch((e: Error) => !cancelled && setError(e.message));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,8 +65,24 @@ export default function EconomyPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">Økonomi</h1>
-          <p className="mt-2 text-muted">Forbruk per callsenter. Fakturering kommer i fase 4.</p>
+          <p className="mt-2 text-muted">Fakturering av callsentrene, og forbruk per callsenter.</p>
         </div>
+      </div>
+      <EconomyNav />
+      {overview && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Tile label="Faste inntekter per måned" value={kr(overview.mrr)} note="Aktive faste avtaler, eks. mva" />
+          <Tile label="Fakturert denne måneden" value={kr(overview.invoicedMonth)} note={`${kr(overview.invoicedYear)} i år, eks. mva`} />
+          <Tile label="Utestående" value={kr(overview.outstanding)} note={`${kr(overview.overdue)} forfalt`} />
+          <Tile
+            label="Å gjøre"
+            value={`${overview.drafts} utkast`}
+            note={overview.recurringDue ? `${overview.recurringDue} faste avtaler venter på utkast` : "Ingen faste avtaler venter"}
+          />
+        </div>
+      )}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <h2 className="text-2xl font-bold">Forbruk</h2>
         <Field label="Periode">
           <select className={inputClass} value={months} onChange={(e) => setMonths(e.target.value)}>
             <option value="1">Denne måneden</option>
@@ -99,5 +128,15 @@ export default function EconomyPage() {
         ))
       )}
     </section>
+  );
+}
+
+function Tile({ label, value, note }: { label: string; value: string; note: string }) {
+  return (
+    <div className="rounded-xl border border-line bg-surface p-4">
+      <p className="text-sm text-muted">{label}</p>
+      <p className="text-2xl font-semibold tabular-nums">{value}</p>
+      <p className="text-sm text-muted">{note}</p>
+    </div>
   );
 }
