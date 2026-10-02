@@ -1,0 +1,255 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  VeriQall data: customer managed KMS key, PostgreSQL on RDS (TLS only, pgAudit, IAM
+  authentication, point-in-time recovery), the audio bucket, and the application secret.
+  See docs/plan.md, sections 3 and 9.
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [staging, production]
+  MultiAz:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+  InstanceClass:
+    Type: String
+    Default: db.t4g.micro
+  AllocatedStorage:
+    Type: Number
+    Default: 20
+    MinValue: 20
+  BackupRetentionDays:
+    Type: Number
+    Default: 7
+    MinValue: 7
+    MaxValue: 35
+
+Resources:
+  # One key per environment for RDS, the master secret, the app secret, the audio bucket and
+  # the Lambda log groups.
+  Key:
+    Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Description: !Sub VeriQall ${Environment}
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AccountAdministration
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: "*"
+          - Sid: CloudWatchLogs
+            Effect: Allow
+            Principal:
+              Service: !Sub logs.${AWS::Region}.amazonaws.com
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:Describe*
+            Resource: "*"
+            Condition:
+              ArnLike:
+                kms:EncryptionContext:aws:logs:arn: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/*/veriqall-${Environment}-*
+      Tags:
+        - Key: project
+          Value: veriqall
+        - Key: environment
+          Value: !Ref Environment
+
+  KeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub alias/veriqall-${Environment}
+      TargetKeyId: !Ref Key
+
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: !Sub VeriQall ${Environment} private subnets
+      SubnetIds: !Split [",", !ImportValue {"Fn::Sub": "veriqall-${Environment}-private-subnets"}]
+
+  DbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: VeriQall database, reachable only from the Lambda functions
+      VpcId: !ImportValue {"Fn::Sub": "veriqall-${Environment}-vpc"}
+      SecurityGroupIngress:
+        - Description: Postgres from Lambda
+          IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !ImportValue {"Fn::Sub": "veriqall-${Environment}-lambda-sg"}
+      Tags:
+        - Key: Name
+          Value: !Sub veriqall-${Environment}-db
+
+  DbParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: !Sub VeriQall ${Environment}
+      Family: postgres17
+      Parameters:
+        rds.force_ssl: "1"
+        shared_preload_libraries: pgaudit,pg_stat_statements
+        # Schema changes, role and permission changes, and writes. Statement parameters
+        # (the data itself) are not logged.
+        pgaudit.log: ddl,role,write
+        pgaudit.log_parameter: "0"
+        log_connections: "1"
+        log_disconnections: "1"
+
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub veriqall-${Environment}
+      Engine: postgres
+      # Default minor version in eu-north-1 when written; minor upgrades are applied automatically.
+      EngineVersion: "17.9"
+      AutoMinorVersionUpgrade: true
+      DBInstanceClass: !Ref InstanceClass
+      AllocatedStorage: !Ref AllocatedStorage
+      StorageType: gp3
+      StorageEncrypted: true
+      KmsKeyId: !Ref Key
+      DBName: veriqall
+      # The master user owns the schema and runs migrations. AWS creates and rotates its
+      # password in Secrets Manager; it never appears in a template or a workflow.
+      MasterUsername: veriqall_owner
+      ManageMasterUserPassword: true
+      MasterUserSecret:
+        KmsKeyId: !Ref Key
+      EnableIAMDatabaseAuthentication: true
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DbSecurityGroup
+      PubliclyAccessible: false
+      DBParameterGroupName: !Ref DbParameterGroup
+      MultiAZ: !Ref MultiAz
+      # Automated backups give point-in-time recovery within the retention period.
+      BackupRetentionPeriod: !Ref BackupRetentionDays
+      PreferredBackupWindow: "01:00-01:30"
+      PreferredMaintenanceWindow: "sun:02:00-sun:03:00"
+      CopyTagsToSnapshot: true
+      DeletionProtection: true
+      EnableCloudwatchLogsExports:
+        - postgresql
+      Tags:
+        - Key: project
+          Value: veriqall
+        - Key: environment
+          Value: !Ref Environment
+
+  # Values for Vipps, Idura and Soniox, filled in by hand in the console. CloudFormation only
+  # writes the empty template at creation and never overwrites what is put there later.
+  AppSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Sub callsenter/${Environment}/app
+      Description: !Sub VeriQall ${Environment} provider credentials (JSON)
+      KmsKeyId: !Ref Key
+      SecretString: >-
+        {"VIPPS_CLIENT_ID":"","VIPPS_CLIENT_SECRET":"","VIPPS_SUBSCRIPTION_KEY":"","VIPPS_MSN":"",
+        "IDURA_CLIENT_ID":"","IDURA_CLIENT_SECRET":"","SONIOX_API_KEY":""}
+
+  AudioBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt Key.Arn
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: project
+          Value: veriqall
+        - Key: environment
+          Value: !Ref Environment
+
+  AudioBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AudioBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt AudioBucket.Arn
+              - !Sub ${AudioBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+          - Sid: DenyOtherEncryption
+            Effect: Deny
+            Principal: "*"
+            Action: s3:PutObject
+            Resource: !Sub ${AudioBucket.Arn}/*
+            Condition:
+              StringNotEqualsIfExists:
+                s3:x-amz-server-side-encryption: aws:kms
+          - Sid: DenyOtherKeys
+            Effect: Deny
+            Principal: "*"
+            Action: s3:PutObject
+            Resource: !Sub ${AudioBucket.Arn}/*
+            Condition:
+              StringNotEqualsIfExists:
+                s3:x-amz-server-side-encryption-aws-kms-key-id: !GetAtt Key.Arn
+
+Outputs:
+  KeyArn:
+    Value: !GetAtt Key.Arn
+    Export:
+      Name: !Sub veriqall-${Environment}-key
+  DbEndpoint:
+    Value: !GetAtt Database.Endpoint.Address
+    Export:
+      Name: !Sub veriqall-${Environment}-db-endpoint
+  DbPort:
+    Value: !GetAtt Database.Endpoint.Port
+    Export:
+      Name: !Sub veriqall-${Environment}-db-port
+  DbResourceId:
+    Value: !GetAtt Database.DbiResourceId
+    Export:
+      Name: !Sub veriqall-${Environment}-db-resource-id
+  DbMasterSecretArn:
+    Value: !GetAtt Database.MasterUserSecret.SecretArn
+    Export:
+      Name: !Sub veriqall-${Environment}-db-master-secret
+  AppSecretArn:
+    Value: !Ref AppSecret
+    Export:
+      Name: !Sub veriqall-${Environment}-app-secret
+  AudioBucketName:
+    Value: !Ref AudioBucket
+    Export:
+      Name: !Sub veriqall-${Environment}-audio-bucket

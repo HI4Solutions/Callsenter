@@ -21,15 +21,16 @@ Ferdig:
 - `deploy-staging.yml` og `deploy-production.yml` ligger på `staging`. De logger bare inn i AWS og kjører `sts get-caller-identity`; migrasjoner og øvrige deploy-steg er TODO (PR 4). Ingenting av dette ligger på `main` ennå, så produksjons-workflowen har aldri kjørt.
 - Hele planen i `docs/plan.md`, med beslutningene fra 2. oktober i seksjon 9: AWS med RDS (ikke Supabase), NAT-instans i staging og NAT Gateway i produksjon, produksjon opprettes først ved lansering. Innloggingsdesignet i `docs/auth.md`.
 - Fase 0, PR 2 (datamodell og tilgang): migrasjonen `packages/db/migrations/0001_foundation.sql` med fase 0-tabellene, RLS, rollene `app_user` og `app_auth`, rettighetskatalogen (speilet fra `packages/shared/src/permissions.ts`), seeding av standardroller per callsenter, vern mot å gi bort rettigheter man ikke har, og append-only `audit_log` og `access_log`. Migreringsverktøy i `packages/db/src`. 31 databasetester kjører i CI mot Postgres 17 (og lokalt mot 16).
-- Staging-frontend: Amplify-appen `veriqall-staging` (Next.js SSR) er opprettet i `eu-north-1` med CloudFormation-stacken `veriqall-staging-web` fra `infra/amplify-web.yml`. Første bygg av PR-branchen gikk grønt (Node 22, Next 16). URL-en står i stackens output og i Amplify-konsollen. Amplify GitHub-appen er installert og GitHub-tokenet ligger i Secrets Manager (`callsenter/staging/github-token`). Staging og produksjon ligger i samme AWS-konto (planen anbefaler separate, se seksjon 8). Deploy-rollene har ikke CloudFormation-rettigheter, så stacken kjøres manuelt til PR 4.
+- Fase 0, PR 4 (infrastruktur): CloudFormation-maler i `infra/` (bootstrap, network, data, app), Lambda-kode i `apps/api` (API med `/health`, migrator), provisjonering av databasebrukere med IAM-innlogging i `packages/db/src/provision.ts`, og `infra/deploy.sh` som brukes av deploy-workflowene. Bootstrap-stacken `veriqall-staging-bootstrap` er opprettet 2. oktober (med slettebeskyttelse), og den gamle inline-policyen `callsenter-deploy-permissions` er fjernet fra `callsenter-staging-deploy`. Produksjonsrollen har den fortsatt (fjernes når produksjon bootstrappes). Produksjons-workflowen er sperret bak repo-variabelen `PRODUCTION_ENABLED`.
+- Staging-frontend: Amplify-appen `veriqall-staging` (Next.js SSR) er opprettet i `eu-north-1` med CloudFormation-stacken `veriqall-staging-web` fra `infra/amplify-web.yml`. Første bygg av PR-branchen gikk grønt (Node 22, Next 16). URL-en står i stackens output og i Amplify-konsollen. Amplify GitHub-appen er installert og GitHub-tokenet ligger i Secrets Manager (`callsenter/staging/github-token`). Staging og produksjon ligger i samme AWS-konto (planen anbefaler separate, se seksjon 8). Amplify-stacken kjøres fortsatt manuelt.
 - Fase 0, PR 1 (skjelett og design): monorepo med npm workspaces, Next.js 16 i `apps/web` med Tailwind 4, designtokens i lys og mørk modus (system, lys, mørk, huskes i nettleseren), Schibsted Grotesk via `@fontsource-variable` (selvhostet), `/design` med paletten og AI-flagg, og `ci.yml` (lint, typecheck, test og build på hver PR, ingen deploy). Tokens og kontrast er dekket av tester. De godkjente brandfilene, `docs/brand-preview.png` og `tools/brand/` er lagt inn (logoen er ikke formelt godkjent ennå).
 
 Ikke gjort:
-- Ingen API-kode eller innlogging. Ingen AWS-ressurser utover Amplify-appen for staging (VPC, NAT-instans, RDS, S3, KMS, API Gateway, Lambda og migrator-Lambda mangler). Produksjon er ikke opprettet, og skal ikke opprettes før lansering.
+- Ingen innlogging. Staging-infrastrukturen fra PR 4 er ikke deployet ennå. Produksjon er ikke opprettet, og skal ikke opprettes før lansering.
 - Egne domener (`staging.veriqall.no`, `api.staging.veriqall.no`) er ikke satt opp. De trengs før innloggingen kan testes i staging.
 - Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.
 
-**Neste steg:** fase 0, PR 3 (innlogging, se `docs/auth.md`) og PR 4 (infrastruktur for staging). PR 3 kan bygges og testes lokalt, men kan ikke prøves i staging før PR 4 og domenene er på plass. BankID-krav og tidsavbrudd er besluttet (se `docs/auth.md`). IaC-verktøy for PR 4 er ikke valgt (`docs/plan.md`, seksjon 8).
+**Neste steg:** merge PR 4, så deployes staging automatisk. Deretter egne domener (`staging.veriqall.no`, `api.staging.veriqall.no`) og fase 0, PR 3 (innlogging, se `docs/auth.md`).
 
 ## Kommandoer
 
@@ -40,6 +41,8 @@ Node 22 (se `.nvmrc`). Kjør fra reporoten:
 - `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`: det samme som `ci.yml` kjører
 - `npm test` krever en lokal Postgres for `packages/db` (se `packages/db/README.md`); i skyøkter: `service postgresql start` og `TEST_DATABASE_ADMIN_URL=postgres://postgres:postgres@localhost:5432/postgres` etter å ha satt passord på `postgres`-brukeren
 - `DATABASE_URL=... npm run migrate -w packages/db`: kjør migrasjoner mot en lokal database
+- `npm run build -w apps/api`: bygg Lambda-pakken til `apps/api/dist`
+- Infrastruktur og deploy: se `infra/README.md`
 
 `public/brand/` i reporoten er kilden til logoer og ikoner; `apps/web` kopierer den til `apps/web/public/brand/` (gitignorert) ved `dev` og `build`.
 
@@ -67,5 +70,6 @@ Node 22 (se `.nvmrc`). Kjør fra reporoten:
 | Transkripsjon | Soniox API |
 | AI | Claude via AWS Bedrock i `eu-north-1` |
 | Innlogging | Vipps Logg inn og BankID via Idura, begge OIDC |
+| IaC | CloudFormation (YAML) i `infra/`, deployet av `infra/deploy.sh` |
 | CI/CD | GitHub Actions med OIDC mot AWS, aldri lagrede AWS-nøkler |
 | Miljøer | `staging` og `production`, helt adskilt med egne nøkler |

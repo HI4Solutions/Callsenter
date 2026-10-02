@@ -1,0 +1,386 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  VeriQall network: VPC over two availability zones, public subnets for the way out, private
+  subnets for Lambda and RDS, and either a NAT instance (staging) or a NAT Gateway
+  (production). See docs/plan.md, section 3.
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [staging, production]
+  NatMode:
+    Type: String
+    AllowedValues: [instance, gateway]
+    Description: instance = t4g.nano NAT instance in an Auto Scaling group (staging); gateway = managed NAT Gateway (production).
+  VpcCidr:
+    Type: String
+    Default: 10.40.0.0/16
+    AllowedPattern: ^10\.\d{1,3}\.0\.0/16$
+  AlertEmail:
+    Type: String
+    Default: ""
+    Description: Optional address that gets an e-mail when the NAT instance is down.
+  NatInstanceImage:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
+
+Conditions:
+  UseNatInstance: !Equals [!Ref NatMode, instance]
+  UseNatGateway: !Equals [!Ref NatMode, gateway]
+  HasAlertEmail: !And [!Condition UseNatInstance, !Not [!Equals [!Ref AlertEmail, ""]]]
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub veriqall-${Environment}
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub veriqall-${Environment}
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Select [0, !Cidr [!Ref VpcCidr, 8, 8]]
+      Tags:
+        - Key: Name
+          Value: !Sub veriqall-${Environment}-public-a
+
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Select [1, !Cidr [!Ref VpcCidr, 8, 8]]
+      Tags:
+        - Key: Name
+          Value: !Sub veriqall-${Environment}-public-b
+
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Select [4, !Cidr [!Ref VpcCidr, 8, 8]]
+      Tags:
+        - Key: Name
+          Value: !Sub veriqall-${Environment}-private-a
+
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Select [5, !Cidr [!Ref VpcCidr, 8, 8]]
+      Tags:
+        - Key: Name
+          Value: !Sub veriqall-${Environment}-private-b
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub veriqall-${Environment}-public
+
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetARoutes:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetBRoutes:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetB
+      RouteTableId: !Ref PublicRouteTable
+
+  # One private route table for both zones. Its default route points at the NAT Gateway, or
+  # is set by the NAT instance itself when it boots (see the launch template below).
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub veriqall-${Environment}-private
+
+  PrivateSubnetARoutes:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetA
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetBRoutes:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetB
+      RouteTableId: !Ref PrivateRouteTable
+
+  # Free: S3 traffic (audio files) never goes through the NAT.
+  S3Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref Vpc
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PrivateRouteTable
+
+  # Lambdas get this group; RDS accepts connections only from it.
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: VeriQall Lambda functions
+      VpcId: !Ref Vpc
+      SecurityGroupEgress:
+        - Description: Everything out (database, AWS APIs and external providers via NAT)
+          IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub veriqall-${Environment}-lambda
+
+  # --- NAT Gateway (production) -------------------------------------------------------------
+
+  NatGatewayIp:
+    Type: AWS::EC2::EIP
+    Condition: UseNatGateway
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub veriqall-${Environment}-nat
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Condition: UseNatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayIp.AllocationId
+      SubnetId: !Ref PublicSubnetA
+      Tags:
+        - Key: Name
+          Value: !Sub veriqall-${Environment}
+
+  NatGatewayRoute:
+    Type: AWS::EC2::Route
+    Condition: UseNatGateway
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  # --- NAT instance (staging) ---------------------------------------------------------------
+  # One t4g.nano in an Auto Scaling group of one: if it dies, a new one starts within minutes
+  # and points the private route table at itself. No SSH; admin access only via SSM.
+
+  NatInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: UseNatInstance
+    Properties:
+      GroupDescription: VeriQall NAT instance
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - Description: Traffic from the VPC on its way out
+          IpProtocol: "-1"
+          CidrIp: !Ref VpcCidr
+      SecurityGroupEgress:
+        - Description: Everything out
+          IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub veriqall-${Environment}-nat
+
+  NatInstanceRole:
+    Type: AWS::IAM::Role
+    Condition: UseNatInstance
+    Properties:
+      Path: /veriqall/
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: take-over-route
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:CreateRoute
+                  - ec2:ReplaceRoute
+                Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:route-table/${PrivateRouteTable}
+              - Effect: Allow
+                Action: ec2:ModifyInstanceAttribute
+                Resource: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+                Condition:
+                  StringEquals:
+                    aws:ResourceTag/veriqall-role: !Sub ${Environment}-nat
+
+  NatInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Condition: UseNatInstance
+    Properties:
+      Path: /veriqall/
+      Roles:
+        - !Ref NatInstanceRole
+
+  NatInstanceLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Condition: UseNatInstance
+    Properties:
+      LaunchTemplateData:
+        ImageId: !Ref NatInstanceImage
+        InstanceType: t4g.nano
+        IamInstanceProfile:
+          Arn: !GetAtt NatInstanceProfile.Arn
+        MetadataOptions:
+          HttpTokens: required
+          HttpEndpoint: enabled
+        NetworkInterfaces:
+          - DeviceIndex: 0
+            AssociatePublicIpAddress: true
+            Groups:
+              - !Ref NatInstanceSecurityGroup
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: 8
+              VolumeType: gp3
+              Encrypted: true
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub veriqall-${Environment}-nat
+              - Key: veriqall-role
+                Value: !Sub ${Environment}-nat
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            set -euo pipefail
+            dnf -y upgrade --security || true
+            dnf -y install iptables-services
+            echo 'net.ipv4.ip_forward = 1' > /etc/sysctl.d/90-veriqall-nat.conf
+            sysctl --system
+            iface=$(ip route show default | awk '{print $5; exit}')
+            iptables -F
+            iptables -t nat -F
+            iptables -t nat -A POSTROUTING -o "$iface" -s ${VpcCidr} -j MASQUERADE
+            iptables -P FORWARD ACCEPT
+            service iptables save
+            systemctl enable --now iptables
+            token=$(curl -sf -X PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 300')
+            instance=$(curl -sf -H "X-aws-ec2-metadata-token: $token" http://169.254.169.254/latest/meta-data/instance-id)
+            aws ec2 modify-instance-attribute --region ${AWS::Region} --instance-id "$instance" --no-source-dest-check
+            aws ec2 replace-route --region ${AWS::Region} --route-table-id ${PrivateRouteTable} \
+              --destination-cidr-block 0.0.0.0/0 --instance-id "$instance" \
+            || aws ec2 create-route --region ${AWS::Region} --route-table-id ${PrivateRouteTable} \
+              --destination-cidr-block 0.0.0.0/0 --instance-id "$instance"
+
+  NatInstanceGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Condition: UseNatInstance
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      MinSize: "1"
+      MaxSize: "1"
+      DesiredCapacity: "1"
+      HealthCheckType: EC2
+      VPCZoneIdentifier:
+        - !Ref PublicSubnetA
+        - !Ref PublicSubnetB
+      LaunchTemplate:
+        LaunchTemplateId: !Ref NatInstanceLaunchTemplate
+        Version: !GetAtt NatInstanceLaunchTemplate.LatestVersionNumber
+      # Replace the instance every 30 days, so it always runs a recent, patched image.
+      MaxInstanceLifetime: 2592000
+      # Needed by the alarm below.
+      MetricsCollection:
+        - Granularity: 1Minute
+          Metrics:
+            - GroupInServiceInstances
+      Tags:
+        - Key: project
+          Value: veriqall
+          PropagateAtLaunch: true
+        - Key: environment
+          Value: !Ref Environment
+          PropagateAtLaunch: true
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MinInstancesInService: 0
+        MaxBatchSize: 1
+
+  NatAlertTopic:
+    Type: AWS::SNS::Topic
+    Condition: HasAlertEmail
+    Properties:
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  NatInstanceDownAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: UseNatInstance
+    Properties:
+      AlarmDescription: !Sub veriqall-${Environment} NAT instance is not running; Lambdas cannot reach the internet.
+      Namespace: AWS/AutoScaling
+      MetricName: GroupInServiceInstances
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref NatInstanceGroup
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions: !If [HasAlertEmail, [!Ref NatAlertTopic], !Ref AWS::NoValue]
+
+Outputs:
+  VpcId:
+    Value: !Ref Vpc
+    Export:
+      Name: !Sub veriqall-${Environment}-vpc
+  PrivateSubnetIds:
+    Value: !Join [",", [!Ref PrivateSubnetA, !Ref PrivateSubnetB]]
+    Export:
+      Name: !Sub veriqall-${Environment}-private-subnets
+  LambdaSecurityGroupId:
+    Value: !Ref LambdaSecurityGroup
+    Export:
+      Name: !Sub veriqall-${Environment}-lambda-sg
