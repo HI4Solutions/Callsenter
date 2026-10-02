@@ -58,6 +58,18 @@ export interface HandlerDeps {
 
 const AUTH_ROUTE = /^\/auth\/([a-z]+)\/(start|callback)$/;
 
+// Deleting expired calls and finishing abandoned recordings needs a regular run of the worker.
+// Without a scheduler in the stack, the API starts one at most every 15 minutes per container,
+// whenever someone uses the app.
+const HOUSEKEEPING_MS = 15 * 60_000;
+let lastHousekeeping = 0;
+function tidyUp(auth: AuthDeps) {
+  const now = Date.now();
+  if (!auth.calls || now - lastHousekeeping < HOUSEKEEPING_MS) return;
+  lastHousekeeping = now;
+  auth.calls.startWorker().catch((error) => console.error("housekeeping: could not start the worker", error));
+}
+
 async function health(check: DatabaseCheck): Promise<Result> {
   try {
     if (await check()) return json(200, { status: "ok" });
@@ -78,6 +90,7 @@ export function createHandler(deps: HandlerDeps) {
     if (!deps.auth) return json(404, { error: "Fant ikke ressursen" });
 
     const auth = await deps.auth();
+    tidyUp(auth);
     const cors = corsHeaders(event, auth.config.appOrigin);
     if (method === "OPTIONS") return { statusCode: 204, headers: cors };
     if (await isBlocked(auth.authDb, event.requestContext.http.sourceIp)) {

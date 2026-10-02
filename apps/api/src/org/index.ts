@@ -232,7 +232,9 @@ export async function handleOrg(
       const services = deps.calls;
       if (!services) return reply(503, { error: "Opptak er ikke satt opp ennå." });
       const meta = { ip: event.requestContext.http.sourceIp, userAgent: event.requestContext.http.userAgent };
-      if (method === "GET" && path === "/org/calls") return reply(200, await listCalls(deps.appDb, session, event.queryStringParameters ?? {}));
+      if (method === "GET" && path === "/org/calls") {
+        return reply(200, await listCalls(deps.appDb, session, event.queryStringParameters ?? {}, meta));
+      }
       if (method === "POST" && path === "/org/calls") {
         await requirePermission(deps.appDb, session, "calls.upload");
         return reply(201, await createCall(deps.appDb, session, services, body()));

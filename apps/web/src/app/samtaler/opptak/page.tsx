@@ -61,7 +61,10 @@ export default function RecordPage() {
     };
   }, [customer]);
 
-  const recording = state.step === "recording";
+  // Leaving the page stops the microphone; the uploaded part can be finished from the call page.
+  useEffect(() => () => recorder.current?.abort(), []);
+
+  const recording = state.step === "recording" || state.step === "stopping";
   useEffect(() => {
     if (!recording) return;
     const timer = setInterval(() => setElapsed(recorder.current?.elapsedMs ?? 0), 500);
@@ -98,6 +101,7 @@ export default function RecordPage() {
           setState((s) => (s.step === "recording" ? { ...s, live: false } : s));
         },
         onUploads: setUploads,
+        onUploadFatal: (message) => setError(`${message} Opptaket stoppes ikke, men nye deler lagres ikke.`),
         onTabEnded: () => {
           setTabShared(false);
           setNotice("Fanedelingen ble avsluttet. Stopp opptaket, eller fortsett med bare mikrofonen.");

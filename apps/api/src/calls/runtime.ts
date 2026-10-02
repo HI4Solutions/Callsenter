@@ -30,7 +30,7 @@ export async function loadCallServices(): Promise<CallServices | undefined> {
         new InvokeCommand({
           FunctionName: workerFunction,
           InvocationType: "Event",
-          Payload: new TextEncoder().encode(JSON.stringify({ callId })),
+          Payload: new TextEncoder().encode(JSON.stringify(callId ? { callId } : {})),
         }),
       );
     },

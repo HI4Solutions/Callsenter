@@ -13,7 +13,6 @@ import { formatDate, formatDateTime } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 import type { Customer, ProductSummary } from "@/lib/work";
 
-const WORKING = ["recording", "processing"];
 
 export default function CallPage() {
   const { id } = useParams<{ id: string }>();
@@ -47,17 +46,15 @@ export default function CallPage() {
 
   // While the worker transcribes and checks the call, check its status every few seconds (a
   // status check is not logged as a view) and load it again when something has changed.
-  const aiOn = (me?.modules ?? []).some((m) => m === "ai_control" || m === "reports");
-  const waiting = call
-    ? WORKING.includes(call.status) || (aiOn && call.status === "transcribed" && !call.analyses.length && !call.reports.length)
-    : false;
+  // "working" is true while the worker holds the call, so this stops when nothing more will come.
+  const waiting = call ? call.status === "processing" || call.working : false;
   useEffect(() => {
     if (!waiting || !call) return;
-    const seen = call.status;
+    const seen = `${call.status}/${call.analyses.length}/${call.reports.length}`;
     const timer = setInterval(() => {
-      orgFetch<{ status: string; analyses: number; reports: number }>(`/calls/${id}?status=1`)
+      orgFetch<{ status: string; working: boolean; analyses: number; reports: number }>(`/calls/${id}?status=1`)
         .then((s) => {
-          if (s.status !== seen || (s.status === "transcribed" && (s.analyses > 0 || s.reports > 0))) void load();
+          if (`${s.status}/${s.analyses}/${s.reports}` !== seen || !s.working) void load();
         })
         .catch(() => undefined);
     }, 5000);
@@ -156,6 +153,8 @@ export default function CallPage() {
               controls
               preload="metadata"
               className="w-full"
+              // The link lasts ten minutes; after that the player shows the button again for a new one.
+              onError={() => setAudio(null)}
               onLoadedMetadata={(e) => {
                 if (pendingSeek.current === null) return;
                 e.currentTarget.currentTime = pendingSeek.current / 1000;
@@ -212,7 +211,7 @@ export default function CallPage() {
         </Card>
       ))}
 
-      <Links call={call} canEdit={permissions.includes("calls.upload") && call.status !== "analyzed"} onChanged={load} />
+      <Links call={call} canEdit={permissions.includes("calls.upload") && !call.analyses.length && !call.working} onChanged={load} />
     </section>
   );
 }

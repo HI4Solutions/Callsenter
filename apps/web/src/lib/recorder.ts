@@ -4,7 +4,7 @@
 // runs, so nothing is lost if the browser stops, and in realtime mode the same audio is streamed
 // to Soniox for live text. Live text is a help for the seller only; the stored recording is
 // transcribed again on the server, and that transcript is what counts.
-import { apiFetch } from "./api";
+import { AdminError, apiFetch } from "./api";
 import type { CreatedCall } from "./calls";
 
 export type Capture = "microphone" | "tab";
@@ -64,6 +64,8 @@ export interface RecorderCallbacks {
   onUploads?: (state: { uploaded: number; pending: number; failing: boolean }) => void;
   // The shared tab was closed or sharing stopped while recording.
   onTabEnded?: () => void;
+  // Uploading cannot continue (signed out, or the call was finished elsewhere).
+  onUploadFatal?: (message: string) => void;
 }
 
 interface SonioxMessage {
@@ -88,6 +90,8 @@ export class CallRecorder {
   #uploaded = 0;
   #uploading: Promise<void> = Promise.resolve();
   #failing = false;
+  #fatal: string | null = null;
+  #stopped = false;
   #startedAt = 0;
   #finalText = "";
   #callbacks: RecorderCallbacks;
@@ -161,6 +165,11 @@ export class CallRecorder {
       this.#callbacks.onRealtimeLost?.();
     };
     socket.addEventListener("open", () => {
+      // Stopped before the connection opened: nothing to stream.
+      if (this.#socket !== socket || this.#stopped) {
+        socket.close();
+        return;
+      }
       socket.send(
         JSON.stringify({
           api_key: config.apiKey,
@@ -211,7 +220,7 @@ export class CallRecorder {
   }
 
   async #drain() {
-    while (this.#queue.length) {
+    while (this.#queue.length && !this.#fatal) {
       const item = this.#queue[0]!;
       let attempt = 0;
       for (;;) {
@@ -223,7 +232,15 @@ export class CallRecorder {
           const res = await fetch(url, { method: "PUT", body: item.blob, headers: { "content-type": contentType } });
           if (!res.ok) throw new Error(`upload ${res.status}`);
           break;
-        } catch {
+        } catch (error) {
+          // A refusal from the API will not change by trying again.
+          if (error instanceof AdminError && error.status >= 400 && error.status < 500) {
+            this.#fatal = error.status === 401 ? "Du er logget ut." : error.message;
+            this.#queue = [];
+            this.#report();
+            this.#callbacks.onUploadFatal?.(this.#fatal);
+            return;
+          }
           attempt++;
           this.#failing = attempt >= 3;
           this.#report();
@@ -242,6 +259,7 @@ export class CallRecorder {
   // recorded duration.
   async stop(): Promise<number> {
     const durationMs = this.elapsedMs;
+    this.#stopped = true;
     const storage = this.#storage;
     if (storage && storage.state !== "inactive") {
       await new Promise<void>((resolve) => {
@@ -259,8 +277,20 @@ export class CallRecorder {
     }
     this.release();
     await this.#uploading;
+    if (this.#fatal) throw new RecorderError(`Opptaket kunne ikke lastes ferdig opp: ${this.#fatal}`);
     await apiFetch(`/org/calls/${this.#callId}/complete`, { method: "POST", body: { durationMs } });
     return durationMs;
+  }
+
+  // Leaves the page while recording: stops everything without finishing the call. What was
+  // uploaded can be finished from the call page, or is finished automatically later.
+  abort() {
+    this.#stopped = true;
+    if (this.#storage?.state === "recording") this.#storage.stop();
+    if (this.#live?.state === "recording") this.#live.stop();
+    this.#socket?.close();
+    this.#socket = null;
+    this.release();
   }
 
   // Frees the microphone (the tab share stays for the next recording).

@@ -83,6 +83,13 @@ create table calls (
   processing_started_at timestamptz,
   -- The worker holds a lease while it works on the call, so two runs never process it at once.
   lease_until timestamptz,
+  -- How many runs have claimed the call; after three the worker gives up.
+  attempts int not null default 0,
+  -- Files and transcriptions at Soniox not yet deleted (a run that was cut off leaves them).
+  soniox_file_id text,
+  soniox_transcription_id text,
+  -- Temporary Soniox keys handed out for this recording (capped).
+  realtime_keys int not null default 0 check (realtime_keys between 0 and 10),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (id, organization_id),
@@ -165,17 +172,30 @@ create function app.guard_call() returns trigger
   begin
     if new.status is distinct from old.status and not worker
       and not (old.status = 'recording' and new.status = 'processing')
-      and not (old.status = 'failed' and new.status = 'processing') then
+      and not (old.status = 'failed' and new.status in ('processing', 'transcribed')) then
       raise exception 'a call cannot go from % to %', old.status, new.status using errcode = 'check_violation';
     end if;
-    if not worker and old.status = 'analyzed' and (
+    if not worker and (
       new.customer_id is distinct from old.customer_id or new.sale_id is distinct from old.sale_id
       or new.product_id is distinct from old.product_id
     ) then
-      raise exception 'an analysed call keeps its links' using errcode = 'check_violation';
+      -- The AI control was made against the linked template version; it stays linked.
+      if exists (select 1 from call_analyses a where a.call_id = old.id) then
+        raise exception 'an analysed call keeps its links' using errcode = 'check_violation';
+      end if;
+      if old.lease_until > now() then
+        raise exception 'call is being processed' using errcode = 'check_violation';
+      end if;
     end if;
     if not worker and new.chunk_count < old.chunk_count then
       raise exception 'chunks cannot be removed' using errcode = 'check_violation';
+    end if;
+    -- The API may only record that live text was not used, and count the keys it hands out.
+    if not worker and (
+      (new.transcription_mode = 'realtime' and old.transcription_mode <> 'realtime')
+      or new.realtime_keys < old.realtime_keys
+    ) then
+      raise exception 'not allowed' using errcode = 'check_violation';
     end if;
     if new.status = 'processing' and old.status <> 'processing' then
       new.processing_started_at := now();
@@ -226,7 +246,8 @@ create policy calls_update on calls for update to app_user
 create policy calls_worker on calls for all to app_worker using (true) with check (true);
 
 grant select, insert on calls to app_user;
-grant update (title, note, customer_id, sale_id, product_id, status, chunk_count, last_chunk_at, audio_mime, duration_ms, ended_at)
+grant update (title, note, customer_id, sale_id, product_id, status, chunk_count, last_chunk_at, audio_mime, duration_ms, ended_at,
+  transcription_mode, realtime_keys)
   on calls to app_user;
 grant select, update, delete on calls to app_worker;
 
@@ -403,18 +424,17 @@ create policy call_analyses_worker on call_analyses for all to app_worker using 
 create policy reports_worker on reports for all to app_worker using (true) with check (true);
 create policy report_templates_worker on report_templates for select to app_worker using (true);
 create policy usage_events_worker on usage_events for insert to app_worker with check (true);
+create policy usage_events_worker_select on usage_events for select to app_worker using (true);
 grant select, insert, delete on transcripts, transcript_segments, call_analyses, reports to app_worker;
 grant select on report_templates to app_worker;
-grant insert on usage_events to app_worker;
+grant select, insert on usage_events to app_worker;
 
 -- What the worker reads to analyse a call.
 create policy organizations_worker on organizations for select to app_worker using (true);
 create policy organization_modules_worker on organization_modules for select to app_worker using (true);
 create policy products_worker on products for select to app_worker using (true);
 create policy template_versions_worker on product_template_versions for select to app_worker using (true);
-create policy customers_worker on customers for select to app_worker using (true);
 grant select (id, name, recording_retention_months, status) on organizations to app_worker;
 grant select on organization_modules, products, product_template_versions to app_worker;
-grant select (id, organization_id, kind, name) on customers to app_worker;
 -- The audit trigger on calls needs these when the worker changes or deletes a call.
 grant execute on function app.current_user_id(), app.current_org_id(), app.is_platform_admin() to app_worker;

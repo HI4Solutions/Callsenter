@@ -21,12 +21,20 @@ async function load(): Promise<WorkerDeps> {
   };
 }
 
-export async function handler(event: { callId?: unknown }) {
+// A call can take up to about 12 minutes (Soniox up to 9, then the AI steps); further calls are
+// started only while there is room for a whole one.
+const PER_CALL_MS = 12.5 * 60_000;
+
+export async function handler(event: { callId?: unknown }, context?: { getRemainingTimeInMillis(): number }) {
   deps ??= load();
   deps.catch(() => (deps = undefined));
   const d = await deps;
+  const remaining = () => context?.getRemainingTimeInMillis() ?? Infinity;
   if (typeof event.callId === "string" && /^[0-9a-f-]{36}$/.test(event.callId)) await processCall(d, event.callId);
-  const more = await housekeeping(d);
-  for (const id of more.slice(0, 3)) await processCall(d, id);
+  const more = await housekeeping(d, () => remaining() > 60_000);
+  for (const id of more) {
+    if (remaining() < PER_CALL_MS) break;
+    await processCall(d, id);
+  }
   return { ok: true };
 }

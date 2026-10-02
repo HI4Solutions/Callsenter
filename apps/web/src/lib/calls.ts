@@ -41,6 +41,8 @@ export interface CallDetail extends CallSummary {
   note: string | null;
   transcriptionMode: "realtime" | "chunked";
   hasAudio: boolean;
+  // The worker is processing the call right now.
+  working: boolean;
   templateVersionId: string | null;
   segments: { seq: number; speaker: string | null; startMs: number; endMs: number; text: string }[];
   analyses: {

@@ -92,7 +92,7 @@ const ai: Ai = {
   },
 };
 
-const services: CallServices = { store, soniox, startWorker: async (id) => void started.push(id) };
+const services: CallServices = { store, soniox, startWorker: async (id) => void (id && started.push(id)) };
 const deps: AuthDeps = {
   config: { appOrigin: ORIGIN, callbackBase: "https://api.test", providers: {} },
   authDb: auth,
@@ -197,6 +197,9 @@ describe("calls: recording to report", () => {
     const found = await call(seller, "GET", "/org/calls", undefined, { q: "gratis" });
     expect(found.body.map((c: { id: string }) => c.id)).toEqual([id]);
     expect(found.body[0].match).toContain("«gratis»");
+    // Search excerpts are transcript views too.
+    const searchLog = await owner.query("select 1 from access_log where resource_type = 'call_search' and resource_id = $1", [id]);
+    expect(searchLog.rowCount).toBe(1);
     const admin = s.admin;
     expect((await call(admin, "GET", "/org/calls", undefined, { review: "1" })).body).toHaveLength(1);
     const analysisId = detail.body.analyses[0].id;
@@ -214,6 +217,17 @@ describe("calls: recording to report", () => {
     expect(detail.body.status).toBe("analyzed");
     expect(detail.body.analyses).toEqual([]);
     expect(detail.body.reports).toHaveLength(1);
+    // A call with only a report can still be linked, and then gets its AI control (not a second report).
+    started.length = 0;
+    expect((await call(seller, "PATCH", `/org/calls/${id}`, { productId: s.productId })).status).toBe(200);
+    expect(started).toEqual([id]);
+    await processCall(workerDeps, id);
+    detail = await call(seller, "GET", `/org/calls/${id}`);
+    expect(detail.body.analyses).toHaveLength(1);
+    expect(detail.body.reports).toHaveLength(1);
+    expect((await call(seller, "PATCH", `/org/calls/${id}`, { productId: null })).body.error).toBe(
+      "En samtale som er sjekket av AI, kan ikke kobles om.",
+    );
 
     // Without the AI modules the call stops at transcribed; linking a product then starts the
     // worker so the AI control can run once the modules are on.
@@ -338,5 +352,49 @@ describe("toSegments", () => {
       ["1", 2000, "Ett øyeblikk"],
       ["2", 3000, "Ok"],
     ]);
+  });
+});
+
+describe("calls: robustness", () => {
+  it("retries a call that failed in the AI step without transcribing it again", async () => {
+    const s = await setup();
+    const seller = await sessionFor(await member(s.org, "seller"), s.org);
+    const { id } = await record(seller, { productId: s.productId });
+    const failing: Ai = { ...ai, structured: async () => Promise.reject(new Error("bedrock down")) };
+    await processCall({ ...workerDeps, ai: failing }, id);
+    expect((await call(seller, "GET", `/org/calls/${id}`)).body).toMatchObject({ status: "failed", error: "AI-kontrollen feilet. Prøv igjen." });
+    const uploads = sonioxLog.filter((l) => l.startsWith("upload:")).length;
+    expect((await call(seller, "POST", `/org/calls/${id}/retry`)).status).toBe(200);
+    await processCall(workerDeps, id);
+    expect(sonioxLog.filter((l) => l.startsWith("upload:")).length).toBe(uploads);
+    expect((await call(seller, "GET", `/org/calls/${id}`)).body.status).toBe("analyzed");
+    const usage = await owner.query("select kind from usage_events where call_id = $1 and kind like 'transcription%' order by kind", [id]);
+    expect(usage.rows.map((r) => r.kind)).toEqual(["transcription_async", "transcription_realtime"]);
+  });
+
+  it("caps realtime keys and refuses them for chunked calls", async () => {
+    const s = await setup();
+    const seller = await sessionFor(await member(s.org, "seller"), s.org);
+    const created = await call(seller, "POST", "/org/calls", { source: "tab", mime: "audio/webm" });
+    const statuses = [];
+    for (let i = 0; i < 6; i++) statuses.push((await call(seller, "POST", `/org/calls/${created.body.id}/realtime-key`)).status);
+    // One key at creation and four renewals; the fifth renewal is refused.
+    expect(statuses).toEqual([200, 200, 200, 200, 503, 503]);
+    const upload = await call(seller, "POST", "/org/calls", { source: "upload", mime: "audio/mpeg" });
+    expect((await call(seller, "POST", `/org/calls/${upload.body.id}/realtime-key`)).status).toBe(503);
+  });
+
+  it("picks up calls the worker was never started for, and gives up after three runs", async () => {
+    const s = await setup();
+    const seller = await sessionFor(await member(s.org, "seller"), s.org);
+    const { id } = await record(seller, {});
+    await owner.query("update calls set processing_started_at = now() - interval '11 minutes' where id = $1", [id]);
+    expect(await housekeeping(workerDeps)).toContain(id);
+    await owner.query("update calls set attempts = 3 where id = $1", [id]);
+    await processCall(workerDeps, id);
+    expect((await call(seller, "GET", `/org/calls/${id}`)).body).toMatchObject({
+      status: "failed",
+      error: "Behandlingen feilet flere ganger. Prøv igjen senere.",
+    });
   });
 });

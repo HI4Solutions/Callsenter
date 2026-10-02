@@ -30,6 +30,9 @@ interface CallRow {
   product_id: string | null;
   customer_id: string | null;
   title: string | null;
+  attempts: number;
+  soniox_file_id: string | null;
+  soniox_transcription_id: string | null;
 }
 
 // Shown to users; the details go to the log.
@@ -39,6 +42,7 @@ const FAILED = {
   notEnabled: "Transkribering er ikke slått på for callsenteret.",
   notConfigured: "Transkribering er ikke satt opp ennå.",
   ai: "AI-kontrollen feilet. Prøv igjen.",
+  tooMany: "Behandlingen feilet flere ganger. Prøv igjen senere.",
 } as const;
 
 class CallFailure extends Error {}
@@ -68,6 +72,13 @@ async function modules(db: pg.Pool, orgId: string): Promise<Set<string>> {
   return new Set(rows.map((r) => r.module));
 }
 
+async function cleanupSoniox(deps: WorkerDeps, call: CallRow) {
+  if (!deps.soniox || (!call.soniox_file_id && !call.soniox_transcription_id)) return;
+  if (call.soniox_transcription_id) await deps.soniox.deleteTranscription(call.soniox_transcription_id).catch((e) => console.error("soniox cleanup", e));
+  if (call.soniox_file_id) await deps.soniox.deleteFile(call.soniox_file_id).catch((e) => console.error("soniox cleanup", e));
+  await deps.db.query("update calls set soniox_file_id = null, soniox_transcription_id = null where id = $1", [call.id]);
+}
+
 async function fail(db: pg.Pool, callId: string, message: string) {
   await db.query("update calls set status = 'failed', error = $2, lease_until = null where id = $1", [callId, message]);
 }
@@ -75,15 +86,25 @@ async function fail(db: pg.Pool, callId: string, message: string) {
 // Processes one call if it is waiting (processing) or transcribed but not yet analysed. Safe to
 // call twice: the lease keeps a second run away.
 export async function processCall(deps: WorkerDeps, callId: string): Promise<void> {
+  // Waiting calls, and analysed calls that got a template linked after their report.
   const claimed = await deps.db.query<CallRow>(
-    `update calls set lease_until = now() + interval '15 minutes'
-     where id = $1 and status in ('processing', 'transcribed') and (lease_until is null or lease_until < now())
+    `update calls c set lease_until = now() + interval '15 minutes', attempts = attempts + 1
+     where c.id = $1 and (c.lease_until is null or c.lease_until < now())
+       and (c.status in ('processing', 'transcribed')
+            or (c.status = 'analyzed' and c.template_version_id is not null
+                and not exists (select 1 from call_analyses a where a.call_id = c.id)))
      returning id, organization_id, status, transcription_mode, audio_key, audio_mime, duration_ms,
-               template_version_id, product_id, customer_id, title`,
+               template_version_id, product_id, customer_id, title, attempts, soniox_file_id, soniox_transcription_id`,
     [callId],
   );
   const call = claimed.rows[0];
   if (!call) return;
+  // A run that was cut off may have left the recording at Soniox.
+  await cleanupSoniox(deps, call);
+  if (call.attempts > 3) {
+    await fail(deps.db, call.id, FAILED.tooMany);
+    return;
+  }
   try {
     const enabled = await modules(deps.db, call.organization_id);
     if (call.status === "processing") await transcribe(deps, call, enabled);
@@ -146,8 +167,11 @@ async function transcribe(deps: WorkerDeps, call: CallRow, enabled: Set<string>)
   let tokens;
   let audioMs: number | undefined;
   try {
+    // The ids are kept on the call until deleted, so a run that is cut off can be cleaned up.
     fileId = await soniox.uploadFile(audio.bytes, `${call.id}.${extension(call.audio_mime)}`, call.audio_mime ?? "audio/webm");
+    await deps.db.query("update calls set soniox_file_id = $2 where id = $1", [call.id, fileId]);
     transcriptionId = await soniox.createTranscription(fileId, await context(deps.db, call), call.id);
+    await deps.db.query("update calls set soniox_transcription_id = $2 where id = $1", [call.id, transcriptionId]);
     const deadline = Date.now() + deps.sonioxTimeoutMs;
     for (;;) {
       const status = await soniox.status(transcriptionId);
@@ -164,6 +188,7 @@ async function transcribe(deps: WorkerDeps, call: CallRow, enabled: Set<string>)
     // Nothing is left at Soniox: the file and the transcription go as soon as we have the text.
     if (transcriptionId) await soniox.deleteTranscription(transcriptionId).catch((e) => console.error("soniox cleanup", e));
     if (fileId) await soniox.deleteFile(fileId).catch((e) => console.error("soniox cleanup", e));
+    await deps.db.query("update calls set soniox_file_id = null, soniox_transcription_id = null where id = $1", [call.id]);
   }
 
   const segments = toSegments(tokens);
@@ -188,9 +213,12 @@ async function transcribe(deps: WorkerDeps, call: CallRow, enabled: Set<string>)
       "insert into usage_events (organization_id, call_id, kind, audio_seconds) values ($1, $2, 'transcription_async', $3)",
       [call.organization_id, call.id, seconds],
     );
+    // Live text was streamed once, however many times the recording is transcribed.
     if (call.transcription_mode === "realtime") {
       await client.query(
-        "insert into usage_events (organization_id, call_id, kind, audio_seconds) values ($1, $2, 'transcription_realtime', $3)",
+        `insert into usage_events (organization_id, call_id, kind, audio_seconds)
+         select $1, $2, 'transcription_realtime', $3
+         where not exists (select 1 from usage_events where call_id = $2 and kind = 'transcription_realtime')`,
         [call.organization_id, call.id, seconds],
       );
     }
@@ -329,7 +357,9 @@ const REPORT_SYSTEM = `You write reports about recorded telephone sales calls fo
 async function analyse(deps: WorkerDeps, call: CallRow, enabled: Set<string>) {
   const ai = deps.ai;
   const control = Boolean(ai && enabled.has("ai_control") && call.template_version_id);
-  const report = Boolean(ai && enabled.has("reports"));
+  // One report per call: a template linked later adds the AI control, not a second report.
+  const hasReport = (await deps.db.query("select 1 from reports where call_id = $1", [call.id])).rowCount! > 0;
+  const report = Boolean(ai && enabled.has("reports") && !hasReport);
   if (!control && !report) return;
   const transcript = await transcriptForAi(deps.db, call.id);
   if (!transcript.trim()) return;
@@ -411,14 +441,18 @@ async function usage(db: pg.Pool, call: CallRow, kind: string, r: { model: strin
 
 // Deletes calls past their retention (audio and all rows), finishes recordings whose browser
 // went away, and frees calls a crashed run left behind. Returns the calls to process.
-export async function housekeeping(deps: WorkerDeps): Promise<string[]> {
-  const expired = await deps.db.query<{ id: string; organization_id: string }>(
-    "select id, organization_id from calls where expires_at <= now() order by expires_at limit 200",
-  );
-  for (const c of expired.rows) {
-    const objects = await deps.store.list(callPrefix(c.organization_id, c.id));
-    await deps.store.delete(objects.map((o) => o.key));
-    await deps.db.query("delete from calls where id = $1", [c.id]);
+export async function housekeeping(deps: WorkerDeps, hasTime: () => boolean = () => true): Promise<string[]> {
+  // All expired calls, in batches, while there is time.
+  for (;;) {
+    const expired = await deps.db.query<{ id: string; organization_id: string }>(
+      "select id, organization_id from calls where expires_at <= now() order by expires_at limit 200",
+    );
+    for (const c of expired.rows) {
+      const objects = await deps.store.list(callPrefix(c.organization_id, c.id));
+      await deps.store.delete(objects.map((o) => o.key));
+      await deps.db.query("delete from calls where id = $1", [c.id]);
+    }
+    if (expired.rows.length < 200 || !hasTime()) break;
   }
   // A recording nobody finished: process what was uploaded, or drop it if nothing was.
   await deps.db.query(
@@ -429,10 +463,12 @@ export async function housekeeping(deps: WorkerDeps): Promise<string[]> {
      where status = 'recording' and chunk_count > 0 and coalesce(last_chunk_at, started_at) < now() - interval '3 hours'
      returning id`,
   );
-  // A run that died mid-way left its lease; let the call be picked up again.
+  // A run that died mid-way left its lease, or the worker was never started: pick it up again.
   const stuck = await deps.db.query<{ id: string }>(
-    `select id from calls where status in ('processing', 'transcribed') and lease_until < now()
-     and updated_at < now() - interval '20 minutes' limit 20`,
+    `select id from calls
+     where (status in ('processing', 'transcribed') and lease_until < now())
+        or (status = 'processing' and lease_until is null and processing_started_at < now() - interval '10 minutes')
+     order by updated_at limit 50`,
   );
   return [...stale.rows, ...stuck.rows].map((r) => r.id);
 }
