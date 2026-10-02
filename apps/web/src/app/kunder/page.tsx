@@ -29,7 +29,7 @@ export default function CustomersPage() {
     if (query.trim()) params.set("q", query.trim());
     if (archived) params.set("archived", "1");
     const timer = setTimeout(() => {
-      orgFetch<Customer[]>(`/customers${params.size ? `?${params}` : ""}`)
+      orgFetch<Customer[]>(`/customers${params.toString() ? `?${params}` : ""}`)
         .then((rows) => {
           if (cancelled) return;
           setCustomers(rows);

@@ -10,7 +10,7 @@ import { SaleStatusBadge } from "@/components/work/sale-status";
 import { useWorkMe } from "@/components/work/work-shell";
 import { formatDateTime } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
-import { CUSTOMER_KIND, formatPhone, formatPrice, months, SALE_ACTIONS, type SaleDetail } from "@/lib/work";
+import { CUSTOMER_KIND, days, formatPhone, formatPrice, months, SALE_ACTIONS, type SaleDetail } from "@/lib/work";
 
 export default function SalePage() {
   const { id } = useParams<{ id: string }>();
@@ -61,7 +61,7 @@ export default function SalePage() {
     ],
     ["Pris", formatPrice(sale)],
     ["Bindingstid", months(sale.bindingMonths)],
-    ["Angrefrist", sale.withdrawalDays === 0 ? "Ingen" : `${sale.withdrawalDays} dager`],
+    ["Angrefrist", days(sale.withdrawalDays)],
     ["Selger", [sale.sellerName, sale.teamName].filter(Boolean).join(", ") || "–"],
     ["Registrert", formatDateTime(sale.soldAt)],
   ];
@@ -91,7 +91,7 @@ export default function SalePage() {
             </div>
           ))}
         </dl>
-        {sale.note && <p className="mt-4 whitespace-pre-wrap rounded-lg bg-bg p-3">{sale.note}</p>}
+        {sale.note && <p className="mt-4 whitespace-pre-wrap [overflow-wrap:anywhere] rounded-lg bg-bg p-3">{sale.note}</p>}
       </Card>
       <Card title="Historikk">
         <ol className="flex flex-col gap-4">
@@ -102,7 +102,7 @@ export default function SalePage() {
                 {formatDateTime(e.createdAt)}
                 {e.actorName && ` · ${e.actorName}`}
               </p>
-              {e.note && <p className="mt-1 whitespace-pre-wrap">{e.note}</p>}
+              {e.note && <p className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{e.note}</p>}
             </li>
           ))}
         </ol>

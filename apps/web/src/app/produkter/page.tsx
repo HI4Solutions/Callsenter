@@ -19,11 +19,16 @@ export default function ProductsPage() {
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     orgFetch<ProductSummary[]>(`/products${archived ? "?archived=1" : ""}`)
-      .then((rows) => !cancelled && setProducts(rows))
+      .then((rows) => {
+        if (cancelled) return;
+        setProducts(rows);
+        setError(null);
+      })
       .catch((e: Error) => !cancelled && setError(e.message));
     return () => {
       cancelled = true;
@@ -33,11 +38,14 @@ export default function ProductsPage() {
   async function create(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    setBusy(true);
     try {
       const { id } = await orgFetch<{ id: string }>("/products", { method: "POST", body: { name, description: description || null } });
+      // Stays busy until the product page has loaded, so a second click cannot create it twice.
       router.push(`/produkter/${id}`);
     } catch (e) {
       setError((e as Error).message);
+      setBusy(false);
     }
   }
 
@@ -68,7 +76,7 @@ export default function ProductsPage() {
               <textarea rows={2} maxLength={2000} className={`${inputClass} py-2`} value={description} onChange={(e) => setDescription(e.target.value)} />
             </Field>
             <div className="flex gap-2">
-              <button type="submit" className={primaryButton}>
+              <button type="submit" disabled={busy} className={primaryButton}>
                 Opprett og fyll ut mal
               </button>
               <button type="button" className={secondaryButton} onClick={() => setCreating(false)}>
@@ -101,7 +109,7 @@ export default function ProductsPage() {
                 </span>
                 <span className="text-sm text-muted">
                   {p.publishedVersion !== null
-                    ? `${formatPrice(p)} · binding ${months(p.bindingMonths ?? 0).toLowerCase()} · versjon ${p.publishedVersion}`
+                    ? `${formatPrice(p)} · ${p.bindingMonths ? `binding ${months(p.bindingMonths)}` : "ingen binding"} · versjon ${p.publishedVersion}`
                     : "Ikke publisert"}
                   {canManage && p.draftVersion !== null && ` · utkast til versjon ${p.draftVersion}`}
                 </span>

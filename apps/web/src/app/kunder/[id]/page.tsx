@@ -114,7 +114,7 @@ export default function CustomerPage() {
               </div>
             ))}
           </dl>
-          {customer.note && <p className="mt-4 whitespace-pre-wrap rounded-lg bg-bg p-3">{customer.note}</p>}
+          {customer.note && <p className="mt-4 whitespace-pre-wrap [overflow-wrap:anywhere] rounded-lg bg-bg p-3">{customer.note}</p>}
         </Card>
       )}
       <CustomerSales customerId={customer.id} canSell={(me?.permissions.includes("sales.manage") ?? false) && !customer.archivedAt} />

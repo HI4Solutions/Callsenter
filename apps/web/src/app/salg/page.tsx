@@ -32,7 +32,7 @@ export default function SalesPage() {
     if (mine) params.set("mine", "1");
     if (query.trim()) params.set("q", query.trim());
     const timer = setTimeout(() => {
-      orgFetch<SaleSummary[]>(`/sales${params.size ? `?${params}` : ""}`)
+      orgFetch<SaleSummary[]>(`/sales${params.toString() ? `?${params}` : ""}`)
         .then((rows) => {
           if (cancelled) return;
           setSales(rows);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canSeeSales, formatKroner, formatOrgNumber, formatPhone, formatPrice, lines, months, priceInput, saleTone } from "./work";
+import { canSeeSales, days, formatKroner, formatOrgNumber, formatPhone, formatPrice, lines, months, priceInput, saleTone } from "./work";
 
 describe("work formatting", () => {
   it("formats kroner the Norwegian way", () => {
@@ -29,6 +29,7 @@ describe("work formatting", () => {
     expect(months(1)).toBe("1 måned");
     expect(months(12)).toBe("12 måneder");
     expect(lines(" a \n\n b\n")).toEqual(["a", "b"]);
+    expect([days(0), days(1), days(14)]).toEqual(["Ingen", "1 dag", "14 dager"]);
   });
 
   it("decides who sees sales and how statuses are colored", () => {

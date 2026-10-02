@@ -125,7 +125,8 @@ function price(body: Body, key: string, label: string): string | null | undefine
 function wholeNumber(body: Body, key: string, label: string, max: number): number | undefined {
   const value = body[key];
   if (value === undefined) return undefined;
-  const n = Number(value);
+  // Only a number or digits: Number(null), Number("") and Number(true) would pass as 0 or 1.
+  const n = typeof value === "number" ? value : typeof value === "string" && /^\s*\d+\s*$/.test(value) ? Number(value) : NaN;
   if (!Number.isInteger(n) || n < 0 || n > max) throw new BadRequest(`${label} må være et helt tall mellom 0 og ${max}.`);
   return n;
 }
@@ -176,7 +177,7 @@ export async function updateDraft(db: pg.Pool, session: Session, productId: stri
   const sets = Object.entries(values).filter(([, v]) => v !== undefined);
   return withSession(db, session, async (c) => {
     const current = await c.query<{ status: string }>(
-      "select status from product_template_versions where id = $1 and product_id = $2",
+      "select status from product_template_versions where id = $1 and product_id = $2 for update",
       [versionId, productId],
     );
     if (!current.rows[0]) throw new NotFound();
@@ -192,7 +193,8 @@ export async function updateDraft(db: pg.Pool, session: Session, productId: stri
       `select required_points as "requiredPoints" from product_template_versions where id = $1`,
       [versionId],
     );
-    return { id: versionId, requiredPoints: saved.rows[0]!.requiredPoints };
+    if (!saved.rows[0]) throw new NotFound();
+    return { id: versionId, requiredPoints: saved.rows[0].requiredPoints };
   });
 }
 

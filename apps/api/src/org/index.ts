@@ -193,7 +193,9 @@ export async function handleOrg(
       return reply(404, { error: "Fant ikke ressursen." });
     }
     if (path === "/org/customers" || CUSTOMER.test(path)) {
-      await requirePermission(deps.appDb, session, method === "GET" ? "customers.read" : "customers.manage");
+      // Changing customers means seeing them too: customers.manage is used together with customers.read.
+      await requirePermission(deps.appDb, session, "customers.read");
+      if (method !== "GET") await requirePermission(deps.appDb, session, "customers.manage");
       if (method === "GET" && path === "/org/customers") {
         return reply(200, await listCustomers(deps.appDb, session, event.queryStringParameters ?? {}));
       }
@@ -295,6 +297,9 @@ export async function handleOrg(
     const constraint = (error as { constraint?: string }).constraint ?? "";
     if (code === "42501" && path.startsWith("/org/roles")) {
       return reply(403, { error: "Du kan ikke gi en rolle rettigheter du ikke har selv." });
+    }
+    if (code === "42501" && /^\/org\/(customers|products|sales)(\/|$)/.test(path)) {
+      return reply(403, { error: "Du har ikke tilgang til dette.", code: "ingen_tilgang" });
     }
     if (code === "42501") return reply(403, { error: "Du kan ikke gi en rolle med rettigheter du ikke har selv." });
     if (code === "23505" && constraint === "customers_org_number_key") {

@@ -93,6 +93,11 @@ export function months(n: number): string {
   return `${n} ${n === 1 ? "måned" : "måneder"}`;
 }
 
+export function days(n: number): string {
+  if (n === 0) return "Ingen";
+  return `${n} ${n === 1 ? "dag" : "dager"}`;
+}
+
 // Prices as typed in the form: "399.50" becomes "399,50".
 export function priceInput(value: string | null): string {
   return value === null ? "" : value.replace(/\.00$/, "").replace(".", ",");
