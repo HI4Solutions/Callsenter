@@ -1,0 +1,107 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: VeriQall frontend (Next.js SSR) on AWS Amplify Hosting, one app per environment
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [staging, production]
+    Description: Environment name. Also the Git branch Amplify builds and deploys.
+  RepositoryUrl:
+    Type: String
+    Default: https://github.com/HI4Solutions/Callsenter
+  GitHubTokenSecretName:
+    Type: String
+    Default: callsenter/staging/github-token
+    Description: >-
+      Secrets Manager secret (plain text) holding a classic GitHub token with only the
+      admin:repo_hook scope. Amplify uses it once to register the repository webhook.
+
+Conditions:
+  IsProduction: !Equals [!Ref Environment, production]
+
+Resources:
+  # Lets Amplify write SSR logs to CloudWatch Logs in this account.
+  AmplifyServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: amplify.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ssr-logs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/amplify/*
+
+  AmplifyApp:
+    Type: AWS::Amplify::App
+    Properties:
+      Name: !Sub veriqall-${Environment}
+      Repository: !Ref RepositoryUrl
+      AccessToken: !Sub "{{resolve:secretsmanager:${GitHubTokenSecretName}:SecretString}}"
+      Platform: WEB_COMPUTE
+      IAMServiceRole: !GetAtt AmplifyServiceRole.Arn
+      EnvironmentVariables:
+        - Name: AMPLIFY_MONOREPO_APP_ROOT
+          Value: apps/web
+        - Name: NEXT_TELEMETRY_DISABLED
+          Value: "1"
+      # Monorepo (npm workspaces): install from the repo root, build from apps/web.
+      BuildSpec: |
+        version: 1
+        applications:
+          - appRoot: apps/web
+            frontend:
+              phases:
+                preBuild:
+                  commands:
+                    # Skip nvm's default global packages (Amplify CLI, Cypress, ...); they add over a minute.
+                    - 'rm -f "${NVM_DIR:-/root/.nvm}/default-packages"'
+                    - nvm install 22
+                    - nvm use 22
+                    - cd ../..
+                    - npm ci
+                    - cd apps/web
+                build:
+                  commands:
+                    - npm run build
+              artifacts:
+                baseDirectory: .next
+                files:
+                  - "**/*"
+              cache:
+                paths:
+                  - ../../node_modules/**/*
+                  - .next/cache/**/*
+      Tags:
+        - Key: project
+          Value: veriqall
+        - Key: environment
+          Value: !Ref Environment
+
+  AmplifyBranch:
+    Type: AWS::Amplify::Branch
+    Properties:
+      AppId: !GetAtt AmplifyApp.AppId
+      BranchName: !Ref Environment
+      Framework: Next.js - SSR
+      Stage: !If [IsProduction, PRODUCTION, BETA]
+      EnableAutoBuild: true
+      # Pull requests against this branch get their own preview URL (staging only).
+      EnablePullRequestPreview: !If [IsProduction, false, true]
+
+Outputs:
+  AppId:
+    Value: !GetAtt AmplifyApp.AppId
+  Url:
+    Value: !Sub https://${Environment}.${AmplifyApp.DefaultDomain}
