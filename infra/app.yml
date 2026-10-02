@@ -20,6 +20,17 @@ Parameters:
     Type: String
     Default: ""
     Description: ACM certificate in this region for ApiDomainName, validated by DNS.
+  AppOrigin:
+    Type: String
+    Description: Origin of the web app, for example https://staging.veriqall.no (CORS, redirects after login).
+  VippsHost:
+    Type: String
+    Default: https://apitest.vipps.no
+    AllowedValues: [https://apitest.vipps.no, https://api.vipps.no]
+  IduraDomain:
+    Type: String
+    Default: ""
+    Description: Idura (Criipto) domain for BankID, for example example.criipto.id. Empty turns BankID off.
   LogRetentionDays:
     Type: Number
     Default: 365
@@ -121,9 +132,24 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: rds-db:connect
-                Resource: !Sub
-                  - arn:${AWS::Partition}:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${ResourceId}/veriqall_api
-                  - ResourceId: !ImportValue {"Fn::Sub": "veriqall-${Environment}-db-resource-id"}
+                Resource:
+                  - !Sub
+                    - arn:${AWS::Partition}:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${ResourceId}/veriqall_api
+                    - ResourceId: !ImportValue {"Fn::Sub": "veriqall-${Environment}-db-resource-id"}
+                  # The narrow login role (app_auth), used only by the login flow.
+                  - !Sub
+                    - arn:${AWS::Partition}:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${ResourceId}/veriqall_auth
+                    - ResourceId: !ImportValue {"Fn::Sub": "veriqall-${Environment}-db-resource-id"}
+        - PolicyName: read-app-secret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !ImportValue {"Fn::Sub": "veriqall-${Environment}-app-secret"}
+              - Effect: Allow
+                Action: kms:Decrypt
+                Resource: !ImportValue {"Fn::Sub": "veriqall-${Environment}-key"}
 
   ApiLogGroup:
     Type: AWS::Logs::LogGroup
@@ -157,6 +183,15 @@ Resources:
           DB_PORT: !ImportValue {"Fn::Sub": "veriqall-${Environment}-db-port"}
           DB_NAME: veriqall
           NODE_EXTRA_CA_CERTS: /var/runtime/ca-cert.pem
+          APP_ORIGIN: !Ref AppOrigin
+          # Vipps and Idura redirect here; must match the redirect URLs registered with them.
+          AUTH_CALLBACK_BASE: !If
+            - HasCustomDomain
+            - !Sub https://${ApiDomainName}
+            - !GetAtt HttpApi.ApiEndpoint
+          VIPPS_HOST: !Ref VippsHost
+          IDURA_DOMAIN: !Ref IduraDomain
+          APP_SECRET_ARN: !ImportValue {"Fn::Sub": "veriqall-${Environment}-app-secret"}
       Tags:
         - Key: project
           Value: veriqall

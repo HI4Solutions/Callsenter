@@ -20,6 +20,8 @@ export const auth = pool(inject("authUrl"));
 export interface Context {
   userId?: string;
   orgId?: string;
+  // Session started with BankID (default). false = a Vipps session.
+  strong?: boolean;
 }
 
 // Runs fn in a transaction the way the API will: SET LOCAL of user and call centre first.
@@ -33,8 +35,9 @@ export async function as<T>(
   try {
     await client.query("begin");
     await client.query(
-      "select set_config('app.current_user_id', $1, true), set_config('app.current_org_id', $2, true)",
-      [context.userId ?? "", context.orgId ?? ""],
+      `select set_config('app.current_user_id', $1, true), set_config('app.current_org_id', $2, true),
+              set_config('app.session_strong', $3, true)`,
+      [context.userId ?? "", context.orgId ?? "", context.strong === false ? "" : "on"],
     );
     return await fn(client);
   } finally {

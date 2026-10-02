@@ -1,18 +1,19 @@
-// API Lambda behind API Gateway (HTTP API). For now only GET /health, which proves the whole
-// chain: Lambda in the VPC, IAM sign-in to RDS over TLS as veriqall_api, under RLS.
-import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "aws-lambda";
+// API Lambda behind API Gateway (HTTP API).
+//   GET  /health                      database reachable as veriqall_api, under RLS
+//   GET  /auth/{vipps|bankid}/start   start a login (?invite=, ?next=, ?link=1)
+//   GET  /auth/{vipps|bankid}/callback
+//   POST /auth/logout
+//   GET  /me                          the signed-in user, call centres and permissions
+import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import type pg from "pg";
+import { handleCallback, startLogin } from "./auth/flow.ts";
+import { resolveSession, revokeSession } from "./auth/session.ts";
+import { isProvider, SESSION_COOKIE, type AuthDeps } from "./auth/types.ts";
+import { loadAuthConfig } from "./config.ts";
 import { iamPool } from "./db.ts";
-
-type Result = APIGatewayProxyStructuredResultV2;
-
-function json(statusCode: number, body: unknown): Result {
-  return {
-    statusCode,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
-    body: JSON.stringify(body),
-  };
-}
+import { clearCookie, corsHeaders, json, readCookie, redirect, requestMeta, sessionCookie, type Result } from "./http.ts";
+import { loadMe } from "./me.ts";
+import { SESSION_MAX_HOURS } from "@veriqall/shared";
 
 // True when the database answers as a member of app_user (the role under RLS).
 export type DatabaseCheck = () => Promise<boolean>;
@@ -26,21 +27,89 @@ export function poolCheck(pool: () => pg.Pool): DatabaseCheck {
   };
 }
 
-export function createHandler(checkDatabase: DatabaseCheck) {
+export interface HandlerDeps {
+  checkDatabase: DatabaseCheck;
+  // Created on first use: configuration, secrets and the two database pools.
+  auth?: () => Promise<AuthDeps>;
+}
+
+const AUTH_ROUTE = /^\/auth\/([a-z]+)\/(start|callback)$/;
+
+async function health(check: DatabaseCheck): Promise<Result> {
+  try {
+    if (await check()) return json(200, { status: "ok" });
+    console.error("health: database login is not a member of app_user");
+  } catch (error) {
+    // Details go to the log only, never to the caller.
+    console.error("health: database check failed", error);
+  }
+  return json(503, { status: "unavailable" });
+}
+
+export function createHandler(deps: HandlerDeps) {
   return async (event: APIGatewayProxyEventV2): Promise<Result> => {
-    if (event.requestContext.http.method === "GET" && event.rawPath === "/health") {
-      try {
-        if (await checkDatabase()) return json(200, { status: "ok" });
-        console.error("health: database login is not a member of app_user");
-      } catch (error) {
-        // Details go to the log only, never to the caller.
-        console.error("health: database check failed", error);
+    const method = event.requestContext.http.method;
+    const path = event.rawPath;
+
+    if (method === "GET" && path === "/health") return health(deps.checkDatabase);
+    if (!deps.auth) return json(404, { error: "Fant ikke ressursen" });
+
+    const auth = await deps.auth();
+    const cors = corsHeaders(event, auth.config.appOrigin);
+    if (method === "OPTIONS") return { statusCode: 204, headers: cors };
+
+    const route = AUTH_ROUTE.exec(path);
+    if (method === "GET" && route && isProvider(route[1]!)) {
+      const provider = route[1];
+      const query = event.queryStringParameters ?? {};
+      if (route[2] === "start") {
+        let linkUserId: string | undefined;
+        if (query.link === "1") {
+          const session = await resolveSession(auth, readCookie(event, SESSION_COOKIE));
+          if (!session) return redirect(new URL("/logg-inn?feil=utlopt", auth.config.appOrigin).toString());
+          linkUserId = session.userId;
+        }
+        return redirect(await startLogin(auth, provider, { invite: query.invite, next: query.next, linkUserId }));
       }
-      return json(503, { status: "unavailable" });
+      const result = await handleCallback(auth, provider, query, requestMeta(event));
+      const cookies = result.sessionToken
+        ? [sessionCookie(SESSION_COOKIE, result.sessionToken, SESSION_MAX_HOURS * 3600)]
+        : [];
+      return redirect(result.location, cookies);
     }
-    return json(404, { error: "Fant ikke ressursen" });
+
+    if (method === "POST" && path === "/auth/logout") {
+      // A state-changing call: only from the app itself (SameSite=Lax does not cover everything).
+      if (event.headers?.origin !== auth.config.appOrigin) return json(403, { error: "Ikke tillatt" });
+      await revokeSession(auth, readCookie(event, SESSION_COOKIE));
+      return { statusCode: 204, headers: cors, cookies: [clearCookie(SESSION_COOKIE)] };
+    }
+
+    if (method === "GET" && path === "/me") {
+      const session = await resolveSession(auth, readCookie(event, SESSION_COOKIE));
+      if (!session) return json(401, { error: "Ikke innlogget" }, cors);
+      return json(200, await loadMe(auth.appDb, session), cors);
+    }
+
+    return json(404, { error: "Fant ikke ressursen" }, cors);
   };
 }
 
-let pool: pg.Pool | undefined;
-export const handler = createHandler(poolCheck(() => (pool ??= iamPool("veriqall_api"))));
+let apiPool: pg.Pool | undefined;
+let authDeps: Promise<AuthDeps> | undefined;
+
+export const handler = createHandler({
+  checkDatabase: poolCheck(() => (apiPool ??= iamPool("veriqall_api"))),
+  auth: () => {
+    authDeps ??= loadAuthConfig().then((config) => ({
+      config,
+      authDb: iamPool("veriqall_auth"),
+      appDb: (apiPool ??= iamPool("veriqall_api")),
+      fetch,
+      now: () => new Date(),
+    }));
+    // Try again on the next request if loading the secret failed.
+    authDeps.catch(() => (authDeps = undefined));
+    return authDeps;
+  },
+});

@@ -3,15 +3,20 @@
 # test. Used by .github/workflows/deploy-*.yml. Requires the bootstrap stack
 # (infra/bootstrap.yml) and the Lambda zip at apps/api/lambda.zip.
 #
-# Optional environment variables: ALERT_EMAIL, API_DOMAIN_NAME, API_CERTIFICATE_ARN.
+# Optional environment variables: ALERT_EMAIL, API_DOMAIN_NAME, API_CERTIFICATE_ARN, APP_ORIGIN,
+# IDURA_DOMAIN.
 set -euo pipefail
 
 env="${1:?usage: infra/deploy.sh staging|production}"
 region="${AWS_REGION:-eu-north-1}"
 
 case "$env" in
-  staging) nat_mode=instance multi_az=false vpc_cidr=10.40.0.0/16 ;;
-  production) nat_mode=gateway multi_az=true vpc_cidr=10.41.0.0/16 ;;
+  staging)
+    nat_mode=instance multi_az=false vpc_cidr=10.40.0.0/16
+    app_origin="${APP_ORIGIN:-https://staging.veriqall.no}" vipps_host=https://apitest.vipps.no ;;
+  production)
+    nat_mode=gateway multi_az=true vpc_cidr=10.41.0.0/16
+    app_origin="${APP_ORIGIN:-https://app.veriqall.no}" vipps_host=https://api.vipps.no ;;
   *) echo "unknown environment: $env" >&2; exit 1 ;;
 esac
 
@@ -63,7 +68,8 @@ deploy network network.yml "${network_params[@]}"
 
 deploy data data.yml "MultiAz=$multi_az"
 
-app_params=("ArtifactsBucket=$bucket" "ArtifactKey=$artifact_key")
+app_params=("ArtifactsBucket=$bucket" "ArtifactKey=$artifact_key" "AppOrigin=$app_origin"
+  "VippsHost=$vipps_host" "IduraDomain=${IDURA_DOMAIN:-}")
 if [[ -n "${API_DOMAIN_NAME:-}" && -n "${API_CERTIFICATE_ARN:-}" ]]; then
   app_params+=("ApiDomainName=$API_DOMAIN_NAME" "ApiCertificateArn=$API_CERTIFICATE_ARN")
 fi
