@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { Threads } from "@/components/threads";
 import {
   type AdminAnnouncement,
   adminFetch,
@@ -36,7 +37,7 @@ const EMPTY: Form = {
   active: true,
 };
 
-export default function MessagesPage() {
+function Announcements() {
   const [list, setList] = useState<AdminAnnouncement[] | null>(null);
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
   const [editing, setEditing] = useState<AdminAnnouncement | "new" | null>(null);
@@ -87,8 +88,8 @@ export default function MessagesPage() {
     <section className="flex flex-col gap-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Meldinger</h1>
-          <p className="mt-2 text-muted">Kunngjøringer som vises øverst for innloggede brukere.</p>
+          <h2 className="text-2xl font-bold">Kunngjøringer</h2>
+          <p className="mt-2 text-muted">Vises øverst for innloggede brukere.</p>
         </div>
         {editing === null && (
           <button type="button" className={primaryButton} onClick={() => setEditing("new")}>
@@ -297,5 +298,49 @@ function Editor({
         </div>
       </form>
     </Card>
+  );
+}
+
+export default function MessagesPage() {
+  const [section, setSection] = useState<"samtaler" | "kunngjoringer">("samtaler");
+  const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    adminFetch<OrganizationSummary[]>("/organizations")
+      .then((orgs) => !cancelled && setOrganizations(orgs))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <section className="flex flex-col gap-8">
+      <div>
+        <h1 className="text-3xl font-extrabold tracking-tight">Meldinger</h1>
+        <p className="mt-2 text-muted">Samtaler med admin i callsentrene, og kunngjøringer til brukerne.</p>
+      </div>
+      <div role="tablist" aria-label="Meldinger" className="flex flex-wrap gap-2">
+        {(
+          [
+            ["samtaler", "Samtaler"],
+            ["kunngjoringer", "Kunngjøringer"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={section === key}
+            className={`min-h-11 rounded-lg px-4 font-semibold ${section === key ? "bg-brand text-on-brand" : "border border-line bg-surface"}`}
+            onClick={() => setSection(key)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {section === "samtaler" ? <Threads base="/admin" organizations={organizations} /> : <Announcements />}
+    </section>
   );
 }

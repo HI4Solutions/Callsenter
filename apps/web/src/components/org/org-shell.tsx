@@ -5,11 +5,11 @@ import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
 import { API_URL, type Me } from "@/lib/auth";
 
-const TABS: { label: string; href?: string; later?: string }[] = [
+const TABS: { label: string; href: string; permission?: string }[] = [
   { label: "Brukere", href: "/administrasjon" },
   { label: "Team", href: "/administrasjon/team" },
-  { label: "Roller", later: "Kommer i neste PR" },
-  { label: "Meldinger", later: "Kommer i neste PR" },
+  { label: "Roller", href: "/administrasjon/roller", permission: "roles.manage" },
+  { label: "Meldinger", href: "/administrasjon/meldinger" },
 ];
 
 const MeContext = createContext<Me | null>(null);
@@ -65,28 +65,19 @@ export function OrgShell({ children }: { children: React.ReactNode }) {
       <p className="text-sm font-medium uppercase tracking-wide text-muted">Administrasjon · {orgName}</p>
       <nav aria-label="Administrasjon" className="mt-3 -mx-4 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0">
         <ul className="flex gap-1">
-          {TABS.map((tab) => {
-            const active = tab.href && (tab.href === "/administrasjon" ? pathname === tab.href : pathname.startsWith(tab.href));
+          {TABS.filter((tab) => !tab.permission || access.me.permissions.includes(tab.permission)).map((tab) => {
+            const active = tab.href === "/administrasjon" ? pathname === tab.href : pathname.startsWith(tab.href);
             return (
               <li key={tab.label}>
-                {tab.href ? (
-                  <Link
-                    href={tab.href}
-                    aria-current={active ? "page" : undefined}
-                    className={`inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 font-semibold ${
-                      active ? "border-brand text-fg" : "border-transparent text-muted hover:text-fg"
-                    }`}
-                  >
-                    {tab.label}
-                  </Link>
-                ) : (
-                  <span
-                    title={tab.later}
-                    className="inline-flex min-h-11 cursor-not-allowed items-center whitespace-nowrap border-b-2 border-transparent px-3 text-muted opacity-60"
-                  >
-                    {tab.label}
-                  </span>
-                )}
+                <Link
+                  href={tab.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 font-semibold ${
+                    active ? "border-brand text-fg" : "border-transparent text-muted hover:text-fg"
+                  }`}
+                >
+                  {tab.label}
+                </Link>
               </li>
             );
           })}

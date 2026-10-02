@@ -256,7 +256,7 @@ Påbegynt 2. oktober 2026. Admin i et callsenter administrerer sitt eget callsen
 |---|---|---|
 | Brukere | Invitere med rolle og team (også personer som er brukere i et annet callsenter), endre rolle og team, deaktivere og aktivere, invitasjoner, CSV. Man kan ikke endre sitt eget medlemskap. Navnet kan bare endres før første innlogging (deretter kommer det fra BankID eller Vipps) | PR E1 (laget) |
 | Team | Opprette, endre navn, arkivere (medlemmene blir uten team) og gjenopprette | PR E1 (laget) |
-| Roller | Lage roller, velge rettigheter blant dem admin selv har, arkivere | PR E2 |
-| Meldinger | Samtaletråder mellom admin og superadmin | PR E2 |
+| Roller | Lage roller og endre navn og rettigheter (bare blant dem man har selv), arkivere og gjenopprette. Man kan ikke endre rollen man har selv, eller arkivere en rolle med brukere. Krever `roles.manage` | PR E2 (laget) |
+| Meldinger | Samtaletråder mellom admin og superadmin, med ulest-markering på begge sider, lukke og åpne. Superadmin ser dem under Meldinger → Samtaler og kan starte en samtale med et callsenter | PR E2 (laget) |
 
 Brukere som er med i flere callsentre, bytter aktivt callsenter i toppen (`POST /me/organization`). Superadmin kan gå inn i et hvilket som helst callsenter fra fanen Callsentre («Åpne adminportalen for callsenteret»).
