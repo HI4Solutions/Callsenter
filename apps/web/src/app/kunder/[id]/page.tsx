@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, secondaryButton } from "@/components/admin/field";
+import { ErrorMessage, primaryButton, secondaryButton } from "@/components/admin/field";
 import { CustomerForm } from "@/components/work/customer-form";
+import { SaleList } from "@/components/work/sale-list";
 import { NoAccess, useWorkMe } from "@/components/work/work-shell";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
-import { type Customer, CUSTOMER_KIND, formatOrgNumber, formatPhone } from "@/lib/work";
+import { canSeeSales, type Customer, CUSTOMER_KIND, formatOrgNumber, formatPhone, type SaleSummary } from "@/lib/work";
 
 export default function CustomerPage() {
   const { id } = useParams<{ id: string }>();
@@ -113,12 +114,53 @@ export default function CustomerPage() {
               </div>
             ))}
           </dl>
-          {customer.note && <p className="mt-4 whitespace-pre-wrap rounded-lg bg-bg p-3">{customer.note}</p>}
+          {customer.note && <p className="mt-4 whitespace-pre-wrap [overflow-wrap:anywhere] rounded-lg bg-bg p-3">{customer.note}</p>}
         </Card>
       )}
-      <Card title="Historikk">
-        <p className="text-muted">Salg, samtaler og bekreftelser for kunden vises her når salgsmodulen er på plass.</p>
-      </Card>
+      <CustomerSales customerId={customer.id} canSell={(me?.permissions.includes("sales.manage") ?? false) && !customer.archivedAt} />
     </section>
+  );
+}
+
+// The customer's sales that the member may see (own, team or all).
+function CustomerSales({ customerId, canSell }: { customerId: string; canSell: boolean }) {
+  const me = useWorkMe();
+  const visible = canSeeSales(me?.permissions ?? []);
+  const [sales, setSales] = useState<SaleSummary[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    orgFetch<SaleSummary[]>(`/sales?customerId=${customerId}`)
+      .then((rows) => !cancelled && setSales(rows))
+      .catch((e: Error) => !cancelled && setError(e.message));
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId, visible]);
+
+  if (!visible) return null;
+  return (
+    <Card
+      title="Salg"
+      actions={
+        canSell && (
+          <Link href={`/salg?kunde=${customerId}`} className={primaryButton}>
+            Nytt salg
+          </Link>
+        )
+      }
+    >
+      <ErrorMessage message={error} />
+      {!sales ? (
+        !error && <p className="text-muted">Laster …</p>
+      ) : sales.length === 0 ? (
+        <p className="text-muted">Ingen salg du har tilgang til.</p>
+      ) : (
+        <SaleList sales={sales} showCustomer={false} />
+      )}
+      <p className="mt-4 text-sm text-muted">Samtaler og bekreftelser kommer her når de modulene er på plass.</p>
+    </Card>
   );
 }

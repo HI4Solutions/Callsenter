@@ -53,10 +53,10 @@ export function CustomerForm({
     for (const key of [...shared, ...own] as (keyof Values)[]) body[key] = values[key].trim() || null;
     if (!customer) body.kind = kind;
     try {
+      // On success the page navigates or closes the form; staying busy stops a second submit.
       await onSubmit(body);
     } catch (e) {
       setError((e as Error).message);
-    } finally {
       setBusy(false);
     }
   }
@@ -74,7 +74,7 @@ export function CustomerForm({
           ))}
         </fieldset>
       )}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label={kind === "business" ? "Firmanavn" : "Navn"}>
           <input required maxLength={200} className={inputClass} value={values.name} onChange={set("name")} />
         </Field>
@@ -101,7 +101,7 @@ export function CustomerForm({
         <Field label="Adresse">
           <input maxLength={200} className={inputClass} value={values.addressLine} onChange={set("addressLine")} />
         </Field>
-        <div className="grid grid-cols-[7rem_1fr] gap-4">
+        <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-4">
           <Field label="Postnr.">
             <input inputMode="numeric" maxLength={4} className={inputClass} value={values.postalCode} onChange={set("postalCode")} />
           </Field>

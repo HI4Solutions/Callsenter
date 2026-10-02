@@ -1,5 +1,6 @@
-// The call centre's daily work: customers and products (apps/api/src/org/customers.ts and
-// products.ts). Shared types and formatting for the pages under /kunder and /produkter.
+// The call centre's daily work: sales, customers and products (apps/api/src/org/sales.ts,
+// customers.ts and products.ts). Shared types and formatting for /salg, /kunder and /produkter.
+import type { SaleStatus } from "@veriqall/shared";
 
 export interface Customer {
   id: string;
@@ -92,6 +93,11 @@ export function months(n: number): string {
   return `${n} ${n === 1 ? "måned" : "måneder"}`;
 }
 
+export function days(n: number): string {
+  if (n === 0) return "Ingen";
+  return `${n} ${n === 1 ? "dag" : "dager"}`;
+}
+
 // Prices as typed in the form: "399.50" becomes "399,50".
 export function priceInput(value: string | null): string {
   return value === null ? "" : value.replace(/\.00$/, "").replace(".", ",");
@@ -115,3 +121,62 @@ export function lines(text: string): string[] {
     .map((l) => l.trim())
     .filter(Boolean);
 }
+
+export interface SaleSummary {
+  id: string;
+  status: SaleStatus;
+  soldAt: string;
+  statusChangedAt: string;
+  priceOnce: string | null;
+  priceMonthly: string | null;
+  bindingMonths: number;
+  customerId: string;
+  customerName: string | null;
+  productId: string;
+  productName: string;
+  templateVersion: number;
+  sellerId: string;
+  sellerName: string | null;
+  teamName: string | null;
+}
+
+export interface SaleDetail extends SaleSummary {
+  note: string | null;
+  withdrawalDays: number;
+  templateVersionId: string;
+  customerKind: Customer["kind"] | null;
+  customerPhone: string | null;
+  customerEmail: string | null;
+  events: {
+    id: string;
+    fromStatus: SaleStatus | null;
+    toStatus: SaleStatus;
+    note: string | null;
+    actorName: string | null;
+    createdAt: string;
+  }[];
+}
+
+// Sales are seen with any of the call permissions (own, team, all) and made with sales.manage.
+export function canSeeSales(permissions: string[]): boolean {
+  return ["calls.read.own", "calls.read.team", "calls.read.all", "sales.manage"].some((p) => permissions.includes(p));
+}
+
+// Status colors are the reserved ones (CLAUDE.md, "Farger"); registered has none yet.
+export function saleTone(status: SaleStatus): "ok" | "warning" | "danger" | null {
+  if (status === "confirmed" || status === "active") return "ok";
+  if (status === "awaiting_confirmation") return "warning";
+  if (status === "registered") return null;
+  return "danger";
+}
+
+// The words on the button that moves a sale to a status.
+export const SALE_ACTIONS: Record<SaleStatus, string> = {
+  registered: "Registrert",
+  awaiting_confirmation: "Sendt til bekreftelse",
+  confirmed: "Marker som bekreftet",
+  active: "Marker som aktiv",
+  rejected: "Kunden avviste",
+  withdrawn: "Kunden angret",
+  cancelled: "Kanseller",
+};

@@ -5,10 +5,12 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { type Tab, TabNav } from "@/components/tab-nav";
 import { API_URL, fetchMe, loginPathFor, type Me } from "@/lib/auth";
 import { usePageTitle } from "@/lib/use-page-title";
+import { canSeeSales } from "@/lib/work";
 
-// The daily work in a call centre. Sales come next (docs/plan.md, section 12).
-const TABS: (Omit<Tab, "active" | "href"> & { href: string; permission?: string })[] = [
-  { label: "Kunder", icon: "contacts", href: "/kunder", permission: "customers.read" },
+// The daily work in a call centre (docs/plan.md, section 12).
+const TABS: (Omit<Tab, "active" | "href"> & { href: string; show?: (permissions: string[]) => boolean })[] = [
+  { label: "Salg", icon: "receipt", href: "/salg", show: canSeeSales },
+  { label: "Kunder", icon: "contacts", href: "/kunder", show: (p) => p.includes("customers.read") },
   { label: "Produkter", icon: "box", href: "/produkter" },
 ];
 
@@ -26,12 +28,15 @@ export function WorkShell({ children }: { children: React.ReactNode }) {
     API_URL ? { status: "loading" } : { status: "denied", reason: "API-adressen er ikke satt opp." },
   );
 
+  // Access is checked once, when the portal opens; moving between its tabs keeps the shell. The
+  // login redirect returns to the page the visitor came in on.
+  const [entryPath] = useState(pathname);
   useEffect(() => {
     if (!API_URL) return;
     let cancelled = false;
     fetchMe().then((me) => {
       if (cancelled) return;
-      if (me === "signed-out") router.replace(loginPathFor(pathname));
+      if (me === "signed-out") router.replace(loginPathFor(entryPath));
       else if (!me) setAccess({ status: "denied", reason: "Får ikke kontakt med serveren. Prøv igjen om litt." });
       else if (!me.activeOrganizationId) setAccess({ status: "denied", reason: "Du er ikke medlem av noe callsenter." });
       else setAccess({ status: "ok", me });
@@ -39,7 +44,7 @@ export function WorkShell({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [pathname, router]);
+  }, [entryPath, router]);
 
   const orgName =
     access.status === "ok" ? access.me.organizations.find((o) => o.id === access.me.activeOrganizationId)?.name : undefined;
@@ -61,7 +66,7 @@ export function WorkShell({ children }: { children: React.ReactNode }) {
       <TabNav
         label="Callsenter"
         labelsFrom="sm"
-        tabs={TABS.filter((tab) => !tab.permission || access.me.permissions.includes(tab.permission)).map((tab) => ({
+        tabs={TABS.filter((tab) => !tab.show || tab.show(access.me.permissions)).map((tab) => ({
           ...tab,
           active: pathname.startsWith(tab.href),
         }))}

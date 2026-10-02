@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { formatDateTime } from "@/lib/format";
-import { formatPrice, lines, months, priceInput, type RequiredPoint, type TemplateVersion } from "@/lib/work";
+import { days, formatPrice, lines, months, priceInput, type RequiredPoint, type TemplateVersion } from "@/lib/work";
 
 // A version as sellers and AI control see it.
 export function VersionView({ version }: { version: TemplateVersion }) {
@@ -15,7 +15,7 @@ export function VersionView({ version }: { version: TemplateVersion }) {
             ["Pris", formatPrice(version)],
             ["Bindingstid", months(version.bindingMonths)],
             ["Oppsigelsestid", months(version.noticeMonths)],
-            ["Angrefrist", version.withdrawalDays === 0 ? "Ingen" : `${version.withdrawalDays} dager`],
+            ["Angrefrist", days(version.withdrawalDays)],
             ...(version.publishedAt
               ? [["Publisert", `${formatDateTime(version.publishedAt)}${version.publishedByName ? ` av ${version.publishedByName}` : ""}`]]
               : []),
@@ -31,7 +31,7 @@ export function VersionView({ version }: { version: TemplateVersion }) {
         <h3 className="font-bold">Obligatoriske punkter</h3>
         <p className="text-sm text-muted">Selgeren må si dette i samtalen. AI-kontrollen sjekker hvert punkt.</p>
         {version.requiredPoints.length ? (
-          <ol className="mt-2 list-decimal space-y-1 pl-6">
+          <ol className="mt-2 list-decimal space-y-1 pl-6 [overflow-wrap:anywhere]">
             {version.requiredPoints.map((p) => (
               <li key={p.id}>{p.text}</li>
             ))}
@@ -45,7 +45,7 @@ export function VersionView({ version }: { version: TemplateVersion }) {
       <div>
         <h3 className="font-bold">Vilkår</h3>
         {version.terms ? (
-          <p className="mt-2 whitespace-pre-wrap rounded-lg bg-bg p-3">{version.terms}</p>
+          <p className="mt-2 whitespace-pre-wrap [overflow-wrap:anywhere] rounded-lg bg-bg p-3">{version.terms}</p>
         ) : (
           <p className="mt-2 text-muted">Ingen vilkår.</p>
         )}
@@ -59,7 +59,7 @@ function PhraseList({ title, phrases }: { title: string; phrases: string[] }) {
     <div>
       <h3 className="font-bold">{title}</h3>
       {phrases.length ? (
-        <ul className="mt-2 list-disc space-y-1 pl-6">
+        <ul className="mt-2 list-disc space-y-1 pl-6 [overflow-wrap:anywhere]">
           {phrases.map((p) => (
             <li key={p}>«{p}»</li>
           ))}
@@ -69,6 +69,11 @@ function PhraseList({ title, phrases }: { title: string; phrases: string[] }) {
       )}
     </div>
   );
+}
+
+function wholeNumber(value: string, label: string): number {
+  if (!/^\d+$/.test(value.trim())) throw new Error(`${label} må være et helt tall.`);
+  return Number(value);
 }
 
 // The draft editor. Points keep their ids, so AI findings on earlier versions still match.
@@ -96,12 +101,15 @@ export function DraftEditor({
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const form = useRef<HTMLFormElement>(null);
+
+  // An empty number field is an error, never a silent 0 (a published version cannot be fixed).
   const body = () => ({
     priceOnce: priceOnce.trim() || null,
     priceMonthly: priceMonthly.trim() || null,
-    bindingMonths: Number(bindingMonths),
-    noticeMonths: Number(noticeMonths),
-    withdrawalDays: Number(withdrawalDays),
+    bindingMonths: wholeNumber(bindingMonths, "Bindingstid"),
+    noticeMonths: wholeNumber(noticeMonths, "Oppsigelsestid"),
+    withdrawalDays: wholeNumber(withdrawalDays, "Angrefrist"),
     terms,
     requiredPoints: points.filter((p) => p.text.trim()),
     approvedPhrases: lines(approved),
@@ -128,6 +136,7 @@ export function DraftEditor({
 
   return (
     <form
+      ref={form}
       className="flex flex-col gap-6"
       onSubmit={(e) => {
         e.preventDefault();
@@ -138,7 +147,7 @@ export function DraftEditor({
         });
       }}
     >
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Månedspris (kr)" hint="Tom hvis produktet ikke har månedspris.">
           <input inputMode="decimal" className={inputClass} value={priceMonthly} onChange={(e) => edit(setPriceMonthly)(e.target.value)} />
         </Field>
@@ -146,17 +155,17 @@ export function DraftEditor({
           <input inputMode="decimal" className={inputClass} value={priceOnce} onChange={(e) => edit(setPriceOnce)(e.target.value)} />
         </Field>
         <Field label="Bindingstid (måneder)">
-          <input type="number" min={0} max={120} className={inputClass} value={bindingMonths} onChange={(e) => edit(setBindingMonths)(e.target.value)} />
+          <input type="number" required min={0} max={120} className={inputClass} value={bindingMonths} onChange={(e) => edit(setBindingMonths)(e.target.value)} />
         </Field>
         <Field label="Oppsigelsestid (måneder)">
-          <input type="number" min={0} max={24} className={inputClass} value={noticeMonths} onChange={(e) => edit(setNoticeMonths)(e.target.value)} />
+          <input type="number" required min={0} max={24} className={inputClass} value={noticeMonths} onChange={(e) => edit(setNoticeMonths)(e.target.value)} />
         </Field>
         <Field label="Angrefrist (dager)" hint="Minst 14 dager ved telefonsalg til forbrukere.">
-          <input type="number" min={0} max={365} className={inputClass} value={withdrawalDays} onChange={(e) => edit(setWithdrawalDays)(e.target.value)} />
+          <input type="number" required min={0} max={365} className={inputClass} value={withdrawalDays} onChange={(e) => edit(setWithdrawalDays)(e.target.value)} />
         </Field>
       </div>
 
-      <fieldset className="flex flex-col gap-3">
+      <fieldset className="flex min-w-0 flex-col gap-3">
         <legend className="font-bold">Obligatoriske punkter</legend>
         <p className="text-sm text-muted">Det selgeren må si i samtalen, ett punkt per linje. AI-kontrollen sjekker hvert punkt.</p>
         {points.map((p, i) => (
@@ -167,7 +176,7 @@ export function DraftEditor({
             <input
               id={`point-${i}`}
               maxLength={500}
-              className={`${inputClass} flex-1`}
+              className={`${inputClass} min-w-0 flex-1`}
               value={p.text}
               onChange={(e) => edit(setPoints)(points.map((q, j) => (j === i ? { ...q, text: e.target.value } : q)))}
             />
@@ -183,7 +192,7 @@ export function DraftEditor({
         </div>
       </fieldset>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Field label="Godkjente formuleringer" hint="Én per linje. Formuleringer selgeren gjerne kan bruke.">
           <textarea rows={5} className={`${inputClass} py-2`} value={approved} onChange={(e) => edit(setApproved)(e.target.value)} />
         </Field>
@@ -211,6 +220,7 @@ export function DraftEditor({
           disabled={busy}
           className={secondaryButton}
           onClick={() => {
+            if (!form.current?.reportValidity()) return;
             if (!window.confirm(`Publisere versjon ${draft.version}? Den kan ikke endres etterpå, og nye salg bruker den.`)) return;
             void run(async () => {
               await onSave(body());

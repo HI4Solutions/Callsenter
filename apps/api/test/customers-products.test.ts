@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import { describe, expect, it } from "vitest";
-import { api, auth, createOrg, member, owner } from "../../../packages/db/test/helpers.ts";
+import { api, auth, createOrg, createUser, member, owner } from "../../../packages/db/test/helpers.ts";
 import { createHandler } from "../src/api.ts";
 import { sha256 } from "../src/auth/crypto.ts";
 import type { AuthDeps } from "../src/auth/types.ts";
@@ -127,6 +127,18 @@ describe("customers", () => {
     const denied = await call(compliance, "POST", "/org/customers", { kind: "person", name: "Nei" });
     expect(denied.status).toBe(403);
     expect(denied.body.code).toBe("ingen_tilgang");
+
+    // A custom role with customers.manage alone cannot see what it would change.
+    const { rows } = await owner.query<{ id: string }>(
+      "insert into roles (organization_id, key, name) values ($1, 'kun_endre', 'Kun endre') returning id",
+      [org],
+    );
+    await owner.query("insert into role_permissions (role_id, organization_id, permission) values ($1, $2, 'customers.manage')", [rows[0]!.id, org]);
+    const userId = await createUser();
+    await owner.query("insert into memberships (organization_id, user_id, role_id) values ($1, $2, $3)", [org, userId, rows[0]!.id]);
+    const manageOnly = await call(await sessionFor(userId, org), "POST", "/org/customers", { kind: "person", name: "Nei" });
+    expect(manageOnly.status).toBe(403);
+    expect(manageOnly.body).toEqual({ error: "Du har ikke tilgang til dette.", code: "ingen_tilgang" });
   });
 });
 
@@ -220,6 +232,11 @@ describe("products and templates", () => {
 
     expect((await call(admin, "PATCH", `/org/products/${id}/versions/${draftId}`, { priceOnce: "12,345" })).status).toBe(400);
     expect((await call(admin, "PATCH", `/org/products/${id}/versions/${draftId}`, { bindingMonths: 121 })).status).toBe(400);
+    // Empty or missing numbers are errors, not a silent 0.
+    for (const withdrawalDays of [null, "", true, "14 dager"]) {
+      expect((await call(admin, "PATCH", `/org/products/${id}/versions/${draftId}`, { withdrawalDays })).status).toBe(400);
+    }
+    expect((await call(admin, "GET", `/org/products/${id}`)).body.versions[0].withdrawalDays).toBe(14);
 
     expect((await call(admin, "DELETE", `/org/products/${id}/versions/${draftId}`)).status).toBe(200);
     expect((await call(admin, "GET", `/org/products/${id}`)).body.versions).toEqual([]);

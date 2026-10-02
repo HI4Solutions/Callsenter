@@ -44,9 +44,10 @@ Ikke gjort:
 - CloudTrail til egen kryptert bøtte (revisjonslogg lag 1 i `docs/plan.md`, seksjon 3) er ikke satt opp.
 - Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.
 
+- Fase 1, PR F2 (salg): migrasjonen `0012_sales.sql` (salg med statusløp, historikk i `sale_events`, synlighet som for samtaler), statusløpet i `packages/shared/src/sales.ts`, API under `/org/sales`, og sidene `/salg` og `/salg/[id]`. Selgere lander på `/salg`.
 - Fase 1, PR F1 (grunndata): kunder (privat og bedrift, ingen fødselsnumre) og produkter med versjonerte produktmaler, migrasjonen `0011_customers_products.sql`, API under `/org/customers` og `/org/products`, og sidene `/kunder` og `/produkter` (`docs/plan.md`, seksjon 12).
 
-**Neste steg:** Fase 1, superadmin-portalen (`docs/plan.md`, seksjon 10). PR A–D er laget (Callsentre, Brukere, Roller og moduler, Sikkerhet, Meldinger og Vekst). Fanene System og Økonomi kommer i fase 2 og 4. Adminportalen for callsentrene (seksjon 11) har Brukere, Team, Roller og Meldinger. Grunndataene (seksjon 12) har kunder og produktmaler; neste er PR F2, salg med statushistorikk.
+**Neste steg:** Fase 1 er på plass: superadmin-portalen (`docs/plan.md`, seksjon 10; fanene System og Økonomi kommer i fase 2 og 4), adminportalen for callsentrene (seksjon 11) og grunndataene (seksjon 12: kunder, produktmaler og salg). Neste er fase 2, samtalen: opptak, transkribering med Soniox, AI-kontroll mot produktmalen og rapporter.
 
 ## Kommandoer
 

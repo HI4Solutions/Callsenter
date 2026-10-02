@@ -18,6 +18,7 @@ export default function ProductPage() {
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [shownVersion, setShownVersion] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(
     () =>
@@ -39,11 +40,14 @@ export default function ProductPage() {
 
   async function run(action: () => Promise<unknown>) {
     setError(null);
+    setBusy(true);
     try {
       await action();
       await load();
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -95,7 +99,12 @@ export default function ProductPage() {
           actions={
             canManage &&
             !draft && (
-              <button type="button" className={primaryButton} onClick={() => run(() => orgFetch(`/products/${id}/draft`, { method: "POST" }))}>
+              <button
+                type="button"
+                disabled={busy}
+                className={primaryButton}
+                onClick={() => run(() => orgFetch(`/products/${id}/draft`, { method: "POST" }))}
+              >
                 Endre malen
               </button>
             )
@@ -110,6 +119,7 @@ export default function ProductPage() {
             {canManage && (
               <button
                 type="button"
+                disabled={busy}
                 className={`${primaryButton} mt-4`}
                 onClick={() => run(() => orgFetch(`/products/${id}/draft`, { method: "POST" }))}
               >

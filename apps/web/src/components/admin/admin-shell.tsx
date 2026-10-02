@@ -28,13 +28,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     API_URL ? { status: "loading" } : { status: "denied", reason: "API-adressen er ikke satt opp." },
   );
 
+  // Access is checked once, when the portal opens; moving between its tabs keeps the shell. The
+  // login redirect returns to the page the visitor came in on.
+  const [entryPath] = useState(pathname);
   useEffect(() => {
     if (!API_URL) return;
     let cancelled = false;
     fetchMe().then((me) => {
       if (cancelled) return;
       // Signed out: straight to login, without showing that this page exists.
-      if (me === "signed-out") router.replace(loginPathFor(pathname));
+      if (me === "signed-out") router.replace(loginPathFor(entryPath));
       else if (!me) setAccess({ status: "denied", reason: "Får ikke kontakt med serveren. Prøv igjen om litt." });
       else if (!me.platformAdmin) {
         setAccess({
@@ -48,7 +51,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [pathname, router]);
+  }, [entryPath, router]);
 
   // The tab title appears only once access is confirmed, so a signed-out visitor never sees it.
   usePageTitle(access.status === "ok" ? "Superadmin · VeriQall" : null);
