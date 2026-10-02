@@ -5,12 +5,12 @@
 import { type ModuleKey, MODULES, type Permission, STRONG_AUTH_PERMISSIONS } from "@veriqall/shared";
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import type pg from "pg";
-import { invoiceDetail } from "../admin/billing.ts";
+import { invoiceDetail, invoicePdfFor } from "../admin/billing.ts";
 import { inviteMember, NotFound, revokeInvitation } from "../admin/organizations.ts";
 import { BadRequest, type Body, isUuid, optionalText, parseBody, requiredText } from "../admin/validate.ts";
 import type { Session } from "../auth/session.ts";
 import type { AuthDeps } from "../auth/types.ts";
-import { json, type Result } from "../http.ts";
+import { binary, json, type Result } from "../http.ts";
 import { withSession } from "../me.ts";
 import {
   audioUrl,
@@ -70,6 +70,7 @@ const SALE = /^\/org\/sales\/([^/]+)$/;
 const SALE_CONFIRMATIONS = /^\/org\/sales\/([^/]+)\/confirmations$/;
 const SALE_DOCUMENTATION = /^\/org\/sales\/([^/]+)\/documentation$/;
 const INVOICE = /^\/org\/invoices\/([^/]+)$/;
+const INVOICE_PDF = /^\/org\/invoices\/([^/]+)\/pdf$/;
 const COACHING_READ = /^\/org\/coaching\/([^/]+)\/read$/;
 const COMPLAINT = /^\/org\/complaints\/([^/]+)$/;
 const COMPLAINT_NOTES = /^\/org\/complaints\/([^/]+)\/notes$/;
@@ -325,8 +326,14 @@ export async function handleOrg(
       return reply(404, { error: "Fant ikke ressursen." });
     }
     // The call centre's own invoices from VeriQall (billing.read, which needs BankID or a passkey).
-    if (method === "GET" && (path === "/org/invoices" || INVOICE.test(path))) {
+    if (method === "GET" && (path === "/org/invoices" || INVOICE.test(path) || INVOICE_PDF.test(path))) {
       await requirePermission(deps.appDb, session, "billing.read");
+      const pdf = INVOICE_PDF.exec(path);
+      if (pdf) {
+        if (!isUuid(pdf[1])) return reply(404, { error: "Fant ikke ressursen." });
+        const file = await withSession(deps.appDb, session, (c) => invoicePdfFor(c, pdf[1]!));
+        return binary(file.pdf, "application/pdf", cors, file.filename);
+      }
       const one = INVOICE.exec(path);
       if (one) {
         if (!isUuid(one[1])) return reply(404, { error: "Fant ikke ressursen." });

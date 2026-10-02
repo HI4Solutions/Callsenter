@@ -10,6 +10,21 @@ export function json(statusCode: number, body: unknown, headers: Record<string, 
   };
 }
 
+// A file (PDF, image), base64-encoded for API Gateway.
+export function binary(bytes: Uint8Array, contentType: string, headers: Record<string, string> = {}, filename?: string): Result {
+  return {
+    statusCode: 200,
+    isBase64Encoded: true,
+    headers: {
+      "content-type": contentType,
+      "cache-control": "no-store",
+      ...(filename ? { "content-disposition": `inline; filename="${filename}"` } : {}),
+      ...headers,
+    },
+    body: Buffer.from(bytes).toString("base64"),
+  };
+}
+
 export function redirect(location: string, cookies: string[] = []): Result {
   return { statusCode: 302, headers: { location, "cache-control": "no-store" }, cookies };
 }

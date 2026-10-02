@@ -321,6 +321,20 @@ Resources:
                 Resource:
                   - !Sub arn:${AWS::Partition}:bedrock:${BedrockRegion}:${AWS::AccountId}:inference-profile/eu.anthropic.*
                   - !Sub arn:${AWS::Partition}:bedrock:*::foundation-model/anthropic.*
+        # Invoices sent by the morning run are e-mailed from noreply@ on the environment's domain.
+        - !If
+          - HasEmail
+          - PolicyName: email
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action: ses:SendEmail
+                  Resource: !Sub arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${EmailDomain}
+                  Condition:
+                    StringEquals:
+                      ses:FromAddress: !Sub noreply@${EmailDomain}
+          - !Ref AWS::NoValue
 
   WorkerLogGroup:
     Type: AWS::Logs::LogGroup
@@ -357,6 +371,7 @@ Resources:
           APP_SECRET_ARN: !ImportValue {"Fn::Sub": "veriqall-${Environment}-app-secret"}
           AUDIO_BUCKET: !ImportValue {"Fn::Sub": "veriqall-${Environment}-audio-bucket"}
           BEDROCK_REGION: !Ref BedrockRegion
+          EMAIL_FROM: !If [HasEmail, !Sub "VeriQall <noreply@${EmailDomain}>", !Ref AWS::NoValue]
       Tags:
         - Key: project
           Value: veriqall
@@ -372,6 +387,31 @@ Resources:
       Qualifier: $LATEST
       MaximumRetryAttempts: 0
       MaximumEventAgeInSeconds: 3600
+
+  # The morning run (src/worker.ts): scheduled invoices, fixed agreements that are due, missed
+  # payments, then the usual housekeeping. 04:00 UTC is 05:00 or 06:00 in Norway. Comes with
+  # EMAIL_DOMAIN, since both need the updated bootstrap stack (events and SES).
+  DailyRule:
+    Type: AWS::Events::Rule
+    Condition: HasEmail
+    Properties:
+      Name: !Sub veriqall-${Environment}-daily
+      Description: VeriQall morning run (invoicing and housekeeping)
+      ScheduleExpression: cron(0 4 * * ? *)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt WorkerFunction.Arn
+          Id: worker
+          Input: '{"task":"daily"}'
+
+  DailyRulePermission:
+    Type: AWS::Lambda::Permission
+    Condition: HasEmail
+    Properties:
+      FunctionName: !Ref WorkerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt DailyRule.Arn
 
   HttpApi:
     Type: AWS::ApiGatewayV2::Api

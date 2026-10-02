@@ -1,6 +1,9 @@
 // Worker Lambda (docs/plan.md, section 13). Started by the API when a recording is done
 // ({callId}), it transcribes and analyses that call, then tidies up: deletes calls past their
-// retention, finishes abandoned recordings and frees calls a crashed run left behind.
+// retention, finishes abandoned recordings and frees calls a crashed run left behind. Every
+// morning ({task: "daily"}, EventBridge) it also runs invoicing (docs/plan.md, section 16).
+import type pg from "pg";
+import { deliverInvoice } from "./admin/billing.ts";
 import { type WorkerDeps, housekeeping, processCall } from "./calls/process.ts";
 import { loadAi, loadSoniox } from "./calls/runtime.ts";
 import { s3Store } from "./calls/store.ts";
@@ -25,11 +28,33 @@ async function load(): Promise<WorkerDeps> {
 // started only while there is room for a whole one.
 const PER_CALL_MS = 12.5 * 60_000;
 
-export async function handler(event: { callId?: unknown }, context?: { getRemainingTimeInMillis(): number }) {
+// Sends scheduled invoices and fixed agreements that are due, marks missed payments, and
+// e-mails what was sent. A failed e-mail is logged and does not stop the rest.
+export async function billingDaily(db: pg.Pool) {
+  const sent = (await db.query<{ id: string }>("select app.billing_daily() as id")).rows.map((r) => r.id);
+  let emailed = 0;
+  for (const id of sent) {
+    const c = await db.connect();
+    try {
+      await c.query("begin");
+      if (await deliverInvoice(c, id)) emailed++;
+      await c.query("commit");
+    } catch (error) {
+      await c.query("rollback");
+      console.error("invoice e-mail failed", id, error);
+    } finally {
+      c.release();
+    }
+  }
+  return { sent: sent.length, emailed };
+}
+
+export async function handler(event: { callId?: unknown; task?: unknown }, context?: { getRemainingTimeInMillis(): number }) {
   deps ??= load();
   deps.catch(() => (deps = undefined));
   const d = await deps;
   const remaining = () => context?.getRemainingTimeInMillis() ?? Infinity;
+  if (event.task === "daily") console.log("billing", JSON.stringify(await billingDaily(d.db)));
   if (typeof event.callId === "string" && /^[0-9a-f-]{36}$/.test(event.callId)) await processCall(d, event.callId);
   const more = await housekeeping(d, () => remaining() > 60_000);
   for (const id of more) {

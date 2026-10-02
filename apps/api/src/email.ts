@@ -3,11 +3,68 @@
 // Without EMAIL_FROM (no domain set up yet), nothing is sent and callers show the link instead.
 import { SendEmailCommand, SESv2Client } from "@aws-sdk/client-sesv2";
 
+export interface Attachment {
+  filename: string;
+  contentType: string;
+  content: Uint8Array;
+}
+
 export interface Email {
   to: string;
+  // Blind copies, for example the bookkeeping inbox.
+  bcc?: string[];
   subject: string;
   text: string;
   html?: string;
+  attachments?: Attachment[];
+}
+
+// RFC 2047 for headers with non-ASCII characters (æøå).
+function header(value: string): string {
+  return /^[\x20-\x7e]*$/.test(value) ? value : `=?UTF-8?B?${Buffer.from(value, "utf8").toString("base64")}?=`;
+}
+
+function base64Lines(data: Uint8Array | string): string {
+  return (Buffer.from(data).toString("base64").match(/.{1,76}/g) ?? []).join("\r\n");
+}
+
+// A MIME message with text, optional HTML and attachments (SES raw sending).
+export function mimeMessage(from: string, email: Email): Uint8Array {
+  const id = () => `b_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  const mixed = id();
+  const alternative = id();
+  const lines = [
+    `From: ${from.replace(/^([^<]+)</, (_, name: string) => `${header(name.trim())} <`)}`,
+    `To: ${email.to}`,
+    `Subject: ${header(email.subject)}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/mixed; boundary="${mixed}"`,
+    "",
+    `--${mixed}`,
+    `Content-Type: multipart/alternative; boundary="${alternative}"`,
+    "",
+    `--${alternative}`,
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: base64",
+    "",
+    base64Lines(email.text),
+    ...(email.html
+      ? [`--${alternative}`, "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", base64Lines(email.html)]
+      : []),
+    `--${alternative}--`,
+  ];
+  for (const a of email.attachments ?? []) {
+    lines.push(
+      `--${mixed}`,
+      `Content-Type: ${a.contentType}; name="${header(a.filename)}"`,
+      "Content-Transfer-Encoding: base64",
+      `Content-Disposition: attachment; filename="${header(a.filename)}"`,
+      "",
+      base64Lines(a.content),
+    );
+  }
+  lines.push(`--${mixed}--`, "");
+  return Buffer.from(lines.join("\r\n"), "utf8");
 }
 
 export type Mailer = (email: Email) => Promise<string | undefined>;
@@ -24,6 +81,16 @@ function sesMailer(): Mailer | null {
   if (!from) return null;
   const client = new SESv2Client({});
   return async (email) => {
+    if (email.attachments?.length || email.bcc?.length) {
+      const result = await client.send(
+        new SendEmailCommand({
+          FromEmailAddress: from,
+          Destination: { ToAddresses: [email.to], BccAddresses: email.bcc },
+          Content: { Raw: { Data: mimeMessage(from, email) } },
+        }),
+      );
+      return result.MessageId;
+    }
     const result = await client.send(
       new SendEmailCommand({
         FromEmailAddress: from,
