@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { Flag } from "@/components/flag";
 import { derived, palette } from "@/lib/tokens";
 
@@ -49,6 +50,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function DesignPage() {
+  // A tool for us while building: only in local development, never on staging or production.
+  if (process.env.NODE_ENV === "production") notFound();
   return (
     <>
       <h1 className="text-4xl font-extrabold tracking-tight">Designsystem</h1>

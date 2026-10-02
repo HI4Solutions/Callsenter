@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LOGIN_ERRORS, loginErrorMessage, loginStartUrl, safeNext } from "./auth";
+import { LOGIN_ERRORS, loginErrorMessage, loginStartUrl, safeNext, signedInDestination } from "./auth";
 
 describe("login helpers", () => {
   it("builds start URLs with invitation and return path", () => {
@@ -22,5 +22,20 @@ describe("login helpers", () => {
     }
     expect(loginErrorMessage("noe_annet")).toBe(LOGIN_ERRORS.feil);
     expect(loginErrorMessage(undefined)).toBeUndefined();
+  });
+});
+
+describe("where a signed-in user lands", () => {
+  const base = { platformAdmin: false, permissions: [] as string[] };
+  it("goes to the requested page when it is inside the app", () => {
+    expect(signedInDestination(base, "/administrasjon/team")).toBe("/administrasjon/team");
+    expect(signedInDestination(base, "//evil.example")).toBe("/konto");
+    expect(signedInDestination(base, "/logg-inn?neste=/admin")).toBe("/konto");
+  });
+
+  it("otherwise picks the starting point by access", () => {
+    expect(signedInDestination({ ...base, platformAdmin: true })).toBe("/admin");
+    expect(signedInDestination({ ...base, permissions: ["users.manage"] })).toBe("/administrasjon");
+    expect(signedInDestination(base)).toBe("/konto");
   });
 });

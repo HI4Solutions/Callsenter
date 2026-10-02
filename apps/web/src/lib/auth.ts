@@ -47,3 +47,13 @@ export interface Me {
   activeOrganizationId: string | null;
   permissions: string[];
 }
+
+// Where a signed-in user lands when they open the login page: the requested page, or their
+// starting point (superadmin portal, the call centre's administration, or their account).
+export function signedInDestination(me: Pick<Me, "platformAdmin" | "permissions">, next?: string): string {
+  const requested = safeNext(next);
+  if (requested && requested !== "/logg-inn" && !requested.startsWith("/logg-inn?")) return requested;
+  if (me.platformAdmin) return "/admin";
+  if (me.permissions.includes("users.manage")) return "/administrasjon";
+  return "/konto";
+}
