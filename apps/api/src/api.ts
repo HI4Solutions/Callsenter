@@ -4,8 +4,10 @@
 //   GET  /auth/{vipps|bankid}/callback
 //   POST /auth/logout
 //   GET  /me                          the signed-in user, call centres and permissions
+//   /admin/*                          superadmin portal (src/admin)
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import type pg from "pg";
+import { handleAdmin } from "./admin/index.ts";
 import { handleCallback, startLogin } from "./auth/flow.ts";
 import { resolveSession, revokeSession } from "./auth/session.ts";
 import { isProvider, SESSION_COOKIE, type AuthDeps } from "./auth/types.ts";
@@ -89,6 +91,12 @@ export function createHandler(deps: HandlerDeps) {
       const session = await resolveSession(auth, readCookie(event, SESSION_COOKIE));
       if (!session) return json(401, { error: "Ikke innlogget" }, cors);
       return json(200, await loadMe(auth.appDb, session), cors);
+    }
+
+    if (path.startsWith("/admin/")) {
+      const session = await resolveSession(auth, readCookie(event, SESSION_COOKIE));
+      if (!session) return json(401, { error: "Ikke innlogget" }, cors);
+      return handleAdmin(auth, event, session, cors);
     }
 
     return json(404, { error: "Fant ikke ressursen" }, cors);

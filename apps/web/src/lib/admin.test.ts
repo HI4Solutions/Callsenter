@@ -1,0 +1,24 @@
+import { describe, expect, it } from "vitest";
+import { invitationState, organizationState } from "./admin";
+
+const now = new Date("2026-10-02T12:00:00Z");
+
+describe("superadmin status helpers", () => {
+  it("shows active, trial, expired trial and suspended", () => {
+    expect(organizationState({ status: "active", trialEndsAt: null }, now)).toEqual({ label: "Aktiv", tone: "ok" });
+    expect(organizationState({ status: "active", trialEndsAt: "2026-11-01T00:00:00Z" }, now).tone).toBe("warning");
+    expect(organizationState({ status: "active", trialEndsAt: "2026-09-01T00:00:00Z" }, now)).toEqual({
+      label: "Prøveperiode utløpt",
+      tone: "danger",
+    });
+    expect(organizationState({ status: "suspended", trialEndsAt: null }, now).label).toBe("Suspendert");
+  });
+
+  it("describes invitations", () => {
+    const future = "2026-10-05T00:00:00Z";
+    expect(invitationState({ usedAt: null, revokedAt: null, expiresAt: future }, now)).toBe("Venter");
+    expect(invitationState({ usedAt: now.toISOString(), revokedAt: null, expiresAt: future }, now)).toBe("Brukt");
+    expect(invitationState({ usedAt: null, revokedAt: now.toISOString(), expiresAt: future }, now)).toBe("Trukket tilbake");
+    expect(invitationState({ usedAt: null, revokedAt: null, expiresAt: "2026-10-01T00:00:00Z" }, now)).toBe("Utløpt");
+  });
+});

@@ -43,7 +43,12 @@ export function AccountMenu() {
   }
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm">
+      {state.me.platformAdmin && (
+        <Link href="/admin" className="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold">
+          Superadmin
+        </Link>
+      )}
+      <span className="hidden text-sm sm:inline">
         {state.me.user.name}
         <span className="sr-only">, innlogget med {state.me.provider === "bankid" ? "BankID" : "Vipps"}</span>
       </span>
