@@ -23,6 +23,7 @@ import {
   listAnnouncements,
   updateAnnouncement,
 } from "./messages.ts";
+import { getThread, listThreads, reply as replyThread, setThreadStatus, startThread } from "../org/threads.ts";
 import { accessLog, auditLog, blockIp, listBlockedIps, securityOverview, unblockIp } from "./security.ts";
 import {
   catalog,
@@ -42,6 +43,8 @@ const INVITATION = /^\/admin\/organizations\/([^/]+)\/invitations\/([^/]+)$/;
 const USER = /^\/admin\/users\/([^/]+)$/;
 const USER_ACTION = /^\/admin\/users\/([^/]+)\/(logout|superadmin)$/;
 const BLOCKED_IP = /^\/admin\/security\/blocked-ips\/([^/]+)$/;
+const THREAD = /^\/admin\/threads\/([^/]+)$/;
+const THREAD_MESSAGES = /^\/admin\/threads\/([^/]+)\/messages$/;
 const ANNOUNCEMENT = /^\/admin\/announcements\/([^/]+)$/;
 const GROWTH_EVENT = /^\/admin\/growth\/events\/([^/]+)$/;
 const USER_PASSKEY = /^\/admin\/users\/([^/]+)\/passkeys\/([^/]+)$/;
@@ -122,6 +125,19 @@ export async function handleAdmin(
       if (method === "POST") {
         return reply(201, await blockIp(deps.appDb, session, event.requestContext.http.sourceIp, body()));
       }
+    }
+    if (path === "/admin/threads") {
+      if (method === "GET") return reply(200, await listThreads(deps.appDb, session, "platform"));
+      if (method === "POST") return reply(201, await startThread(deps.appDb, session, "platform", body()));
+    }
+    match = THREAD.exec(path);
+    if (match && isUuid(match[1])) {
+      if (method === "GET") return reply(200, await getThread(deps.appDb, session, "platform", match[1]));
+      if (method === "PATCH") return reply(200, await setThreadStatus(deps.appDb, session, "platform", match[1], body()));
+    }
+    match = THREAD_MESSAGES.exec(path);
+    if (match && isUuid(match[1]) && method === "POST") {
+      return reply(201, await replyThread(deps.appDb, session, "platform", match[1], body()));
     }
     if (path === "/admin/announcements") {
       if (method === "GET") return reply(200, await listAnnouncements(deps.appDb, session));

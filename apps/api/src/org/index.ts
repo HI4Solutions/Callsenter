@@ -10,12 +10,17 @@ import type { Session } from "../auth/session.ts";
 import type { AuthDeps } from "../auth/types.ts";
 import { json, type Result } from "../http.ts";
 import { withSession } from "../me.ts";
+import { createRole, listRoles, updateRole } from "./roles.ts";
+import { getThread, listThreads, reply as replyThread, setThreadStatus, startThread } from "./threads.ts";
 
 class Forbidden extends Error {}
 
 const MEMBER = /^\/org\/members\/([^/]+)$/;
 const INVITATION = /^\/org\/invitations\/([^/]+)$/;
 const TEAM = /^\/org\/teams\/([^/]+)$/;
+const ROLE = /^\/org\/roles\/([^/]+)$/;
+const THREAD = /^\/org\/threads\/([^/]+)$/;
+const THREAD_MESSAGES = /^\/org\/threads\/([^/]+)\/messages$/;
 
 async function requirePermission(db: pg.Pool, session: Session, permission: string) {
   const ok = await withSession(db, session, async (c) => {
@@ -151,8 +156,29 @@ export async function handleOrg(
   if (!orgId) return reply(400, { error: "Velg et callsenter først." });
 
   try {
-    await requirePermission(deps.appDb, session, "users.manage");
     const body = () => parseBody(event.body, event.isBase64Encoded);
+    if (path === "/org/roles" || ROLE.test(path)) {
+      await requirePermission(deps.appDb, session, "roles.manage");
+      if (method === "GET" && path === "/org/roles") return reply(200, await listRoles(deps.appDb, session));
+      if (method === "POST" && path === "/org/roles") return reply(201, await createRole(deps.appDb, session, body()));
+      const role = ROLE.exec(path);
+      if (role && isUuid(role[1]) && method === "PATCH") return reply(200, await updateRole(deps.appDb, session, role[1], body()));
+      return reply(404, { error: "Fant ikke ressursen." });
+    }
+    await requirePermission(deps.appDb, session, "users.manage");
+    if (path === "/org/threads") {
+      if (method === "GET") return reply(200, await listThreads(deps.appDb, session, "org"));
+      if (method === "POST") return reply(201, await startThread(deps.appDb, session, "org", body()));
+    }
+    const thread = THREAD.exec(path);
+    if (thread && isUuid(thread[1])) {
+      if (method === "GET") return reply(200, await getThread(deps.appDb, session, "org", thread[1]));
+      if (method === "PATCH") return reply(200, await setThreadStatus(deps.appDb, session, "org", thread[1], body()));
+    }
+    const messages = THREAD_MESSAGES.exec(path);
+    if (messages && isUuid(messages[1]) && method === "POST") {
+      return reply(201, await replyThread(deps.appDb, session, "org", messages[1], body()));
+    }
     if (method === "GET" && path === "/org/overview") return reply(200, await overview(deps.appDb, session));
     let match = MEMBER.exec(path);
     if (match && isUuid(match[1]) && method === "PATCH") return reply(200, await updateMember(deps.appDb, session, match[1], body()));
@@ -188,6 +214,9 @@ export async function handleOrg(
     if (error instanceof NotFound) return reply(404, { error: "Fant ikke ressursen." });
     const code = (error as { code?: string }).code;
     const constraint = (error as { constraint?: string }).constraint ?? "";
+    if (code === "42501" && path.startsWith("/org/roles")) {
+      return reply(403, { error: "Du kan ikke gi en rolle rettigheter du ikke har selv." });
+    }
     if (code === "42501") return reply(403, { error: "Du kan ikke gi en rolle med rettigheter du ikke har selv." });
     if (code === "23505" && constraint.includes("phone")) return reply(409, { error: "Mobilnummeret er allerede i bruk." });
     if (code === "23505" && constraint.includes("email")) return reply(409, { error: "E-postadressen er allerede i bruk." });
