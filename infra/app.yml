@@ -1,0 +1,255 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  VeriQall application: the API and migrator Lambdas in the VPC, and the HTTP API in front of
+  the API Lambda. Code comes from the artifacts bucket (infra/bootstrap.yml).
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [staging, production]
+  ArtifactsBucket:
+    Type: String
+  ArtifactKey:
+    Type: String
+    Description: Key of the Lambda zip in the artifacts bucket (one per commit).
+  ApiDomainName:
+    Type: String
+    Default: ""
+    Description: Optional custom domain, for example api.staging.veriqall.no.
+  ApiCertificateArn:
+    Type: String
+    Default: ""
+    Description: ACM certificate in this region for ApiDomainName, validated by DNS.
+  LogRetentionDays:
+    Type: Number
+    Default: 365
+
+Conditions:
+  HasCustomDomain: !And
+    - !Not [!Equals [!Ref ApiDomainName, ""]]
+    - !Not [!Equals [!Ref ApiCertificateArn, ""]]
+
+Resources:
+  # --- Migrator -----------------------------------------------------------------------------
+
+  MigratorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /veriqall/
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: read-master-secret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !ImportValue {"Fn::Sub": "veriqall-${Environment}-db-master-secret"}
+              - Effect: Allow
+                Action: kms:Decrypt
+                Resource: !ImportValue {"Fn::Sub": "veriqall-${Environment}-key"}
+
+  MigratorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/veriqall-${Environment}-migrator
+      RetentionInDays: !Ref LogRetentionDays
+      KmsKeyId: !ImportValue {"Fn::Sub": "veriqall-${Environment}-key"}
+
+  MigratorFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: MigratorLogGroup
+    Properties:
+      FunctionName: !Sub veriqall-${Environment}-migrator
+      Description: Runs database migrations and provisions database logins
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      Handler: migrator.handler
+      Code:
+        S3Bucket: !Ref ArtifactsBucket
+        S3Key: !Ref ArtifactKey
+      Role: !GetAtt MigratorRole.Arn
+      MemorySize: 512
+      Timeout: 300
+      # Never two migrations at once.
+      ReservedConcurrentExecutions: 1
+      VpcConfig:
+        SubnetIds: !Split [",", !ImportValue {"Fn::Sub": "veriqall-${Environment}-private-subnets"}]
+        SecurityGroupIds:
+          - !ImportValue {"Fn::Sub": "veriqall-${Environment}-lambda-sg"}
+      Environment:
+        Variables:
+          DB_HOST: !ImportValue {"Fn::Sub": "veriqall-${Environment}-db-endpoint"}
+          DB_PORT: !ImportValue {"Fn::Sub": "veriqall-${Environment}-db-port"}
+          DB_NAME: veriqall
+          DB_MASTER_SECRET_ARN: !ImportValue {"Fn::Sub": "veriqall-${Environment}-db-master-secret"}
+          NODE_EXTRA_CA_CERTS: /var/runtime/ca-cert.pem
+      Tags:
+        - Key: project
+          Value: veriqall
+        - Key: environment
+          Value: !Ref Environment
+
+  # --- API ----------------------------------------------------------------------------------
+
+  ApiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /veriqall/
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: database-login
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: rds-db:connect
+                Resource: !Sub
+                  - arn:${AWS::Partition}:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${ResourceId}/veriqall_api
+                  - ResourceId: !ImportValue {"Fn::Sub": "veriqall-${Environment}-db-resource-id"}
+
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/veriqall-${Environment}-api
+      RetentionInDays: !Ref LogRetentionDays
+      KmsKeyId: !ImportValue {"Fn::Sub": "veriqall-${Environment}-key"}
+
+  ApiFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: ApiLogGroup
+    Properties:
+      FunctionName: !Sub veriqall-${Environment}-api
+      Description: VeriQall API
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      Handler: api.handler
+      Code:
+        S3Bucket: !Ref ArtifactsBucket
+        S3Key: !Ref ArtifactKey
+      Role: !GetAtt ApiRole.Arn
+      MemorySize: 512
+      Timeout: 15
+      VpcConfig:
+        SubnetIds: !Split [",", !ImportValue {"Fn::Sub": "veriqall-${Environment}-private-subnets"}]
+        SecurityGroupIds:
+          - !ImportValue {"Fn::Sub": "veriqall-${Environment}-lambda-sg"}
+      Environment:
+        Variables:
+          DB_HOST: !ImportValue {"Fn::Sub": "veriqall-${Environment}-db-endpoint"}
+          DB_PORT: !ImportValue {"Fn::Sub": "veriqall-${Environment}-db-port"}
+          DB_NAME: veriqall
+          NODE_EXTRA_CA_CERTS: /var/runtime/ca-cert.pem
+      Tags:
+        - Key: project
+          Value: veriqall
+        - Key: environment
+          Value: !Ref Environment
+
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub veriqall-${Environment}
+      ProtocolType: HTTP
+      # Kept on until the custom domain resolves at one.com; turn off afterwards so the API is
+      # only reachable through api.<env>.veriqall.no.
+      DisableExecuteApiEndpoint: false
+
+  ApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt ApiFunction.Arn
+      PayloadFormatVersion: "2.0"
+      TimeoutInMillis: 15000
+
+  DefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: $default
+      Target: !Sub integrations/${ApiIntegration}
+
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/veriqall-${Environment}-api
+      RetentionInDays: !Ref LogRetentionDays
+      KmsKeyId: !ImportValue {"Fn::Sub": "veriqall-${Environment}-key"}
+
+  DefaultStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: $default
+      AutoDeploy: true
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 50
+        ThrottlingRateLimit: 20
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiAccessLogGroup.Arn
+        Format: >-
+          {"requestId":"$context.requestId","time":"$context.requestTime","method":"$context.httpMethod",
+          "path":"$context.path","status":"$context.status","latencyMs":"$context.responseLatency",
+          "ip":"$context.identity.sourceIp","userAgent":"$context.identity.userAgent",
+          "error":"$context.integrationErrorMessage"}
+
+  ApiInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ApiFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*
+
+  ApiDomain:
+    Type: AWS::ApiGatewayV2::DomainName
+    Condition: HasCustomDomain
+    Properties:
+      DomainName: !Ref ApiDomainName
+      DomainNameConfigurations:
+        - CertificateArn: !Ref ApiCertificateArn
+          EndpointType: REGIONAL
+          SecurityPolicy: TLS_1_2
+
+  ApiDomainMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Condition: HasCustomDomain
+    DependsOn: DefaultStage
+    Properties:
+      DomainName: !Ref ApiDomain
+      ApiId: !Ref HttpApi
+      Stage: $default
+
+Outputs:
+  ApiUrl:
+    Value: !If
+      - HasCustomDomain
+      - !Sub https://${ApiDomainName}
+      - !GetAtt HttpApi.ApiEndpoint
+  DefaultEndpoint:
+    Description: The execute-api endpoint, used by the deploy smoke test.
+    Value: !GetAtt HttpApi.ApiEndpoint
+  ApiDomainTarget:
+    Description: CNAME target for ApiDomainName at the DNS provider (one.com).
+    Condition: HasCustomDomain
+    Value: !GetAtt ApiDomain.RegionalDomainName
+  MigratorFunctionName:
+    Value: !Ref MigratorFunction

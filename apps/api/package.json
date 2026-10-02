@@ -1,0 +1,25 @@
+{
+  "name": "@veriqall/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.1145.0",
+    "@aws-sdk/rds-signer": "^3.1145.0",
+    "pg": "^8.23.1",
+    "@veriqall/db": "*"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.164",
+    "@types/node": "^26.6.4",
+    "@types/pg": "^8.23.1",
+    "esbuild": "^0.28.2",
+    "typescript": "6.0.3",
+    "vitest": "^5.0.3"
+  }
+}

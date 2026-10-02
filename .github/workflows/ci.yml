@@ -41,3 +41,8 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+      - name: Lint CloudFormation templates and deploy script
+        run: |
+          pipx run cfn-lint --regions eu-north-1 -- infra/*.yml
+          shellcheck infra/deploy.sh
