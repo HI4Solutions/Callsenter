@@ -10,6 +10,14 @@ describe("usage costs", () => {
       expect((await db.query("select 1 from model_prices")).rowCount).toBe(0);
       expect((await db.query("select 1 from service_prices")).rowCount).toBe(0);
       expect((await db.query("update service_prices set amount = 1")).rowCount).toBe(0);
+      expect((await db.query("select 1 from accounting_entries")).rowCount).toBe(0);
+      expect((await db.query("select 1 from fixed_costs")).rowCount).toBe(0);
+      await rejects(
+        db,
+        "insert into accounting_entries (kind, description, amount, occurred_on) values ('cost', 'x', 1, current_date)",
+        [],
+        /row-level security/,
+      );
     });
     const admin = await createUser();
     await makePlatformAdmin(admin);

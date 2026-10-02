@@ -66,6 +66,17 @@ import {
   updatePackage,
   updateRecurring,
 } from "./billing.ts";
+import {
+  accountingMonths,
+  accountingSummary,
+  createEntry,
+  createFixedCost,
+  deleteEntry,
+  deleteFixedCost,
+  listEntries,
+  revenueReport,
+  updateFixedCost,
+} from "./accounting.ts";
 import { getSystem, updateSystem, usage } from "./system.ts";
 import { getPrices, organizationUsage, refreshRate, updatePrices, usageByOrganization, usageSummary } from "./usage.ts";
 import { BadRequest, isUuid, parseBody } from "./validate.ts";
@@ -86,6 +97,8 @@ const INVOICE_ACTION = /^\/admin\/invoices\/([^/]+)\/(send|payments|credit|usage
 const INVOICE_PDF = /^\/admin\/invoices\/([^/]+)\/pdf$/;
 const CUSTOMER_ACCESS = /^\/admin\/billing\/customers\/([^/]+)\/access$/;
 const USAGE_ORG = /^\/admin\/usage\/organizations\/([^/]+)$/;
+const ACCOUNTING_ENTRY = /^\/admin\/accounting\/entries\/([^/]+)$/;
+const FIXED_COST = /^\/admin\/accounting\/fixed-costs\/([^/]+)$/;
 const PACKAGE = /^\/admin\/billing\/packages\/([^/]+)$/;
 const RECURRING = /^\/admin\/recurring-invoices\/([^/]+)$/;
 const USER_IDENTITY = /^\/admin\/users\/([^/]+)\/identities\/([a-z]+)$/;
@@ -200,6 +213,21 @@ export async function handleAdmin(
     if (path === "/admin/usage/prices") {
       if (method === "GET") return reply(200, await getPrices(deps.appDb, session));
       if (method === "PATCH") return reply(200, await updatePrices(deps.appDb, session, body()));
+    }
+    if (method === "GET" && path === "/admin/accounting/summary") return reply(200, await accountingSummary(deps.appDb, session, query));
+    if (method === "GET" && path === "/admin/accounting/months") return reply(200, await accountingMonths(deps.appDb, session, query.months));
+    if (method === "GET" && path === "/admin/accounting/revenue") return reply(200, await revenueReport(deps.appDb, session, query));
+    if (path === "/admin/accounting/entries") {
+      if (method === "GET") return reply(200, await listEntries(deps.appDb, session, query));
+      if (method === "POST") return reply(201, await createEntry(deps.appDb, session, body()));
+    }
+    match = ACCOUNTING_ENTRY.exec(path);
+    if (match && isUuid(match[1]) && method === "DELETE") return reply(200, await deleteEntry(deps.appDb, session, match[1]));
+    if (method === "POST" && path === "/admin/accounting/fixed-costs") return reply(201, await createFixedCost(deps.appDb, session, body()));
+    match = FIXED_COST.exec(path);
+    if (match && isUuid(match[1])) {
+      if (method === "PATCH") return reply(200, await updateFixedCost(deps.appDb, session, match[1], body()));
+      if (method === "DELETE") return reply(200, await deleteFixedCost(deps.appDb, session, match[1]));
     }
     if (method === "POST" && path === "/admin/usage/rate") return reply(200, await refreshRate(deps.appDb, session, deps.fetch));
     if (method === "GET" && path === "/admin/billing/overview") return reply(200, await billingOverview(deps.appDb, session));

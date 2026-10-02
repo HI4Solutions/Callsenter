@@ -363,7 +363,7 @@ Første versjon ble bygget 2. oktober 2026 (modul 15). Samme dag ble den lagt om
 | Forbruk | Forbruk og kostnad per callsenter og totalt: KI, Soniox og eID, per modul og modell, med pristabell og valutakurs | Bygget (PR 2) |
 | Stripe | Kortabonnement, priser og MRR fra Stripe | Venter på Stripe-konto og nøkler |
 | Faktura | Fakturaer, Kunder, Gjentakende, Pakker og Innstillinger | Bygget |
-| Regnskap | Nøkkeltall fra fakturaene (MRR, ARR, fakturert, utestående). Kostnader, nettoresultat og omsetningsrapport kommer | Delvis (PR 3 kommer) |
+| Regnskap | Kostnader mot inntekter for valgt periode, nettoresultat, MRR og ARR, utvikling per måned, omsetningsrapport og manuelle poster | Bygget (PR 3) |
 
 ### Forbruk
 
@@ -384,6 +384,19 @@ Første versjon ble bygget 2. oktober 2026 (modul 15). Samme dag ble den lagt om
   - BankID og Vipps per innlogging i kroner. Disse er ikke satt, fordi de avhenger av avtalene.
 - **Valutakurs:** USD/NOK hentes fra Norges Bank hver morgen. Den kan også hentes med «Hent kurs nå».
 - **Hva kostnaden er:** vår beregning fra forbruksloggen. Behandles en samtale på nytt, koster det oss igjen og telles med. Soniox' faktiske forbruk hentes ikke ennå. Det krever Soniox' bruks-API og kan komme sammen med Regnskap.
+
+### Regnskap
+
+Bygget i PR 3 (`0021_accounting.sql`, `apps/api/src/admin/accounting.ts`, `/admin/okonomi/regnskap`).
+
+- **Periode:** denne måneden, forrige måned, siste 7, 30 eller 90 dager, eller hittil i år.
+- **Kostnader:** KI, Soniox og eID fra Forbruk (omregnet med USD/NOK for dagen), manuelle kostnader, og faste månedskostnader. Faste kostnader legges inn én gang med fra- og til-måned og fordeles på dagene i perioden. En negativ manuell kostnad er en kreditering eller refusjon.
+- **Inntekter:** telles når pengene kommer, altså registrerte innbetalinger på fakturaer og manuelle inntekter. Mva holdes utenfor: for en innbetaling er mva-andelen innbetaling × fakturaens mva / fakturaens total.
+- **Resultat:** inntekter eks. mva minus kostnader.
+- **Nøkkeltall:** MRR fra aktive faste avtaler som ikke er på pause (eks. mva, omregnet til per måned), ARR = MRR × 12, antall aktive avtaler, betalende kunder og callsentre i prøveperiode.
+- **Per måned:** de siste 12 månedene med inntekter, kostnader og resultat, som graf og tabell.
+- **Omsetningsrapport:** innbetalinger fordelt på fakturalinjene (per pakke, fakturagebyr, andre linjer og manuelle innbetalinger), per måned, med CSV-eksport.
+- **Tilgang:** bare superadmin (RLS), og alle endringer i `audit_log`.
 
 ### Faktura
 
@@ -448,7 +461,7 @@ Besluttet 2. oktober (Nadeem):
 **Ikke med ennå:**
 - KID (ikke foreløpig, besluttet 2. oktober).
 - Stripe-fanen (venter på nøkler).
-- Regnskap med kostnader, inntekter, nettoresultat og omsetningsrapport (PR 3).
+- Soniox' faktiske forbruk (Regnskap bruker vår beregning fra forbruksloggen).
 
 | Del | Innhold |
 |---|---|
