@@ -8,7 +8,7 @@ import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from 
 import { InvoiceStatusBadge } from "@/components/billing/invoice-status";
 import { InvoiceView } from "@/components/billing/invoice-view";
 import { type EditableLine, LinesEditor } from "@/components/billing/lines-editor";
-import { adminFetch, formatDate } from "@/lib/admin";
+import { adminFetch, formatDate, formatDateTime } from "@/lib/admin";
 import { type InvoiceDetail, invoiceTitle, kr, PAYMENT_METHOD } from "@/lib/billing";
 
 function today() {
@@ -157,8 +157,8 @@ function Draft({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: 
         </button>
       </div>
       <p className="mt-4 text-sm text-muted">
-        Fakturaen sendes ikke på e-post ennå: skriv den ut eller lagre som PDF, og send den til{" "}
-        {invoice.organizationInvoiceEmail ?? "callsenterets faktura-e-post (ikke satt)"}.
+        Når fakturaen er sendt, kan den sendes på e-post til{" "}
+        {invoice.organizationInvoiceEmail ?? "callsenterets faktura-e-post (ikke satt, legg den inn under Callsentre)"}.
       </p>
     </Card>
   );
@@ -208,12 +208,40 @@ function Sent({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: I
     }
   }
 
+  async function email() {
+    const to = invoice.recipient?.email;
+    if (!to) return;
+    if (!window.confirm(`Sende ${invoice.kind === "credit" ? "kreditnotaen" : "fakturaen"} på e-post til ${to}?`)) return;
+    setError(null);
+    setBusy(true);
+    try {
+      onChanged(await adminFetch<InvoiceDetail>(`/invoices/${invoice.id}/email`, { method: "POST" }));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setBusy(false);
+  }
+
   const canPay = invoice.kind === "invoice" && invoice.status === "sent";
   const canCredit = invoice.kind === "invoice" && (invoice.status === "sent" || invoice.status === "paid");
 
   return (
     <Card title="Betaling">
       <div className="flex flex-col gap-4 print:hidden">
+        <div className="flex flex-wrap items-center gap-3">
+          {invoice.recipient?.email ? (
+            <button type="button" disabled={busy} className={secondaryButton} onClick={email}>
+              {invoice.emails.length ? "Send på e-post igjen" : "Send på e-post"}
+            </button>
+          ) : (
+            <p className="text-sm text-muted">Callsenteret hadde ingen faktura-e-post da fakturaen ble sendt. Skriv den ut og send den selv.</p>
+          )}
+          {invoice.emails.map((e) => (
+            <span key={e.sentAt} className="text-sm text-muted">
+              Sendt til {e.sentTo} {formatDateTime(e.sentAt)}
+            </span>
+          ))}
+        </div>
         {invoice.creditNote && (
           <p>
             Kreditert med{" "}

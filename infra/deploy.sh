@@ -4,7 +4,7 @@
 # (infra/bootstrap.yml) and the Lambda zip at apps/api/lambda.zip.
 #
 # Optional environment variables: ALERT_EMAIL, API_DOMAIN_NAME, API_CERTIFICATE_ARN, APP_ORIGIN,
-# IDURA_DOMAIN.
+# IDURA_DOMAIN, EMAIL_DOMAIN.
 set -euo pipefail
 
 env="${1:?usage: infra/deploy.sh staging|production}"
@@ -74,7 +74,12 @@ app_params=("ArtifactsBucket=$bucket" "ArtifactKey=$artifact_key" "AppOrigin=$ap
 if [[ -n "${API_DOMAIN_NAME:-}" && -n "${API_CERTIFICATE_ARN:-}" ]]; then
   app_params+=("ApiDomainName=$API_DOMAIN_NAME" "ApiCertificateArn=$API_CERTIFICATE_ARN")
 fi
+[[ -n "${EMAIL_DOMAIN:-}" ]] && app_params+=("EmailDomain=$EMAIL_DOMAIN")
 deploy app app.yml "${app_params[@]}"
+if [[ -n "${EMAIL_DOMAIN:-}" ]]; then
+  echo "DNS records for e-mail (add at one.com once):"
+  output "veriqall-$env-app" EmailDnsRecords | tr '|' '\n'
+fi
 
 echo "::group::migrate"
 migrator=$(output "veriqall-$env-app" MigratorFunctionName)

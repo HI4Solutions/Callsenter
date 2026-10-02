@@ -3,7 +3,9 @@
 // database (0017_invoicing.sql); this module validates input and gives clear answers.
 import type pg from "pg";
 import type { Session } from "../auth/session.ts";
+import { emailEnabled, sendEmail } from "../email.ts";
 import { withSession } from "../me.ts";
+import { type InvoiceForEmail, invoiceEmail } from "./invoice-email.ts";
 import { NotFound } from "./organizations.ts";
 import { BadRequest, type Body, isUuid, optionalText, requiredText } from "./validate.ts";
 
@@ -184,7 +186,12 @@ export async function invoiceDetail(c: pg.PoolClient, id: string) {
      from invoice_payments where invoice_id = $1 order by paid_on, created_at`,
     [id],
   );
-  return { ...rows[0], lines: lines.rows, payments: payments.rows };
+  // Superadmins only (RLS): when and to whom the invoice was e-mailed.
+  const emails = await c.query(
+    `select sent_to as "sentTo", sent_at as "sentAt" from invoice_emails where invoice_id = $1 order by sent_at`,
+    [id],
+  );
+  return { ...rows[0], lines: lines.rows, payments: payments.rows, emails: emails.rows };
 }
 
 export async function getInvoice(db: pg.Pool, session: Session, id: string) {
@@ -473,5 +480,28 @@ export async function billingOverview(db: pg.Pool, session: Session) {
          (select count(*)::int from recurring_invoices where active and next_date <= app.oslo_today()) as "recurringDue"`,
     );
     return rows[0];
+  });
+}
+
+// E-mails a sent invoice to the address frozen on it (the call centre's invoice e-mail when it
+// was sent), and logs it.
+export async function emailInvoice(db: pg.Pool, session: Session, id: string) {
+  if (!emailEnabled()) throw new BadRequest("E-post er ikke satt opp ennå. Skriv ut fakturaen og send den selv.");
+  return withSession(db, session, async (c) => {
+    const detail = (await invoiceDetail(c, id)) as unknown as InvoiceForEmail & {
+      status: string;
+      organizationId: string;
+      recipient: { email?: string | null } | null;
+    };
+    if (detail.status === "draft") throw new BadRequest("Send fakturaen før den sendes på e-post.");
+    const to = detail.recipient?.email;
+    if (!to) throw new BadRequest("Callsenteret hadde ingen faktura-e-post da fakturaen ble sendt.");
+    const messageId = await sendEmail({ to, ...invoiceEmail(detail) });
+    await c.query(
+      `insert into invoice_emails (invoice_id, organization_id, sent_to, message_id, sent_by)
+       values ($1, $2, $3, $4, app.current_user_id())`,
+      [id, detail.organizationId, to, messageId?.slice(0, 200) || null],
+    );
+    return invoiceDetail(c, id);
   });
 }

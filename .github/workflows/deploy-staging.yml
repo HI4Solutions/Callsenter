@@ -27,6 +27,7 @@ jobs:
       API_CERTIFICATE_ARN: ${{ vars.API_CERTIFICATE_ARN }}
       APP_ORIGIN: ${{ vars.APP_ORIGIN }}
       IDURA_DOMAIN: ${{ vars.IDURA_DOMAIN }}
+      EMAIL_DOMAIN: ${{ vars.EMAIL_DOMAIN }}
     steps:
       - uses: actions/checkout@v4
 

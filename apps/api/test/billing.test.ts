@@ -1,8 +1,9 @@
 import { randomBytes } from "node:crypto";
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { api, auth, createOrg, createUser, makePlatformAdmin, member, owner } from "../../../packages/db/test/helpers.ts";
 import { createHandler } from "../src/api.ts";
+import { type Email, setMailer } from "../src/email.ts";
 import { sha256 } from "../src/auth/crypto.ts";
 import type { AuthDeps, Provider } from "../src/auth/types.ts";
 
@@ -141,5 +142,69 @@ describe("invoicing", () => {
     const seller = await sessionFor(await member(org, "seller"), "bankid", org);
     expect((await call(seller, "GET", "/org/invoices")).status).toBe(403);
     expect((await call(strong, "GET", "/admin/invoices")).status).toBe(403);
+  });
+});
+
+describe("e-mail", () => {
+  afterEach(() => setMailer(undefined));
+
+  it("e-mails a sent invoice to the invoice address frozen on it, and logs it", async () => {
+    const sent: Email[] = [];
+    setMailer(async (email) => {
+      sent.push(email);
+      return "msg-1";
+    });
+    const admin = await superadmin();
+    const org = await createOrg();
+    await owner.query("update organizations set invoice_email = 'faktura@example.test' where id = $1", [org]);
+    await call(admin.cookie, "PATCH", "/admin/billing/settings", { companyName: "Leverandør AS", orgNumber: "999999999", accountNumber: "12345678903" });
+    const id = (await call(admin.cookie, "POST", "/admin/invoices", { organizationId: org, lines: [{ description: "Lisens <b>", unitPrice: 100 }] })).body.id;
+    expect((await call(admin.cookie, "POST", `/admin/invoices/${id}/email`)).body.error).toMatch(/Send fakturaen/);
+    const number = (await call(admin.cookie, "POST", `/admin/invoices/${id}/send`)).body.number;
+    // Later changes to the call centre do not change where this invoice goes.
+    await owner.query("update organizations set invoice_email = 'ny@example.test' where id = $1", [org]);
+
+    const emailed = await call(admin.cookie, "POST", `/admin/invoices/${id}/email`);
+    expect(emailed.status).toBe(200);
+    expect(emailed.body.emails).toMatchObject([{ sentTo: "faktura@example.test" }]);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ to: "faktura@example.test", subject: `Faktura ${number} fra Leverandør AS` });
+    expect(sent[0]!.text).toContain("1234 56 78903");
+    expect(sent[0]!.html).toContain("Lisens &lt;b&gt;");
+
+    const orgAdmin = await member(org, "admin");
+    const strong = await sessionFor(orgAdmin, "bankid", org);
+    expect((await call(strong, "GET", `/org/invoices/${id}`)).body.emails).toEqual([]);
+  });
+
+  it("refuses to e-mail invoices when e-mail is not set up", async () => {
+    setMailer(null);
+    const admin = await superadmin();
+    const org = await createOrg();
+    const id = (await call(admin.cookie, "POST", "/admin/invoices", { organizationId: org, lines: [{ description: "Lisens", unitPrice: 1 }] })).body.id;
+    expect((await call(admin.cookie, "POST", `/admin/invoices/${id}/email`)).body.error).toMatch(/ikke satt opp/);
+  });
+
+  it("e-mails the invitation link when the person has an e-mail address", async () => {
+    const sent: Email[] = [];
+    setMailer(async (email) => {
+      sent.push(email);
+      return "msg-2";
+    });
+    const admin = await superadmin();
+    const org = await createOrg("Callsenter Nord");
+    const invited = await call(admin.cookie, "POST", `/admin/organizations/${org}/invitations`, { fullName: "Kari Leder", email: "kari@example.test" });
+    expect(invited.status).toBe(201);
+    expect(invited.body.emailed).toBe(true);
+    expect(sent[0]).toMatchObject({ to: "kari@example.test", subject: "Invitasjon til Callsenter Nord i VeriQall" });
+    expect(sent[0]!.text).toContain(invited.body.link);
+
+    setMailer(async () => {
+      throw new Error("SES down");
+    });
+    const second = await call(admin.cookie, "POST", `/admin/organizations/${org}/invitations`, { fullName: "Ola", email: "ola@example.test" });
+    expect(second.status).toBe(201);
+    expect(second.body.emailed).toBe(false);
+    expect(second.body.link).toMatch(/invitasjon=/);
   });
 });

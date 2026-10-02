@@ -44,6 +44,7 @@ import {
   creditInvoice,
   deleteInvoice,
   deleteRecurring,
+  emailInvoice,
   generateRecurring,
   getBillingSettings,
   getInvoice,
@@ -69,7 +70,7 @@ const ANNOUNCEMENT = /^\/admin\/announcements\/([^/]+)$/;
 const GROWTH_EVENT = /^\/admin\/growth\/events\/([^/]+)$/;
 const USER_PASSKEY = /^\/admin\/users\/([^/]+)\/passkeys\/([^/]+)$/;
 const INVOICE = /^\/admin\/invoices\/([^/]+)$/;
-const INVOICE_ACTION = /^\/admin\/invoices\/([^/]+)\/(send|payments|credit|usage)$/;
+const INVOICE_ACTION = /^\/admin\/invoices\/([^/]+)\/(send|payments|credit|usage|email)$/;
 const RECURRING = /^\/admin\/recurring-invoices\/([^/]+)$/;
 const USER_IDENTITY = /^\/admin\/users\/([^/]+)\/identities\/([a-z]+)$/;
 
@@ -197,6 +198,7 @@ export async function handleAdmin(
       if (match[2] === "payments") return reply(201, await addPayment(deps.appDb, session, match[1], body()));
       if (match[2] === "credit") return reply(201, await creditInvoice(deps.appDb, session, match[1], body()));
       if (match[2] === "usage") return reply(200, await addUsageLines(deps.appDb, session, match[1], body()));
+      if (match[2] === "email") return reply(200, await emailInvoice(deps.appDb, session, match[1]));
     }
     if (path === "/admin/recurring-invoices") {
       if (method === "GET") return reply(200, await listRecurring(deps.appDb, session));
