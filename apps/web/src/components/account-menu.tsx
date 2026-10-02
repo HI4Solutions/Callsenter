@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { API_URL, type Me } from "@/lib/auth";
 import { switchOrganization } from "@/lib/org";
+import { canSeeCalls } from "@/lib/calls";
 import { canSeeSales } from "@/lib/work";
 
 type State = { status: "loading" } | { status: "signed-out" } | { status: "signed-in"; me: Me };
@@ -45,7 +46,9 @@ export function AccountMenu() {
   }
   const { me } = state;
   // The call centre's daily work starts at the first page the member can use.
-  const work = canSeeSales(me.permissions)
+  const work = canSeeCalls(me)
+    ? { href: "/samtaler", label: "Samtaler" }
+    : canSeeSales(me.permissions)
     ? { href: "/salg", label: "Salg" }
     : me.permissions.includes("customers.read")
       ? { href: "/kunder", label: "Kunder" }

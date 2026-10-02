@@ -47,13 +47,16 @@ export interface Me {
   organizations: { id: string; name: string }[];
   activeOrganizationId: string | null;
   permissions: string[];
+  // Modules switched on for the active call centre.
+  modules?: string[];
 }
 
 // Where a signed-in user lands when they open the login page: their starting point (superadmin
 // portal, the call centre's administration, sales, customers, or their account).
-export function signedInDestination(me: Pick<Me, "platformAdmin" | "permissions">): string {
+export function signedInDestination(me: Pick<Me, "platformAdmin" | "permissions" | "modules">): string {
   if (me.platformAdmin) return "/admin";
   if (me.permissions.includes("users.manage")) return "/administrasjon";
+  if (me.permissions.includes("calls.upload") && (me.modules ?? []).includes("transcription")) return "/samtaler";
   if (me.permissions.includes("sales.manage")) return "/salg";
   if (me.permissions.includes("customers.read")) return "/kunder";
   return "/konto";

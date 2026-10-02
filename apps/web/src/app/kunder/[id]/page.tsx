@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, primaryButton, secondaryButton } from "@/components/admin/field";
 import { CustomerForm } from "@/components/work/customer-form";
+import { LinkedCalls } from "@/components/work/linked-calls";
 import { SaleList } from "@/components/work/sale-list";
 import { NoAccess, useWorkMe } from "@/components/work/work-shell";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -118,6 +119,7 @@ export default function CustomerPage() {
         </Card>
       )}
       <CustomerSales customerId={customer.id} canSell={(me?.permissions.includes("sales.manage") ?? false) && !customer.archivedAt} />
+      <LinkedCalls query={`customerId=${customer.id}`} />
     </section>
   );
 }
@@ -160,7 +162,6 @@ function CustomerSales({ customerId, canSell }: { customerId: string; canSell: b
       ) : (
         <SaleList sales={sales} showCustomer={false} />
       )}
-      <p className="mt-4 text-sm text-muted">Samtaler og bekreftelser kommer her når de modulene er på plass.</p>
     </Card>
   );
 }

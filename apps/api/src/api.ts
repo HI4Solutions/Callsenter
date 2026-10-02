@@ -31,6 +31,7 @@ import {
 import { resolveSession, revokeSession } from "./auth/session.ts";
 import { isProvider, SESSION_COOKIE, type AuthDeps } from "./auth/types.ts";
 import { loadAuthConfig } from "./config.ts";
+import { loadCallServices } from "./calls/runtime.ts";
 import { isBlocked } from "./blocklist.ts";
 import { iamPool } from "./db.ts";
 import { clearCookie, corsHeaders, json, readCookie, redirect, requestMeta, sessionCookie, type Result } from "./http.ts";
@@ -57,6 +58,18 @@ export interface HandlerDeps {
 
 const AUTH_ROUTE = /^\/auth\/([a-z]+)\/(start|callback)$/;
 
+// Deleting expired calls and finishing abandoned recordings needs a regular run of the worker.
+// Without a scheduler in the stack, the API starts one at most every 15 minutes per container,
+// whenever someone uses the app.
+const HOUSEKEEPING_MS = 15 * 60_000;
+let lastHousekeeping = 0;
+function tidyUp(auth: AuthDeps) {
+  const now = Date.now();
+  if (!auth.calls || now - lastHousekeeping < HOUSEKEEPING_MS) return;
+  lastHousekeeping = now;
+  auth.calls.startWorker().catch((error) => console.error("housekeeping: could not start the worker", error));
+}
+
 async function health(check: DatabaseCheck): Promise<Result> {
   try {
     if (await check()) return json(200, { status: "ok" });
@@ -77,6 +90,7 @@ export function createHandler(deps: HandlerDeps) {
     if (!deps.auth) return json(404, { error: "Fant ikke ressursen" });
 
     const auth = await deps.auth();
+    tidyUp(auth);
     const cors = corsHeaders(event, auth.config.appOrigin);
     if (method === "OPTIONS") return { statusCode: 204, headers: cors };
     if (await isBlocked(auth.authDb, event.requestContext.http.sourceIp)) {
@@ -198,12 +212,13 @@ let authDeps: Promise<AuthDeps> | undefined;
 export const handler = createHandler({
   checkDatabase: poolCheck(() => (apiPool ??= iamPool("veriqall_api"))),
   auth: () => {
-    authDeps ??= loadAuthConfig().then((config) => ({
+    authDeps ??= Promise.all([loadAuthConfig(), loadCallServices()]).then(([config, calls]) => ({
       config,
       authDb: iamPool("veriqall_auth"),
       appDb: (apiPool ??= iamPool("veriqall_api")),
       fetch,
       now: () => new Date(),
+      calls,
     }));
     // Try again on the next request if loading the secret failed.
     authDeps.catch(() => (authDeps = undefined));

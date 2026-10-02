@@ -114,6 +114,7 @@ function Details({ org, onSaved }: { org: OrganizationDetail; onSaved: () => Pro
     note: org.note ?? "",
     status: org.status,
     trialEndsAt: org.trialEndsAt?.slice(0, 10) ?? "",
+    recordingRetentionMonths: String(org.recordingRetentionMonths ?? 12),
   });
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -127,7 +128,7 @@ function Details({ org, onSaved }: { org: OrganizationDetail; onSaved: () => Pro
     try {
       await adminFetch(`/organizations/${org.id}`, {
         method: "PATCH",
-        body: { ...form, trialEndsAt: form.trialEndsAt || null },
+        body: { ...form, trialEndsAt: form.trialEndsAt || null, recordingRetentionMonths: Number(form.recordingRetentionMonths) },
       });
       await onSaved();
       setMessage("Lagret.");
@@ -178,6 +179,18 @@ function Details({ org, onSaved }: { org: OrganizationDetail; onSaved: () => Pro
           </Field>
           <Field label="Prøveperiode til" hint="Etter denne datoen stenges callsenteret. Tom = ingen prøveperiode.">
             <input type="date" className={inputClass} value={form.trialEndsAt} onChange={set("trialEndsAt")} />
+          </Field>
+          <Field
+            label="Lagringstid for opptak"
+            hint="Opptak, transkripsjoner og AI-rapporter slettes automatisk etter dette. Gjelder nye samtaler."
+          >
+            <select className={inputClass} value={form.recordingRetentionMonths} onChange={set("recordingRetentionMonths")}>
+              {[3, 6, 9, 12].map((m) => (
+                <option key={m} value={m}>
+                  {m} måneder
+                </option>
+              ))}
+            </select>
           </Field>
         </div>
         <ErrorMessage message={error} />

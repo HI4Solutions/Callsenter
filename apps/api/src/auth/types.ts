@@ -1,4 +1,5 @@
 import type pg from "pg";
+import type { CallServices } from "../calls/services.ts";
 
 export type Provider = "vipps" | "bankid";
 export const PROVIDERS: readonly Provider[] = ["vipps", "bankid"];
@@ -39,6 +40,8 @@ export interface AuthDeps {
   appDb: pg.Pool;
   fetch: typeof fetch;
   now: () => Date;
+  // Recordings, transcription and the worker (phase 2). Absent where they are not set up.
+  calls?: CallServices;
 }
 
 // Codes the web app turns into Norwegian messages on the login page (?feil=...).

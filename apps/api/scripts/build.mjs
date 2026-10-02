@@ -12,6 +12,7 @@ await build({
   entryPoints: {
     api: path.join(root, "src/api.ts"),
     migrator: path.join(root, "src/migrator.ts"),
+    worker: path.join(root, "src/worker.ts"),
   },
   outdir: dist,
   outExtension: { ".js": ".mjs" },

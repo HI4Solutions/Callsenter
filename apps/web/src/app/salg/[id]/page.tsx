@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import { LinkedCalls } from "@/components/work/linked-calls";
 import { SaleStatusBadge } from "@/components/work/sale-status";
 import { useWorkMe } from "@/components/work/work-shell";
 import { formatDateTime } from "@/lib/format";
@@ -93,6 +94,7 @@ export default function SalePage() {
         </dl>
         {sale.note && <p className="mt-4 whitespace-pre-wrap [overflow-wrap:anywhere] rounded-lg bg-bg p-3">{sale.note}</p>}
       </Card>
+      <LinkedCalls query={`saleId=${sale.id}`} />
       <Card title="Historikk">
         <ol className="flex flex-col gap-4">
           {[...sale.events].reverse().map((e) => (

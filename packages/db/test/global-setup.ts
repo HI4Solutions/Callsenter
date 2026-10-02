@@ -11,6 +11,7 @@ const ADMIN_URL =
 const OWNER = "veriqall_test_owner";
 const API = "veriqall_test_api";
 const AUTH = "veriqall_test_auth";
+const WORKER = "veriqall_test_worker";
 const PASSWORD = "test-only";
 
 declare module "vitest" {
@@ -18,6 +19,7 @@ declare module "vitest" {
     ownerUrl: string;
     apiUrl: string;
     authUrl: string;
+    workerUrl: string;
   }
 }
 
@@ -43,7 +45,7 @@ export default async function setup(project: TestProject) {
   const database = `veriqall_test_${process.pid}`;
 
   await admin(async (client) => {
-    for (const [role, extra] of [[OWNER, "createrole"], [API, ""], [AUTH, ""]] as const) {
+    for (const [role, extra] of [[OWNER, "createrole"], [API, ""], [AUTH, ""], [WORKER, ""]] as const) {
       const exists = await client.query("select 1 from pg_roles where rolname = $1", [role]);
       const verb = exists.rowCount ? "alter" : "create";
       await client.query(`${verb} role ${role} login nosuperuser ${extra} password '${PASSWORD}'`);
@@ -64,11 +66,13 @@ export default async function setup(project: TestProject) {
   await admin(async (client) => {
     await client.query(`grant app_user to ${API}`);
     await client.query(`grant app_auth to ${AUTH}`);
+    await client.query(`grant app_worker to ${WORKER}`);
   });
 
   project.provide("ownerUrl", urlFor(OWNER, database));
   project.provide("apiUrl", urlFor(API, database));
   project.provide("authUrl", urlFor(AUTH, database));
+  project.provide("workerUrl", urlFor(WORKER, database));
 
   return async () => {
     await admin((client) => client.query(`drop database if exists ${database} with (force)`));

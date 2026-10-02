@@ -34,6 +34,13 @@ Parameters:
   LogRetentionDays:
     Type: Number
     Default: 365
+  BedrockRegion:
+    Type: String
+    Default: eu-north-1
+    Description: >-
+      Region the worker calls Bedrock in. The model is chosen by superadmins (System) among EU
+      inference profiles (eu.anthropic.*), which keep processing within EU regions. Empty turns
+      AI control and reports off.
 
 Conditions:
   HasCustomDomain: !And
@@ -152,6 +159,26 @@ Resources:
               - Effect: Allow
                 Action: kms:Decrypt
                 Resource: !ImportValue {"Fn::Sub": "veriqall-${Environment}-key"}
+        # Presigned URLs for uploading chunks and playing recordings, and starting the worker.
+        - PolicyName: calls
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: !Sub
+                  - arn:${AWS::Partition}:s3:::${Bucket}/*
+                  - Bucket: !ImportValue {"Fn::Sub": "veriqall-${Environment}-audio-bucket"}
+              - Effect: Allow
+                Action:
+                  - kms:GenerateDataKey
+                  - kms:Decrypt
+                Resource: !ImportValue {"Fn::Sub": "veriqall-${Environment}-key"}
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:veriqall-${Environment}-worker
 
   ApiLogGroup:
     Type: AWS::Logs::LogGroup
@@ -194,11 +221,119 @@ Resources:
           VIPPS_HOST: !Ref VippsHost
           IDURA_DOMAIN: !Ref IduraDomain
           APP_SECRET_ARN: !ImportValue {"Fn::Sub": "veriqall-${Environment}-app-secret"}
+          AUDIO_BUCKET: !ImportValue {"Fn::Sub": "veriqall-${Environment}-audio-bucket"}
+          WORKER_FUNCTION: !Sub veriqall-${Environment}-worker
       Tags:
         - Key: project
           Value: veriqall
         - Key: environment
           Value: !Ref Environment
+
+  # --- Worker -------------------------------------------------------------------------------
+  # Transcribes and analyses calls (src/worker.ts), started by the API for each finished recording.
+
+  WorkerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /veriqall/
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: worker
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: rds-db:connect
+                Resource: !Sub
+                  - arn:${AWS::Partition}:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${ResourceId}/veriqall_worker
+                  - ResourceId: !ImportValue {"Fn::Sub": "veriqall-${Environment}-db-resource-id"}
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !ImportValue {"Fn::Sub": "veriqall-${Environment}-app-secret"}
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource: !ImportValue {"Fn::Sub": "veriqall-${Environment}-key"}
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub
+                  - arn:${AWS::Partition}:s3:::${Bucket}/*
+                  - Bucket: !ImportValue {"Fn::Sub": "veriqall-${Environment}-audio-bucket"}
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub
+                  - arn:${AWS::Partition}:s3:::${Bucket}
+                  - Bucket: !ImportValue {"Fn::Sub": "veriqall-${Environment}-audio-bucket"}
+              # Claude through EU inference profiles: the profile in this region, and the models in
+              # the EU regions it routes to.
+              - Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource:
+                  - !Sub arn:${AWS::Partition}:bedrock:${BedrockRegion}:${AWS::AccountId}:inference-profile/eu.anthropic.*
+                  - !Sub arn:${AWS::Partition}:bedrock:*::foundation-model/anthropic.*
+
+  WorkerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/veriqall-${Environment}-worker
+      RetentionInDays: !Ref LogRetentionDays
+      KmsKeyId: !ImportValue {"Fn::Sub": "veriqall-${Environment}-key"}
+
+  WorkerFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: WorkerLogGroup
+    Properties:
+      FunctionName: !Sub veriqall-${Environment}-worker
+      Description: Transcribes calls with Soniox and checks them with Claude
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      Handler: worker.handler
+      Code:
+        S3Bucket: !Ref ArtifactsBucket
+        S3Key: !Ref ArtifactKey
+      Role: !GetAtt WorkerRole.Arn
+      MemorySize: 1024
+      Timeout: 900
+      VpcConfig:
+        SubnetIds: !Split [",", !ImportValue {"Fn::Sub": "veriqall-${Environment}-private-subnets"}]
+        SecurityGroupIds:
+          - !ImportValue {"Fn::Sub": "veriqall-${Environment}-lambda-sg"}
+      Environment:
+        Variables:
+          DB_HOST: !ImportValue {"Fn::Sub": "veriqall-${Environment}-db-endpoint"}
+          DB_PORT: !ImportValue {"Fn::Sub": "veriqall-${Environment}-db-port"}
+          DB_NAME: veriqall
+          NODE_EXTRA_CA_CERTS: /var/runtime/ca-cert.pem
+          APP_SECRET_ARN: !ImportValue {"Fn::Sub": "veriqall-${Environment}-app-secret"}
+          AUDIO_BUCKET: !ImportValue {"Fn::Sub": "veriqall-${Environment}-audio-bucket"}
+          BEDROCK_REGION: !Ref BedrockRegion
+      Tags:
+        - Key: project
+          Value: veriqall
+        - Key: environment
+          Value: !Ref Environment
+
+  # One attempt per start: a failed call is shown as failed and retried by the user, and the
+  # worker's own lease keeps duplicate runs away.
+  WorkerInvokeConfig:
+    Type: AWS::Lambda::EventInvokeConfig
+    Properties:
+      FunctionName: !Ref WorkerFunction
+      Qualifier: $LATEST
+      MaximumRetryAttempts: 0
+      MaximumEventAgeInSeconds: 3600
 
   HttpApi:
     Type: AWS::ApiGatewayV2::Api
@@ -291,3 +426,5 @@ Outputs:
     Value: !GetAtt ApiDomain.RegionalDomainName
   MigratorFunctionName:
     Value: !Ref MigratorFunction
+  WorkerFunctionName:
+    Value: !Ref WorkerFunction

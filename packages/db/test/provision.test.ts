@@ -23,6 +23,7 @@ describe("provision", () => {
       expect(first.iamAuthentication).toBe(false);
       expect(await memberOf("veriqall_api")).toEqual(["app_user"]);
       expect(await memberOf("veriqall_auth")).toEqual(["app_auth"]);
+      expect(await memberOf("veriqall_worker")).toEqual(["app_worker"]);
     } finally {
       client.release();
     }

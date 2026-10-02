@@ -14,8 +14,8 @@ const TABS: Omit<Tab, "active">[] = [
   { label: "Meldinger", icon: "message", href: "/admin/meldinger" },
   { label: "Vekst", icon: "growth", href: "/admin/vekst" },
   { label: "Roller og moduler", icon: "roles", href: "/admin/roller" },
-  { label: "Økonomi", icon: "wallet", later: "Kommer senere" },
-  { label: "System", icon: "settings", later: "Kommer senere" },
+  { label: "Økonomi", icon: "wallet", href: "/admin/okonomi" },
+  { label: "System", icon: "settings", href: "/admin/system" },
   { label: "Sikkerhet", icon: "shield", href: "/admin/sikkerhet" },
 ];
 

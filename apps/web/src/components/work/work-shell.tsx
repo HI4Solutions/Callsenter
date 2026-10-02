@@ -5,12 +5,14 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { type Tab, TabNav } from "@/components/tab-nav";
 import { API_URL, fetchMe, loginPathFor, type Me } from "@/lib/auth";
 import { usePageTitle } from "@/lib/use-page-title";
+import { canSeeCalls } from "@/lib/calls";
 import { canSeeSales } from "@/lib/work";
 
 // The daily work in a call centre (docs/plan.md, section 12).
-const TABS: (Omit<Tab, "active" | "href"> & { href: string; show?: (permissions: string[]) => boolean })[] = [
-  { label: "Salg", icon: "receipt", href: "/salg", show: canSeeSales },
-  { label: "Kunder", icon: "contacts", href: "/kunder", show: (p) => p.includes("customers.read") },
+const TABS: (Omit<Tab, "active" | "href"> & { href: string; show?: (me: Me) => boolean })[] = [
+  { label: "Samtaler", icon: "phone", href: "/samtaler", show: canSeeCalls },
+  { label: "Salg", icon: "receipt", href: "/salg", show: (me) => canSeeSales(me.permissions) },
+  { label: "Kunder", icon: "contacts", href: "/kunder", show: (me) => me.permissions.includes("customers.read") },
   { label: "Produkter", icon: "box", href: "/produkter" },
 ];
 
@@ -66,7 +68,7 @@ export function WorkShell({ children }: { children: React.ReactNode }) {
       <TabNav
         label="Callsenter"
         labelsFrom="sm"
-        tabs={TABS.filter((tab) => !tab.show || tab.show(access.me.permissions)).map((tab) => ({
+        tabs={TABS.filter((tab) => !tab.show || tab.show(access.me)).map((tab) => ({
           ...tab,
           active: pathname.startsWith(tab.href),
         }))}
