@@ -8,6 +8,7 @@ export interface CallServices {
   // Null when no Soniox key is configured: then only chunked mode works, and the worker reports
   // that transcription is not set up.
   soniox: Soniox | null;
-  // Starts the worker for a call, or without one for housekeeping only (asynchronously).
-  startWorker(callId?: string): Promise<void>;
+  // Starts the worker for a call, a note asked for in the studio, or without either for
+  // housekeeping only (asynchronously).
+  startWorker(callId?: string, reportId?: string): Promise<void>;
 }

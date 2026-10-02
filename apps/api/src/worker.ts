@@ -1,11 +1,12 @@
 // Worker Lambda (docs/plan.md, section 13). Started by the API when a recording is done
 // ({callId}), it transcribes and analyses that call, then tidies up: deletes calls past their
-// retention, finishes abandoned recordings and frees calls a crashed run left behind. Every
+// retention, finishes abandoned recordings and frees calls a crashed run left behind. With
+// {reportId} it writes a note asked for in the studio (docs/plan.md, section 18). Every
 // morning ({task: "daily"}, EventBridge) it also runs invoicing (docs/plan.md, section 16).
 import type pg from "pg";
 import { deliverInvoice } from "./admin/billing.ts";
 import { updateUsdNok } from "./exchange.ts";
-import { type WorkerDeps, housekeeping, processCall } from "./calls/process.ts";
+import { type WorkerDeps, housekeeping, pendingReports, processCall, processReport } from "./calls/process.ts";
 import { loadAi, loadSoniox } from "./calls/runtime.ts";
 import { s3Store } from "./calls/store.ts";
 import { iamPool } from "./db.ts";
@@ -50,7 +51,7 @@ export async function billingDaily(db: pg.Pool) {
   return { sent: sent.length, emailed };
 }
 
-export async function handler(event: { callId?: unknown; task?: unknown }, context?: { getRemainingTimeInMillis(): number }) {
+export async function handler(event: { callId?: unknown; reportId?: unknown; task?: unknown }, context?: { getRemainingTimeInMillis(): number }) {
   deps ??= load();
   deps.catch(() => (deps = undefined));
   const d = await deps;
@@ -68,6 +69,12 @@ export async function handler(event: { callId?: unknown; task?: unknown }, conte
     );
   }
   if (typeof event.callId === "string" && /^[0-9a-f-]{36}$/.test(event.callId)) await processCall(d, event.callId);
+  // A note asked for in the studio.
+  if (typeof event.reportId === "string" && /^[0-9a-f-]{36}$/.test(event.reportId)) await processReport(d, event.reportId);
+  for (const id of await pendingReports(d.db)) {
+    if (remaining() < 3 * 60_000) break;
+    await processReport(d, id);
+  }
   const more = await housekeeping(d, () => remaining() > 60_000);
   for (const id of more) {
     if (remaining() < PER_CALL_MS) break;

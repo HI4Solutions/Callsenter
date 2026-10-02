@@ -48,7 +48,7 @@ export interface SaleDocumentation {
       reviewedByName: string | null;
       reviewNote: string | null;
     } | null;
-    report: { templateName: string; content: string } | null;
+    report: { templateName: string; content: string; aiContent: string | null; editedAt: string | null; editedByName: string | null } | null;
   }[];
   events: { fromStatus: SaleStatus | null; toStatus: SaleStatus; note: string | null; actorName: string | null; createdAt: string }[];
   generatedAt: string;

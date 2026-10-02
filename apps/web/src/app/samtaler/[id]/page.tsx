@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import { AdditionalInfo } from "@/components/calls/additional-info";
+import { NotesPanel } from "@/components/calls/notes-panel";
+import { TranscriptPanel } from "@/components/calls/transcript-panel";
+import { useCall } from "@/components/calls/use-call";
 import { Flag } from "@/components/flag";
 import { Coaching } from "@/components/work/coaching";
 import { CustomerPicker } from "@/components/work/customer-picker";
@@ -19,48 +23,9 @@ export default function CallPage() {
   const { id } = useParams<{ id: string }>();
   const me = useWorkMe();
   const permissions = me?.permissions ?? [];
-  const [call, setCall] = useState<CallDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { call, error, setError, load, waiting } = useCall(id);
   const [audio, setAudio] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const player = useRef<HTMLAudioElement>(null);
-
-  const load = useCallback(
-    () =>
-      orgFetch<CallDetail>(`/calls/${id}`)
-        .then(setCall)
-        .catch((e: Error) => setError(e.message)),
-    [id],
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    const fetchOnce = () =>
-      orgFetch<CallDetail>(`/calls/${id}`)
-        .then((c) => !cancelled && setCall(c))
-        .catch((e: Error) => !cancelled && setError(e.message));
-    void fetchOnce();
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
-
-  // While the worker transcribes and checks the call, check its status every few seconds (a
-  // status check is not logged as a view) and load it again when something has changed.
-  // "working" is true while the worker holds the call, so this stops when nothing more will come.
-  const waiting = call ? call.status === "processing" || call.working : false;
-  useEffect(() => {
-    if (!waiting || !call) return;
-    const seen = `${call.status}/${call.analyses.length}/${call.reports.length}`;
-    const timer = setInterval(() => {
-      orgFetch<{ status: string; working: boolean; analyses: number; reports: number }>(`/calls/${id}?status=1`)
-        .then((s) => {
-          if (`${s.status}/${s.analyses}/${s.reports}` !== seen || !s.working) void load();
-        })
-        .catch(() => undefined);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [waiting, call, id, load]);
 
   // Where to start when the player has loaded (a click on a timestamp before playback).
   const pendingSeek = useRef<number | null>(null);
@@ -93,8 +58,6 @@ export default function CallPage() {
   if (!call) return error ? <ErrorMessage message={error} /> : <p className="text-muted">Laster …</p>;
   const analysis = call.analyses[0];
   const canPlay = permissions.includes("calls.audio.play") && call.hasAudio;
-  const q = search.trim().toLowerCase();
-  const segments = q ? call.segments.filter((s) => s.text.toLowerCase().includes(q)) : call.segments;
 
   return (
     <section className="flex flex-col gap-8">
@@ -131,7 +94,10 @@ export default function CallPage() {
         </Card>
       )}
       {waiting && call.status !== "recording" && (
-        <p role="status">{call.status === "processing" ? "Samtalen transkriberes" : "AI sjekker samtalen"}. Siden oppdateres av seg selv.</p>
+        <p role="status">
+          {call.status === "processing" ? "Samtalen transkriberes" : call.working ? "AI sjekker samtalen" : "Notatet skrives"}. Siden oppdateres av seg
+          selv.
+        </p>
       )}
       {call.status === "failed" && (
         <Card title="Behandlingen feilet">
@@ -174,43 +140,19 @@ export default function CallPage() {
 
       {analysis && <Analysis call={call} analysis={analysis} onSeek={canPlay ? play : undefined} onChanged={load} />}
 
-      {call.segments.length > 0 && (
-        <Card title="Transkripsjon">
-          <Field label="Søk i samtalen">
-            <input type="search" className={`${inputClass} sm:max-w-sm`} value={search} onChange={(e) => setSearch(e.target.value)} />
-          </Field>
-          <ol className="mt-4 flex flex-col gap-3">
-            {segments.map((s) => (
-              <li key={s.seq} className="flex gap-3">
-                {canPlay ? (
-                  <button
-                    type="button"
-                    className="min-h-11 shrink-0 self-start rounded-lg px-2 font-mono text-sm text-brand tabular-nums hover:bg-bg"
-                    onClick={() => play(s.startMs)}
-                    title="Spill av herfra"
-                  >
-                    {formatDuration(s.startMs)}
-                  </button>
-                ) : (
-                  <span className="shrink-0 px-2 pt-1 font-mono text-sm text-muted tabular-nums">{formatDuration(s.startMs)}</span>
-                )}
-                <p className="min-w-0 pt-1 [overflow-wrap:anywhere]">
-                  {s.speaker && <span className="mr-2 text-sm font-semibold text-muted">Taler {s.speaker}</span>}
-                  {s.text}
-                </p>
-              </li>
-            ))}
-            {segments.length === 0 && <li className="text-muted">Ingen treff.</li>}
-          </ol>
-        </Card>
-      )}
+      {call.segments.length > 0 && <TranscriptPanel segments={call.segments} onSeek={canPlay ? play : undefined} />}
 
-      {call.reports.map((r) => (
-        <Card key={r.id} title={`Rapport: ${r.templateName}`}>
-          <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{r.content}</p>
-          <p className="mt-4 text-sm text-muted">Laget av AI {formatDateTime(r.createdAt)}. Kontroller mot opptaket ved tvil.</p>
-        </Card>
-      ))}
+      <NotesPanel call={call} onChanged={load} />
+
+      <AdditionalInfo
+        key={call.id}
+        value={call.note ?? ""}
+        canEdit={call.isOwn && permissions.includes("calls.upload")}
+        onSave={async (text) => {
+          await orgFetch(`/calls/${call.id}`, { method: "PATCH", body: { note: text.trim() || null } });
+          await load();
+        }}
+      />
 
       {me?.modules?.includes("dashboard") && (
         <Coaching sellerId={call.userId} sellerName={call.userName} callId={call.id} title="Tilbakemelding på samtalen" />

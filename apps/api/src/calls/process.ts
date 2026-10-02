@@ -30,6 +30,8 @@ interface CallRow {
   product_id: string | null;
   customer_id: string | null;
   title: string | null;
+  // The seller's additional information (Tilleggsinformasjon), used for the note only.
+  note: string | null;
   attempts: number;
   soniox_file_id: string | null;
   soniox_transcription_id: string | null;
@@ -94,7 +96,7 @@ export async function processCall(deps: WorkerDeps, callId: string): Promise<voi
             or (c.status = 'analyzed' and c.template_version_id is not null
                 and not exists (select 1 from call_analyses a where a.call_id = c.id)))
      returning id, organization_id, status, transcription_mode, audio_key, audio_mime, duration_ms,
-               template_version_id, product_id, customer_id, title, attempts, soniox_file_id, soniox_transcription_id`,
+               template_version_id, product_id, customer_id, title, note, attempts, soniox_file_id, soniox_transcription_id`,
     [callId],
   );
   const call = claimed.rows[0];
@@ -344,15 +346,45 @@ export function worstLevel(findings: Pick<Finding, "level">[]): "green" | "yello
 
 // The built-in report when the call centre has not made its own default template.
 export const DEFAULT_REPORT = {
-  name: "Standardrapport",
-  instructions: `Skriv en kort rapport om samtalen for callsenterets ledere og compliance:
+  name: "Standardnotat",
+  instructions: `Skriv et kort notat om samtalen for callsenterets ledere og compliance:
 1. Sammendrag (2–4 setninger): hvem ringte, hva ble tilbudt, og hva endte samtalen med.
 2. Tilbud og vilkår: pris, bindingstid og angrerett slik selgeren la dem fram.
 3. Kundens svar: aksepterte kunden, og hvordan.
 4. Oppfølging: konkrete ting som må følges opp.`,
 };
 
-const REPORT_SYSTEM = `You write reports about recorded telephone sales calls for a Norwegian call centre. Follow the call centre's report instructions. Base everything on the transcript only and say so when something is unclear; never invent facts. Write in Norwegian bokmål, as plain text with short headings, without Markdown tables.`;
+const REPORT_SYSTEM = `You write notes about recorded telephone sales calls for a Norwegian call centre. Follow the call centre's note instructions. Base everything on the transcript and say so when something is unclear; never invent facts. The seller may add information that was not said in the call (additional_information): use it as context, but never present it as something said in the call, and mark it as the seller's information where you use it. Write in Norwegian bokmål, as plain text with short headings, without Markdown tables.`;
+
+// The note's prompt: the template's instructions, the product template, the transcript and the
+// seller's additional information. The AI control never sees the additional information.
+function notePrompt(instructions: string, templateText: string, transcript: string, note: string | null): string {
+  return [
+    `<report_instructions>\n${instructions}\n</report_instructions>`,
+    templateText && `<template>\n${templateText}\n</template>`,
+    `<transcript>\n${transcript}\n</transcript>`,
+    note?.trim() && `<additional_information>\n${note.trim()}\n</additional_information>`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+async function chosenModel(db: pg.Pool): Promise<string> {
+  // The model chosen by superadmins under System.
+  const chosen = (await db.query<{ value: unknown }>("select value from platform_settings where key = 'ai_model'")).rows[0]?.value;
+  return AI_MODELS[isAiModelKey(chosen) ? chosen : DEFAULT_AI_MODEL].bedrockId;
+}
+
+async function templateText(db: pg.Pool, versionId: string | null): Promise<string> {
+  if (!versionId) return "";
+  const { rows } = await db.query<Template>(
+    `select tv.version, p.name as product, tv.price_once::text, tv.price_monthly::text, tv.binding_months, tv.notice_months,
+            tv.withdrawal_days, tv.terms, tv.required_points, tv.approved_phrases, tv.forbidden_phrases
+     from product_template_versions tv join products p on p.id = tv.product_id where tv.id = $1`,
+    [versionId],
+  );
+  return rows[0] ? describeTemplate(rows[0]) : "";
+}
 
 async function analyse(deps: WorkerDeps, call: CallRow, enabled: Set<string>) {
   const ai = deps.ai;
@@ -363,26 +395,14 @@ async function analyse(deps: WorkerDeps, call: CallRow, enabled: Set<string>) {
   if (!control && !report) return;
   const transcript = await transcriptForAi(deps.db, call.id);
   if (!transcript.trim()) return;
-  // The model chosen by superadmins under System.
-  const chosen = (await deps.db.query<{ value: unknown }>("select value from platform_settings where key = 'ai_model'")).rows[0]?.value;
-  const model = AI_MODELS[isAiModelKey(chosen) ? chosen : DEFAULT_AI_MODEL].bedrockId;
+  const model = await chosenModel(deps.db);
+  const template = await templateText(deps.db, call.template_version_id);
 
-  let templateText = "";
-  if (call.template_version_id) {
-    const { rows } = await deps.db.query<Template>(
-      `select tv.version, p.name as product, tv.price_once::text, tv.price_monthly::text, tv.binding_months, tv.notice_months,
-              tv.withdrawal_days, tv.terms, tv.required_points, tv.approved_phrases, tv.forbidden_phrases
-       from product_template_versions tv join products p on p.id = tv.product_id where tv.id = $1`,
-      [call.template_version_id],
-    );
-    if (rows[0]) templateText = describeTemplate(rows[0]);
-  }
-
-  if (control && ai && templateText) {
+  if (control && ai && template) {
     const result = await ai.structured<{ summary: string; findings: Finding[] }>(
       model,
       CONTROL_SYSTEM,
-      `<template>\n${templateText}\n</template>\n\n<transcript>\n${transcript}\n</transcript>`,
+      `<template>\n${template}\n</template>\n\n<transcript>\n${transcript}\n</transcript>`,
       FINDINGS_SCHEMA,
     );
     const findings = result.data.findings.map((f) => ({ ...f, startMs: f.startMs >= 0 ? f.startMs : null, quote: f.quote || null }));
@@ -405,21 +425,15 @@ async function analyse(deps: WorkerDeps, call: CallRow, enabled: Set<string>) {
   }
 
   if (report && ai) {
-    const template = (
+    const noteTemplate = (
       await deps.db.query<{ id: string; name: string; instructions: string }>(
         `select id, name, instructions from report_templates
          where organization_id = $1 and is_default and archived_at is null`,
         [call.organization_id],
       )
     ).rows[0];
-    const chosen = template ?? { id: null, ...DEFAULT_REPORT };
-    const result = await ai.text(
-      model,
-      REPORT_SYSTEM,
-      `<report_instructions>\n${chosen.instructions}\n</report_instructions>\n\n${
-        templateText ? `<template>\n${templateText}\n</template>\n\n` : ""
-      }<transcript>\n${transcript}\n</transcript>`,
-    );
+    const chosen = noteTemplate ?? { id: null, ...DEFAULT_REPORT };
+    const result = await ai.text(model, REPORT_SYSTEM, notePrompt(chosen.instructions, template, transcript, call.note));
     await deps.db.query(
       `insert into reports (organization_id, call_id, template_id, template_name, content, model, input_tokens, output_tokens)
        values ($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -430,7 +444,81 @@ async function analyse(deps: WorkerDeps, call: CallRow, enabled: Set<string>) {
   await deps.db.query("update calls set status = 'analyzed', error = null where id = $1", [call.id]);
 }
 
-async function usage(db: pg.Pool, call: CallRow, kind: string, r: { model: string; inputTokens: number; outputTokens: number }) {
+// --- Notes made on request (Samtalestudio) -----------------------------------------------------
+
+const NOTE_FAILED = {
+  disabled: "Rapporter er ikke slått på for callsenteret.",
+  notConfigured: "AI er ikke satt opp ennå.",
+  failed: "Notatet kunne ikke lages. Prøv igjen.",
+} as const;
+
+// Writes a note asked for in the studio ("Regenerer"): the same transcript with another note
+// template. Safe to call twice: the lease keeps a second run away.
+export async function processReport(deps: WorkerDeps, reportId: string): Promise<void> {
+  const claimed = await deps.db.query<{
+    id: string;
+    organization_id: string;
+    call_id: string;
+    template_id: string | null;
+    template_name: string;
+    attempts: number;
+  }>(
+    `update reports set lease_until = now() + interval '10 minutes', attempts = attempts + 1
+     where id = $1 and status = 'pending' and (lease_until is null or lease_until < now())
+     returning id, organization_id, call_id, template_id, template_name, attempts`,
+    [reportId],
+  );
+  const report = claimed.rows[0];
+  if (!report) return;
+  const failed = (message: string) =>
+    deps.db.query("update reports set status = 'failed', error = $2, lease_until = null where id = $1", [report.id, message]);
+  if (report.attempts > 3) return void (await failed(NOTE_FAILED.failed));
+  try {
+    if (!(await modules(deps.db, report.organization_id)).has("reports")) return void (await failed(NOTE_FAILED.disabled));
+    if (!deps.ai) return void (await failed(NOTE_FAILED.notConfigured));
+    const call = (
+      await deps.db.query<{ template_version_id: string | null; note: string | null; product_id: string | null }>(
+        "select template_version_id, note, product_id from calls where id = $1",
+        [report.call_id],
+      )
+    ).rows[0];
+    const transcript = await transcriptForAi(deps.db, report.call_id);
+    if (!call || !transcript.trim()) return void (await failed(NOTE_FAILED.failed));
+    // The template as it was asked for; the built-in one when none was chosen or it is gone.
+    const noteTemplate = report.template_id
+      ? (await deps.db.query<{ instructions: string }>("select instructions from report_templates where id = $1", [report.template_id])).rows[0]
+      : undefined;
+    const instructions = noteTemplate?.instructions ?? DEFAULT_REPORT.instructions;
+    const result = await deps.ai.text(
+      await chosenModel(deps.db),
+      REPORT_SYSTEM,
+      notePrompt(instructions, await templateText(deps.db, call.template_version_id), transcript, call.note),
+    );
+    await deps.db.query(
+      `update reports set content = $2, model = $3, input_tokens = $4, output_tokens = $5, status = 'done', error = null, lease_until = null
+       where id = $1`,
+      [report.id, result.data.trim(), result.model, result.inputTokens, result.outputTokens],
+    );
+    await usage(deps.db, { id: report.call_id, organization_id: report.organization_id }, "report", result);
+  } catch (error) {
+    console.error("worker: note failed", report.id, error);
+    // Tried again by housekeeping until the attempts run out.
+    await deps.db.query("update reports set lease_until = null where id = $1", [report.id]);
+    if (report.attempts >= 3) await failed(NOTE_FAILED.failed);
+  }
+}
+
+// Notes asked for whose worker never started, or whose run died.
+export async function pendingReports(db: pg.Pool): Promise<string[]> {
+  const { rows } = await db.query<{ id: string }>(
+    `select id from reports
+     where status = 'pending' and coalesce(lease_until, created_at + interval '2 minutes') < now()
+     order by created_at limit 20`,
+  );
+  return rows.map((r) => r.id);
+}
+
+async function usage(db: pg.Pool, call: Pick<CallRow, "id" | "organization_id">, kind: string, r: { model: string; inputTokens: number; outputTokens: number }) {
   await db.query(
     "insert into usage_events (organization_id, call_id, kind, input_tokens, output_tokens, model) values ($1, $2, $3, $4, $5, $6)",
     [call.organization_id, call.id, kind, r.inputTokens, r.outputTokens, r.model],

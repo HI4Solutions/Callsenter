@@ -19,6 +19,11 @@ import {
   completeCall,
   createCall,
   createReportTemplate,
+  editNote,
+  getStudio,
+  noteHistory,
+  requestNote,
+  setStudio,
   getCall,
   listCalls,
   listReportTemplates,
@@ -78,6 +83,8 @@ const SALE_CONFIRMATION_REVOKE = /^\/org\/sales\/([^/]+)\/confirmations\/([^/]+)
 const CALL = /^\/org\/calls\/([^/]+)$/;
 const CALL_ACTION = /^\/org\/calls\/([^/]+)\/(chunks|complete|retry|realtime-key|audio)$/;
 const CALL_ANALYSIS = /^\/org\/calls\/([^/]+)\/analyses\/([^/]+)$/;
+const CALL_NOTES = /^\/org\/calls\/([^/]+)\/notes$/;
+const CALL_NOTE = /^\/org\/calls\/([^/]+)\/notes\/([^/]+)(\/history)?$/;
 const REPORT_TEMPLATE = /^\/org\/report-templates\/([^/]+)$/;
 const PRODUCT = /^\/org\/products\/([^/]+)$/;
 const PRODUCT_DRAFT = /^\/org\/products\/([^/]+)\/draft$/;
@@ -256,6 +263,11 @@ export async function handleOrg(
       }
       return reply(404, { error: "Fant ikke ressursen." });
     }
+    if (path === "/org/studio") {
+      if (method === "GET") return reply(200, await getStudio(deps.appDb, session));
+      if (method === "PUT") return reply(200, await setStudio(deps.appDb, session, body()));
+      return reply(404, { error: "Fant ikke ressursen." });
+    }
     if (path === "/org/calls" || path.startsWith("/org/calls/")) {
       const services = deps.calls;
       if (!services) return reply(503, { error: "Opptak er ikke satt opp ennå." });
@@ -281,6 +293,16 @@ export async function handleOrg(
           if (name === "retry") return reply(200, await retryCall(deps.appDb, session, services, id));
           if (name === "realtime-key") return reply(200, await renewRealtimeKey(deps.appDb, session, services, id));
         }
+      }
+      const notes = CALL_NOTES.exec(path);
+      if (notes && isUuid(notes[1]) && method === "POST") {
+        await requireModule(deps.appDb, session, "reports");
+        return reply(201, await requestNote(deps.appDb, session, services, notes[1], body()));
+      }
+      const note = CALL_NOTE.exec(path);
+      if (note && isUuid(note[1]) && isUuid(note[2])) {
+        if (method === "GET" && note[3]) return reply(200, await noteHistory(deps.appDb, session, note[1], note[2], meta));
+        if (method === "PATCH" && !note[3]) return reply(200, await editNote(deps.appDb, session, note[1], note[2], body()));
       }
       const review = CALL_ANALYSIS.exec(path);
       if (review && isUuid(review[1]) && isUuid(review[2]) && method === "PATCH") {

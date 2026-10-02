@@ -63,12 +63,12 @@ export default function CallsPage() {
         <div className="flex flex-wrap gap-2">
           {permissions.includes("report_templates.manage") && (
             <Link href="/samtaler/rapportmaler" className={secondaryButton}>
-              Rapportmaler
+              Notatmaler
             </Link>
           )}
           {canRecord && (
             <Link href="/samtaler/opptak" className={primaryButton}>
-              Nytt opptak
+              Samtalestudio
             </Link>
           )}
         </div>

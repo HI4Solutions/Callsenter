@@ -41,7 +41,7 @@ export default function ReportTemplatesPage() {
   }, []);
 
   if (!me) return null;
-  if (!me.permissions.includes("report_templates.manage")) return <NoAccess text="Du har ikke tilgang til rapportmaler." />;
+  if (!me.permissions.includes("report_templates.manage")) return <NoAccess text="Du har ikke tilgang til notatmaler." />;
   const active = templates?.filter((t) => !t.archivedAt) ?? [];
   const archived = templates?.filter((t) => t.archivedAt) ?? [];
 
@@ -52,9 +52,9 @@ export default function ReportTemplatesPage() {
           <Link href="/samtaler" className="text-sm font-semibold text-brand">
             ← Alle samtaler
           </Link>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Rapportmaler</h1>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Notatmaler</h1>
           <p className="mt-2 text-muted">
-            AI skriver en rapport etter hver samtale etter standardmalen. Uten egen standardmal brukes VeriQalls standardrapport.
+            AI skriver et notat etter hver samtale etter standardmalen. Uten egen standardmal brukes VeriQalls standardnotat. I Samtalestudio kan selgeren lage flere notater fra samme samtale med andre maler.
           </p>
         </div>
         {!creating && (
@@ -159,7 +159,7 @@ function TemplateForm({
         <Field label="Navn">
           <input required maxLength={200} className={`${inputClass} sm:max-w-md`} value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="Instruksjoner til AI" hint="Hva rapporten skal inneholde, i hvilken rekkefølge og hvor lang den skal være.">
+        <Field label="Instruksjoner til AI" hint="Hva notatet skal inneholde, i hvilken rekkefølge og hvor lang den skal være.">
           <textarea
             required
             rows={8}

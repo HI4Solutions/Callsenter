@@ -63,8 +63,15 @@ export async function saleDocumentation(
        where a.call_id = $1 order by a.created_at desc limit 1`,
       [call.id],
     );
+    // The latest finished note; when the seller adjusted it, the AI text is shown beside it.
     const report = await c.query(
-      `select template_name as "templateName", content from reports where call_id = $1 order by created_at desc limit 1`,
+      `select r.template_name as "templateName", coalesce(e.content, r.content) as content,
+              case when e.content is not null then r.content end as "aiContent",
+              e.created_at as "editedAt", u.full_name as "editedByName"
+       from reports r
+       left join lateral (select content, created_at, edited_by from report_edits where report_id = r.id order by created_at desc limit 1) e on true
+       left join users u on u.id = e.edited_by
+       where r.call_id = $1 and r.status = 'done' order by r.created_at desc limit 1`,
       [call.id],
     );
     callDetails.push({ ...call, segments: segments.rows, analysis: analysis.rows[0] ?? null, report: report.rows[0] ?? null });

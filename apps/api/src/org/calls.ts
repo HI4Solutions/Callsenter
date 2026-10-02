@@ -10,7 +10,7 @@ import { BadRequest, type Body, isUuid, optionalText, requiredText } from "../ad
 import type { Session } from "../auth/session.ts";
 import type { CallServices } from "../calls/services.ts";
 import { SONIOX_REALTIME_MODEL, SONIOX_REALTIME_URL } from "../calls/soniox.ts";
-import { extension } from "../calls/process.ts";
+import { DEFAULT_REPORT, extension } from "../calls/process.ts";
 import { chunkKey } from "../calls/store.ts";
 import { withSession } from "../me.ts";
 
@@ -292,7 +292,8 @@ export async function callStatus(db: pg.Pool, session: Session, callId: string) 
     const { rows } = await c.query(
       `select c.id, c.status, c.error, coalesce(c.lease_until > now(), false) as working,
               (select count(*) from call_analyses a where a.call_id = c.id)::int as analyses,
-              (select count(*) from reports r where r.call_id = c.id)::int as reports
+              (select count(*) from reports r where r.call_id = c.id and r.status = 'done')::int as reports,
+              (select count(*) from reports r where r.call_id = c.id and r.status = 'pending')::int as "pendingReports"
        from calls c where c.id = $1`,
       [callId],
     );
@@ -306,7 +307,8 @@ export async function getCall(db: pg.Pool, session: Session, callId: string, met
     const call = await c.query(
       `select ${SUMMARY}, c.note, c.transcription_mode as "transcriptionMode", c.audio_key is not null as "hasAudio",
               coalesce(c.lease_until > now(), false) as working,
-              c.template_version_id as "templateVersionId"
+              c.template_version_id as "templateVersionId", coalesce(tv.required_points, '[]') as "requiredPoints",
+              c.user_id = app.current_user_id() as "isOwn"
        ${FROM} where c.id = $1`,
       [callId],
     );
@@ -323,9 +325,20 @@ export async function getCall(db: pg.Pool, session: Session, callId: string, met
        where a.call_id = $1 order by a.created_at desc`,
       [callId],
     );
+    // The latest adjustment by the seller is the note; the AI text is kept beside it.
     const reports = await c.query(
-      `select id, template_name as "templateName", content, model, created_at as "createdAt"
-       from reports where call_id = $1 order by created_at desc`,
+      `select r.id, r.template_name as "templateName", r.status, r.error, r.model, r.created_at as "createdAt",
+              coalesce(e.content, r.content) as content, r.content as "aiContent",
+              e.created_at as "editedAt", eu.full_name as "editedByName",
+              (select count(*) from report_edits x where x.report_id = r.id)::int as edits,
+              ru.full_name as "requestedByName"
+       from reports r
+       left join lateral (
+         select content, created_at, edited_by from report_edits where report_id = r.id order by created_at desc limit 1
+       ) e on true
+       left join users eu on eu.id = e.edited_by
+       left join users ru on ru.id = r.requested_by
+       where r.call_id = $1 order by r.created_at desc`,
       [callId],
     );
     await logAccess(c, callId, "view", meta);
@@ -405,6 +418,125 @@ export async function reviewAnalysis(db: pg.Pool, session: Session, callId: stri
     );
     if (!rowCount) throw new NotFound();
     return { id: analysisId };
+  });
+}
+
+// --- Notes (Samtalestudio, docs/plan.md, section 18) -------------------------------------------
+
+function translateNote(error: unknown): never {
+  const message = (error as Error).message ?? "";
+  if (message.includes("already being written")) throw new BadRequest("Et notat lages allerede for denne samtalen. Vent til det er ferdig.");
+  if (message.includes("too many notes")) throw new BadRequest("Samtalen har allerede 10 notater.");
+  throw error;
+}
+
+// Another note from the same transcript, with the chosen note template (or the call centre's
+// default). The worker writes it; the studio checks the status until it is done.
+export async function requestNote(db: pg.Pool, session: Session, services: CallServices, callId: string, body: Body) {
+  const templateId = uuidOrNull(body, "templateId", "notatmal") ?? null;
+  const id = await withSession(db, session, async (c) => {
+    const call = await c.query<{ status: string }>("select status from calls where id = $1", [callId]);
+    if (!call.rows[0]) throw new NotFound();
+    if (!["transcribed", "analyzed"].includes(call.rows[0].status)) throw new BadRequest("Samtalen er ikke ferdig transkribert ennå.");
+    const template = (
+      await c.query<{ id: string; name: string }>(
+        templateId
+          ? "select id, name from report_templates where id = $1 and archived_at is null"
+          : "select id, name from report_templates where organization_id = app.current_org_id() and is_default and archived_at is null",
+        templateId ? [templateId] : [],
+      )
+    ).rows[0];
+    if (templateId && !template) throw new BadRequest("Ukjent notatmal.");
+    try {
+      const { rows } = await c.query<{ id: string }>(
+        `insert into reports (organization_id, call_id, template_id, template_name, requested_by, status)
+         values (app.current_org_id(), $1, $2, $3, app.current_user_id(), 'pending') returning id`,
+        [callId, template?.id ?? null, template?.name ?? DEFAULT_REPORT.name],
+      );
+      return rows[0]!.id;
+    } catch (error) {
+      translateNote(error);
+    }
+  });
+  await services.startWorker(undefined, id);
+  return { id, status: "pending" };
+}
+
+// The seller adjusts the note. The AI text stays as it was; each adjustment is kept.
+export async function editNote(db: pg.Pool, session: Session, callId: string, reportId: string, body: Body) {
+  const content = requiredText(body, "content", "Notatet", 20000);
+  return withSession(db, session, async (c) => {
+    const { rows } = await c.query<{ own: boolean; status: string; content: string | null }>(
+      `select c.user_id = app.current_user_id() as own, r.status,
+              coalesce((select content from report_edits where report_id = r.id order by created_at desc limit 1), r.content) as content
+       from reports r join calls c on c.id = r.call_id where r.id = $1 and r.call_id = $2`,
+      [reportId, callId],
+    );
+    const found = rows[0];
+    if (!found) throw new NotFound();
+    if (!found.own) throw new BadRequest("Bare selgeren som hadde samtalen, kan endre notatet.");
+    if (found.status !== "done") throw new BadRequest("Notatet er ikke ferdig ennå.");
+    if (found.content === content) return { id: reportId, changed: false };
+    await c.query(
+      `insert into report_edits (organization_id, report_id, call_id, content, edited_by)
+       values (app.current_org_id(), $1, $2, $3, app.current_user_id())`,
+      [reportId, callId, content],
+    );
+    return { id: reportId, changed: true };
+  });
+}
+
+// The seller's earlier versions of a note, newest first, with the AI text last.
+export async function noteHistory(
+  db: pg.Pool,
+  session: Session,
+  callId: string,
+  reportId: string,
+  meta: { ip?: string; userAgent?: string },
+) {
+  return withSession(db, session, async (c) => {
+    const report = await c.query<{ content: string | null; created_at: Date; model: string | null }>(
+      "select content, created_at, model from reports where id = $1 and call_id = $2",
+      [reportId, callId],
+    );
+    if (!report.rows[0]) throw new NotFound();
+    const edits = await c.query(
+      `select e.content, e.created_at as "createdAt", u.full_name as "byName"
+       from report_edits e left join users u on u.id = e.edited_by
+       where e.report_id = $1 order by e.created_at desc`,
+      [reportId],
+    );
+    await logAccess(c, callId, "view", meta);
+    return [
+      ...edits.rows.map((e) => ({ ...e, ai: false })),
+      { content: report.rows[0].content, createdAt: report.rows[0].created_at, byName: null, ai: true },
+    ];
+  });
+}
+
+// The member's default product (the template) in the studio.
+export async function getStudio(db: pg.Pool, session: Session) {
+  return withSession(db, session, async (c) => {
+    const { rows } = await c.query<{ product_id: string | null }>(
+      `select s.product_id from studio_preferences s join products p on p.id = s.product_id and p.archived_at is null`,
+    );
+    return { productId: rows[0]?.product_id ?? null };
+  });
+}
+
+export async function setStudio(db: pg.Pool, session: Session, body: Body) {
+  const productId = uuidOrNull(body, "productId", "produkt") ?? null;
+  return withSession(db, session, async (c) => {
+    if (productId) {
+      const { rowCount } = await c.query("select 1 from products where id = $1 and archived_at is null", [productId]);
+      if (!rowCount) throw new BadRequest("Ukjent produkt.");
+    }
+    await c.query(
+      `insert into studio_preferences (organization_id, user_id, product_id) values (app.current_org_id(), app.current_user_id(), $1)
+       on conflict (organization_id, user_id) do update set product_id = excluded.product_id, updated_at = now()`,
+      [productId],
+    );
+    return { productId };
   });
 }
 
