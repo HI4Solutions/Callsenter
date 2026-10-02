@@ -1,13 +1,14 @@
 import { SESSION_IDLE_TIMEOUT_MINUTES } from "@veriqall/shared";
 import { sha256 } from "./crypto.ts";
-import type { AuthDeps, Provider } from "./types.ts";
+import type { AuthDeps, LoginMethod } from "./types.ts";
 
 export interface Session {
   userId: string;
-  provider: Provider;
+  provider: LoginMethod;
   acr: string | null;
   activeOrganizationId: string | null;
-  // Started with BankID: only then are administrative permissions held (docs/auth.md).
+  // Started with BankID or a passkey: only then are administrative permissions held
+  // (docs/auth.md).
   strong: boolean;
 }
 
@@ -19,7 +20,7 @@ export async function resolveSession(deps: AuthDeps, token: string | undefined):
   const now = deps.now();
   const { rows } = await deps.authDb.query<{
     user_id: string;
-    provider: Provider;
+    provider: LoginMethod;
     acr: string | null;
     active_organization_id: string | null;
     last_seen_at: Date;
@@ -41,7 +42,7 @@ export async function resolveSession(deps: AuthDeps, token: string | undefined):
     provider: row.provider,
     acr: row.acr,
     activeOrganizationId: row.active_organization_id,
-    strong: row.provider === "bankid",
+    strong: row.provider === "bankid" || row.provider === "passkey",
   };
 }
 

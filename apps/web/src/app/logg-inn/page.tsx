@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PasskeyLogin } from "@/components/passkey-login";
 import { loginErrorMessage, loginStartUrl } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Logg inn" };
@@ -44,10 +45,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         >
           Logg inn med BankID
         </a>
+        {!invite && <PasskeyLogin next={next} />}
       </div>
 
       <p className="mt-6 text-sm text-muted">
-        Tilgang til revisjonslogg, brukere, roller og alle samtaler krever innlogging med BankID.
+        Tilgang til revisjonslogg, brukere, roller og alle samtaler krever innlogging med BankID eller en passkey. En
+        passkey legger du til under Min konto etter at du har logget inn med BankID.
       </p>
     </section>
   );

@@ -54,6 +54,11 @@ export async function getUser(db: pg.Pool, session: Session, userId: string) {
       `select provider, created_at as "createdAt", last_used_at as "lastUsedAt" from app.admin_identities($1)`,
       [userId],
     );
+    const passkeys = await c.query(
+      `select id, name, created_at as "createdAt", last_used_at as "lastUsedAt"
+       from passkeys where user_id = $1 order by created_at`,
+      [userId],
+    );
     const sessions = await c.query(
       `select provider, created_at as "createdAt", last_seen_at as "lastSeenAt", expires_at as "expiresAt",
               host(ip) as ip, user_agent as "userAgent"
@@ -70,6 +75,7 @@ export async function getUser(db: pg.Pool, session: Session, userId: string) {
       self: userId === session.userId,
       organizations: memberships.rows,
       identities: identities.rows,
+      passkeys: passkeys.rows,
       sessions: sessions.rows,
       logins: logins.rows,
     };
@@ -126,6 +132,16 @@ export async function removeIdentity(db: pg.Pool, session: Session, userId: stri
     const { rows } = await c.query<{ ok: boolean }>("select app.admin_remove_identity($1, $2) as ok", [userId, provider]);
     if (!rows[0]?.ok) throw new NotFound();
     return { removed: provider };
+  });
+}
+
+// Removes a passkey (for example a lost device) and signs the user out everywhere.
+export async function removePasskey(db: pg.Pool, session: Session, userId: string, passkeyId: string) {
+  return platform(db, session, async (c) => {
+    const { rowCount } = await c.query("delete from passkeys where id = $1 and user_id = $2", [passkeyId, userId]);
+    if (!rowCount) throw new NotFound();
+    await c.query("select app.admin_revoke_sessions($1)", [userId]);
+    return { removed: passkeyId };
   });
 }
 

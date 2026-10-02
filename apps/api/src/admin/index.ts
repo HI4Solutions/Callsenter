@@ -24,7 +24,16 @@ import {
   updateAnnouncement,
 } from "./messages.ts";
 import { accessLog, auditLog, blockIp, listBlockedIps, securityOverview, unblockIp } from "./security.ts";
-import { catalog, getUser, listUsers, removeIdentity, setPlatformAdmin, signOutEverywhere, updateUser } from "./users.ts";
+import {
+  catalog,
+  getUser,
+  listUsers,
+  removeIdentity,
+  removePasskey,
+  setPlatformAdmin,
+  signOutEverywhere,
+  updateUser,
+} from "./users.ts";
 import { BadRequest, isUuid, parseBody } from "./validate.ts";
 
 const ORGANIZATION = /^\/admin\/organizations\/([^/]+)$/;
@@ -35,6 +44,7 @@ const USER_ACTION = /^\/admin\/users\/([^/]+)\/(logout|superadmin)$/;
 const BLOCKED_IP = /^\/admin\/security\/blocked-ips\/([^/]+)$/;
 const ANNOUNCEMENT = /^\/admin\/announcements\/([^/]+)$/;
 const GROWTH_EVENT = /^\/admin\/growth\/events\/([^/]+)$/;
+const USER_PASSKEY = /^\/admin\/users\/([^/]+)\/passkeys\/([^/]+)$/;
 const USER_IDENTITY = /^\/admin\/users\/([^/]+)\/identities\/([a-z]+)$/;
 
 export async function handleAdmin(
@@ -93,6 +103,10 @@ export async function handleAdmin(
       if (match[2] === "superadmin" && method === "PUT") {
         return reply(200, await setPlatformAdmin(deps.appDb, session, match[1], body()));
       }
+    }
+    match = USER_PASSKEY.exec(path);
+    if (match && isUuid(match[1]) && isUuid(match[2]) && method === "DELETE") {
+      return reply(200, await removePasskey(deps.appDb, session, match[1], match[2]));
     }
     match = USER_IDENTITY.exec(path);
     if (match && isUuid(match[1]) && method === "DELETE") {

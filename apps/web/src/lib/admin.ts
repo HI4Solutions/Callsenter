@@ -121,6 +121,7 @@ export interface UserDetail extends Omit<UserSummary, "organizations"> {
   self: boolean;
   organizations: { id: string; name: string; role: string; status: string }[];
   identities: { provider: "bankid" | "vipps"; createdAt: string; lastUsedAt: string | null }[];
+  passkeys: { id: string; name: string; createdAt: string; lastUsedAt: string | null }[];
   sessions: { provider: string; createdAt: string; lastSeenAt: string; expiresAt: string; ip: string | null; userAgent: string | null }[];
   logins: { occurredAt: string; provider: string; result: string; ip: string | null }[];
 }
@@ -132,7 +133,7 @@ export interface Catalog {
 }
 
 export const USER_STATUS: Record<string, string> = { invited: "Invitert", active: "Aktiv", disabled: "Deaktivert" };
-export const PROVIDER: Record<string, string> = { bankid: "BankID", vipps: "Vipps" };
+export const PROVIDER: Record<string, string> = { bankid: "BankID", vipps: "Vipps", passkey: "Passkey" };
 export const LOGIN_RESULT: Record<string, string> = {
   success: "Vellykket",
   cancelled: "Avbrutt",

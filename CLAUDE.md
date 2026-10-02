@@ -32,6 +32,7 @@ Ferdig:
 - Fase 1, PR B (superadmin, Brukere og Roller og moduler): søk på tvers av callsentre, brukerdetaljer (profil, deaktivering, superadmin av og på, callsentre, innloggingsmetoder, aktive økter, tvangsutlogging, siste innlogginger), CSV-eksport, og oversikt over moduler, standardroller og rettigheter. Migrasjonen `0004_superadmin_users.sql` (superadmin fra portalen med vern, og `app.admin_*`-funksjoner for oppslag og handlinger på tvers av callsentre).
 - Fase 1, PR C (superadmin, Sikkerhet): oversikt over innlogginger (mislykkede per IP og bruker), revisjonslogg med filter, detaljer og CSV, tilgangslogg, og IP-sperring som sjekkes på hvert API-kall (`apps/api/src/blocklist.ts`). Migrasjonen `0005_security.sql`.
 - Fase 1, PR D (superadmin, Meldinger og Vekst): kunngjøringer til alle eller valgte callsentre, vist som banner for innloggede brukere (`GET /announcements`), og Vekst med nøkkeltall, grafer (`apps/web/src/components/admin/charts.tsx`) og markedsføringshendelser. Migrasjonen `0006_messages_growth.sql`.
+- Passkeys: innlogging med passkey (WebAuthn, `apps/api/src/auth/passkey.ts`), som teller som sterk innlogging som BankID. Legges til under `/konto` i en BankID-økt. Migrasjonen `0007_passkeys.sql`. Se `docs/auth.md`.
 
 Ikke gjort:
 - Vipps-knappen må byttes til Vipps' offisielle før produksjon.
@@ -79,7 +80,7 @@ Node 22 (se `.nvmrc`). Kjør fra reporoten:
 | Lyd | S3 per miljø, SSE-KMS, kun TLS |
 | Transkripsjon | Soniox API |
 | AI | Claude via AWS Bedrock i `eu-north-1` |
-| Innlogging | Vipps Logg inn og BankID via Idura, begge OIDC |
+| Innlogging | Vipps Logg inn og BankID via Idura, begge OIDC, og passkeys (WebAuthn) |
 | IaC | CloudFormation (YAML) i `infra/`, deployet av `infra/deploy.sh` |
 | CI/CD | GitHub Actions med OIDC mot AWS, aldri lagrede AWS-nøkler |
 | Miljøer | `staging` og `production`, helt adskilt med egne nøkler |

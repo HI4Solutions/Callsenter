@@ -3,6 +3,9 @@ import type pg from "pg";
 export type Provider = "vipps" | "bankid";
 export const PROVIDERS: readonly Provider[] = ["vipps", "bankid"];
 
+// How a session was started: an OIDC provider, or a passkey (WebAuthn).
+export type LoginMethod = Provider | "passkey";
+
 export function isProvider(value: string): value is Provider {
   return (PROVIDERS as readonly string[]).includes(value);
 }

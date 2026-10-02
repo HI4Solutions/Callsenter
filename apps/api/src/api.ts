@@ -3,14 +3,27 @@
 //   GET  /auth/{vipps|bankid}/start   start a login (?invite=, ?next=, ?link=1)
 //   GET  /auth/{vipps|bankid}/callback
 //   POST /auth/logout
+//   POST /auth/passkey/login/options|verify      passkey login (WebAuthn)
+//   POST /auth/passkey/register/options|verify   add a passkey (BankID session)
 //   GET  /me                          the signed-in user, call centres and permissions
+//   GET  /me/passkeys, DELETE /me/passkeys/{id}
 //   GET  /announcements               live announcements for the signed-in user
 //   /admin/*                          superadmin portal (src/admin)
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import type pg from "pg";
 import { handleAdmin } from "./admin/index.ts";
+import { BadRequest, isUuid, parseBody } from "./admin/validate.ts";
 import { myAnnouncements } from "./admin/messages.ts";
 import { handleCallback, startLogin } from "./auth/flow.ts";
+import {
+  authenticationOptions,
+  deleteMyPasskey,
+  listMyPasskeys,
+  loginWithPasskey,
+  PasskeyError,
+  registerPasskey,
+  registrationOptions,
+} from "./auth/passkey.ts";
 import { resolveSession, revokeSession } from "./auth/session.ts";
 import { isProvider, SESSION_COOKIE, type AuthDeps } from "./auth/types.ts";
 import { loadAuthConfig } from "./config.ts";
@@ -86,6 +99,10 @@ export function createHandler(deps: HandlerDeps) {
       return redirect(result.location, cookies);
     }
 
+    if (path.startsWith("/auth/passkey/") || path.startsWith("/me/passkeys")) {
+      return passkeyRoutes(auth, event, cors);
+    }
+
     if (method === "POST" && path === "/auth/logout") {
       // A state-changing call: only from the app itself (SameSite=Lax does not cover everything).
       if (event.headers?.origin !== auth.config.appOrigin) return json(403, { error: "Ikke tillatt" });
@@ -113,6 +130,37 @@ export function createHandler(deps: HandlerDeps) {
 
     return json(404, { error: "Fant ikke ressursen" }, cors);
   };
+}
+
+const PASSKEY_ID = /^\/me\/passkeys\/([^/]+)$/;
+
+async function passkeyRoutes(auth: AuthDeps, event: APIGatewayProxyEventV2, cors: Record<string, string>): Promise<Result> {
+  const method = event.requestContext.http.method;
+  const path = event.rawPath;
+  if (method !== "GET" && event.headers?.origin !== auth.config.appOrigin) return json(403, { error: "Ikke tillatt." }, cors);
+  try {
+    const body = () => parseBody(event.body, event.isBase64Encoded);
+    if (method === "POST" && path === "/auth/passkey/login/options") return json(200, await authenticationOptions(auth), cors);
+    if (method === "POST" && path === "/auth/passkey/login/verify") {
+      const result = await loginWithPasskey(auth, body(), requestMeta(event));
+      return {
+        ...json(200, { location: result.location }, cors),
+        cookies: [sessionCookie(SESSION_COOKIE, result.sessionToken, SESSION_MAX_HOURS * 3600)],
+      };
+    }
+    const session = await resolveSession(auth, readCookie(event, SESSION_COOKIE));
+    if (!session) return json(401, { error: "Ikke innlogget." }, cors);
+    if (method === "POST" && path === "/auth/passkey/register/options") return json(200, await registrationOptions(auth, session), cors);
+    if (method === "POST" && path === "/auth/passkey/register/verify") return json(201, await registerPasskey(auth, session, body()), cors);
+    if (method === "GET" && path === "/me/passkeys") return json(200, await listMyPasskeys(auth, session), cors);
+    const match = PASSKEY_ID.exec(path);
+    if (method === "DELETE" && match && isUuid(match[1])) return json(200, await deleteMyPasskey(auth, session, match[1]), cors);
+    return json(404, { error: "Fant ikke ressursen" }, cors);
+  } catch (error) {
+    if (error instanceof PasskeyError) return json(error.status, { error: error.message }, cors);
+    if (error instanceof BadRequest) return json(400, { error: error.message }, cors);
+    throw error;
+  }
 }
 
 let apiPool: pg.Pool | undefined;
