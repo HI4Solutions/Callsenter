@@ -79,6 +79,9 @@ export default function SalePage() {
           <SaleStatusBadge status={sale.status} />
         </div>
         <p className="mt-2 text-muted">{sale.customerName}</p>
+        <Link href={`/salg/${sale.id}/dokumentasjon`} className="mt-3 inline-flex font-semibold text-brand">
+          Dokumentasjon (tilbud, aksept og samtaler) →
+        </Link>
       </div>
       <ErrorMessage message={error} />
       {canManage && SALE_TRANSITIONS[sale.status].length > 0 && (

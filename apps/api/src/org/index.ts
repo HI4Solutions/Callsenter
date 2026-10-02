@@ -28,8 +28,10 @@ import {
   updateCall,
   updateReportTemplate,
 } from "./calls.ts";
+import { addComplaintNote, createComplaint, getComplaint, listComplaints, updateComplaint } from "./complaints.ts";
 import { createConfirmation, revokeConfirmation } from "./confirmations.ts";
 import { createCustomer, getCustomer, listCustomers, updateCustomer } from "./customers.ts";
+import { getSaleDocumentation } from "./documentation.ts";
 import {
   createDraft,
   createProduct,
@@ -63,6 +65,9 @@ const THREAD_MESSAGES = /^\/org\/threads\/([^/]+)\/messages$/;
 const CUSTOMER = /^\/org\/customers\/([^/]+)$/;
 const SALE = /^\/org\/sales\/([^/]+)$/;
 const SALE_CONFIRMATIONS = /^\/org\/sales\/([^/]+)\/confirmations$/;
+const SALE_DOCUMENTATION = /^\/org\/sales\/([^/]+)\/documentation$/;
+const COMPLAINT = /^\/org\/complaints\/([^/]+)$/;
+const COMPLAINT_NOTES = /^\/org\/complaints\/([^/]+)\/notes$/;
 const SALE_CONFIRMATION_REVOKE = /^\/org\/sales\/([^/]+)\/confirmations\/([^/]+)\/revoke$/;
 const CALL = /^\/org\/calls\/([^/]+)$/;
 const CALL_ACTION = /^\/org\/calls\/([^/]+)\/(chunks|complete|retry|realtime-key|audio)$/;
@@ -283,6 +288,27 @@ export async function handleOrg(
       }
       return reply(404, { error: "Fant ikke ressursen." });
     }
+    if (path === "/org/complaints" || path.startsWith("/org/complaints/")) {
+      await requirePermission(deps.appDb, session, "complaints.manage");
+      const meta = { ip: event.requestContext.http.sourceIp, userAgent: event.requestContext.http.userAgent };
+      if (method === "GET" && path === "/org/complaints") {
+        return reply(200, await listComplaints(deps.appDb, session, event.queryStringParameters ?? {}));
+      }
+      if (method === "POST" && path === "/org/complaints") return reply(201, await createComplaint(deps.appDb, session, body()));
+      const one = COMPLAINT.exec(path);
+      if (one && isUuid(one[1])) {
+        if (method === "GET") return reply(200, await getComplaint(deps.appDb, session, one[1], meta));
+        if (method === "PATCH") return reply(200, await updateComplaint(deps.appDb, session, one[1], body()));
+      }
+      const notes = COMPLAINT_NOTES.exec(path);
+      if (notes && isUuid(notes[1]) && method === "POST") return reply(201, await addComplaintNote(deps.appDb, session, notes[1], body()));
+      return reply(404, { error: "Fant ikke ressursen." });
+    }
+    const documentation = SALE_DOCUMENTATION.exec(path);
+    if (documentation && isUuid(documentation[1]) && method === "GET") {
+      const meta = { ip: event.requestContext.http.sourceIp, userAgent: event.requestContext.http.userAgent };
+      return reply(200, await getSaleDocumentation(deps.appDb, session, documentation[1], meta));
+    }
     const confirmations = SALE_CONFIRMATIONS.exec(path);
     if (confirmations && isUuid(confirmations[1]) && method === "POST") {
       await requirePermission(deps.appDb, session, "sales.manage");
@@ -385,7 +411,7 @@ export async function handleOrg(
     if (code === "42501" && path.startsWith("/org/roles")) {
       return reply(403, { error: "Du kan ikke gi en rolle rettigheter du ikke har selv." });
     }
-    if (code === "42501" && /^\/org\/(customers|products|sales|calls|report-templates)(\/|$)/.test(path)) {
+    if (code === "42501" && /^\/org\/(customers|products|sales|calls|report-templates|complaints)(\/|$)/.test(path)) {
       return reply(403, { error: "Du har ikke tilgang til dette.", code: "ingen_tilgang" });
     }
     if (code === "42501") return reply(403, { error: "Du kan ikke gi en rolle med rettigheter du ikke har selv." });

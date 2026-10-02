@@ -46,9 +46,10 @@ Ikke gjort:
 
 - Fase 2 (samtalen): opptak i nettleseren med mikrofon eller fanelyd, sanntid eller bitvis via Soniox i EU, lagret opptak i S3 med lagringstid 3–12 måneder per callsenter, AI-kontroll mot produktmalen og rapporter med Claude via Bedrock, worker-Lambdaen `veriqall-<env>-worker`, migrasjonen `0013_calls.sql` (`docs/plan.md`, seksjon 13).
 - Fase 1, PR F2 (salg): migrasjonen `0012_sales.sql` (salg med statusløp, historikk i `sale_events`, synlighet som for samtaler), statusløpet i `packages/shared/src/sales.ts`, API under `/org/sales`, og sidene `/salg` og `/salg/[id]`. Selgere lander på `/salg`.
+- Fase 3 (salgsverifisering, dokumentasjon og klager, `docs/plan.md`, seksjon 14): kunden godtar tilbudet via lenke med BankID eller Vipps (`apps/api/src/confirm`, `/bekreft/[token]`), dokumentasjon per salg (`/salg/[id]/dokumentasjon`) og klagesaker (`/klager`). Migrasjonene `0014_sale_confirmations.sql` og `0015_complaints.sql`. Bygget på fase 2-branchen. Beslutningene venter på Nadeems godkjenning.
 - Fase 1, PR F1 (grunndata): kunder (privat og bedrift, ingen fødselsnumre) og produkter med versjonerte produktmaler, migrasjonen `0011_customers_products.sql`, API under `/org/customers` og `/org/products`, og sidene `/kunder` og `/produkter` (`docs/plan.md`, seksjon 12).
 
-**Neste steg:** Test fase 2 i staging (Soniox-nøkkel fra EU-prosjekt, Claude slått på i Bedrock, moduler på for callsenteret). Deretter fase 3: salgsverifisering (kunden bekrefter via SMS eller Vipps), dokumentasjon og klagehåndtering.
+**Neste steg:** Test fase 2 i staging (Soniox-nøkkel fra EU-prosjekt, Claude slått på i Bedrock, moduler på for callsenteret). Test fase 3 i staging (lenke til kunden, aksept med BankID og Vipps, klage med dokumentasjon). Deretter fase 4: dashboard og coaching (modul 11) og fakturering (modul 15).
 
 ## Kommandoer
 

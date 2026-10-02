@@ -190,9 +190,9 @@ Logoen kan genereres på nytt med `tools/brand/`: last ned fonten til `tools/bra
 
 - **Hvordan kommer lydopptakene inn?** Opplasting etter samtalen, eller integrasjon med callsenterets telefonisystem? Dette avgjør fase 2.
 - **Kontooppsett:** egne AWS-kontoer for staging og produksjon (anbefalt) eller én konto med tagger. I dag ligger begge i samme konto.
-- **SMS-leverandør** for salgsverifisering (modul 8).
+- **SMS-leverandør** for salgsverifisering (modul 8). Til da sender selgeren lenken selv (seksjon 14).
 - **Bedrock:** hvilke Claude-modeller er tilgjengelige direkte i `eu-north-1`, og krever noen EU cross-region inference (behandling i andre EU-regioner)?
-- **Lovkrav:** sjekk hva angrerettloven krever av bekreftelse og skriftlig aksept ved telefonsalg. Modul 8 bør bygges rundt det.
+- **Lovkrav:** sjekk hva angrerettloven krever av bekreftelse og skriftlig aksept ved telefonsalg. Modul 8 er bygget som skriftlig aksept med BankID eller Vipps (seksjon 14), men trenger en juridisk vurdering.
 - **Lagringstid** for opptak og transkripsjoner, og sletting på forespørsel.
 - **Fakturamodul:** besluttet 2. oktober at callsentrene betaler med både faktura og Stripe (se seksjon 10).
 - **E-post for invitasjoner:** Amazon SES med `veriqall.no` (DNS-poster hos one.com). Til da kopierer superadmin lenken selv.
@@ -302,3 +302,26 @@ Beslutninger 2. oktober:
 | Web | `/samtaler` (søk i samtalene, flagg, status), `/samtaler/opptak`, `/samtaler/[id]` (avspilling fra hvert tidspunkt, funn, rapport, koblinger), `/samtaler/rapportmaler`, samtaler på kunde- og salgssidene, og superadmin System og Økonomi (forbruk per callsenter) |
 
 Før det virker i staging: Soniox-nøkkelen i `callsenter/staging/app` må komme fra et Soniox-prosjekt i EU-regionen (EU-endepunktene avviser nøkler fra andre regioner; EU bestilles hos Soniox). Claude-modellene som skal kunne velges, må være slått på i Bedrock (Model access) i `eu-north-1`. Modulene Transkribering, AI-kontroll og Rapporter slås på per callsenter under Callsentre.
+
+## 14. Salgsverifisering, dokumentasjon og klager
+
+Bygget 2. oktober 2026 (modul 8, 9 og 10), i én PR. Claude tok beslutningene under alene, og de venter på Nadeems godkjenning.
+
+Beslutninger 2. oktober (til godkjenning):
+
+- **Skriftlig aksept via lenke.** Ved telefonsalg er forbrukeren bare bundet når hen godtar tilbudet skriftlig etter samtalen (angrerettloven § 10). Selgeren lager en lenke på salgssiden (`sales.manage`). Kunden åpner den uten å logge inn, ser tilbudet med pris, binding, angrefrist og vilkår fra malversjonen salget peker på, og **godtar med BankID eller Vipps**, eller avslår (uten identifisering). Salget går til «bekreftet» eller «avvist» av seg selv.
+- **Lenken gjelder i 7 dager** og vises bare når den lages (bare hashen lagres). En ny lenke trekker tilbake den forrige. Lenken kan trekkes tilbake fra salgssiden.
+- **SMS kommer senere.** Til leverandøren er valgt (seksjon 8), kopierer selgeren lenken og sender den selv på SMS eller e-post. `sent_via` står klar for SMS.
+- **Bevis:** dokumentet kunden så, lagres som kanonisk JSON med SHA-256 (dokument-ID), sammen med malversjonen, metode, navn fra BankID eller Vipps, verifisert mobilnummer (Vipps), en hash av innloggings-ID-en (ikke selve ID-en), sikkerhetsnivå, tidspunkt, IP og nettleser. En avgjort bekreftelse kan aldri endres (trigger).
+- **Samsvar med kunden:** stemmer Vipps-nummeret med kundens mobilnummer, eller navnet fra BankID eller Vipps med kundens navn, merkes det. Ellers får selgeren beskjed om å sjekke at riktig person har godtatt. Aksepten stoppes ikke, siden en bedrift kan godta ved en annen person enn kontaktpersonen.
+- **Identifiseringen gir ingen innlogging.** Den bruker samme OIDC-flyt som innloggingen, men tilstanden er knyttet til bekreftelsen, og ingen økt opprettes. De offentlige sidene går gjennom den smale rollen `app_auth` og to `security definer`-funksjoner.
+- **Dokumentasjon per salg** (modul 9) på `/salg/[id]/dokumentasjon`: salget, tilbudet og vilkårene, kundens aksept, samtalene med transkripsjon, AI-kontroll og rapport, og historikken. Kan skrives ut eller lagres som PDF fra nettleseren. Hver visning logges i `access_log` (også transkripsjonene den viser).
+- **Klager** (modul 10) på `/klager` med `complaints.manage`: kunde, valgfritt salg, kanal, dato, beskrivelse, saksbehandler, status (ny, under behandling, løst, avvist) og utfall, som må fylles ut før saken lukkes. Historikk og notater er append-only. Gjelder klagen et salg, vises salgets dokumentasjon i saken og logges som `complaint_documentation`. Er salget ikke synlig for saksbehandleren (andres salg krever tilgang til alle samtaler og sterk innlogging), vises en melding i stedet.
+
+| Del | Innhold |
+|---|---|
+| Database | `0014_sale_confirmations.sql` (`sale_confirmations`, `auth_states.confirmation_id`, `app.confirmation_view` og `app.confirmation_decide`) og `0015_complaints.sql` (`complaints`, `complaint_events`) |
+| API | `/confirm/*` (offentlig), `/org/sales/{id}/confirmations`, `/org/sales/{id}/documentation` og `/org/complaints` |
+| Web | `/bekreft/[token]` og `/bekreft/ferdig` (for kunden), kortet Kundens bekreftelse på salgssiden, `/salg/[id]/dokumentasjon`, `/klager`, `/klager/[id]` og klager på kundesiden |
+
+Må sjekkes før produksjon: at lenke med BankID- eller Vipps-aksept oppfyller kravet om skriftlig aksept (juridisk vurdering), hvilken tekst bekreftelsessiden skal ha om angreretten (angrerettskjema), og om Vipps Logg inn er godkjent brukt til aksept (Vipps sier selv at Login ikke er en elektronisk ID; BankID er sikrest).
