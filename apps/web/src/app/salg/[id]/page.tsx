@@ -11,7 +11,8 @@ import { SaleStatusBadge } from "@/components/work/sale-status";
 import { useWorkMe } from "@/components/work/work-shell";
 import { formatDateTime } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
-import { CUSTOMER_KIND, days, formatPhone, formatPrice, months, SALE_ACTIONS, type SaleDetail } from "@/lib/work";
+import { StatusBadge } from "@/components/admin/status-badge";
+import { type Confirmation, CUSTOMER_KIND, days, formatPhone, formatPrice, months, SALE_ACTIONS, type SaleDetail } from "@/lib/work";
 
 export default function SalePage() {
   const { id } = useParams<{ id: string }>();
@@ -94,6 +95,7 @@ export default function SalePage() {
         </dl>
         {sale.note && <p className="mt-4 whitespace-pre-wrap [overflow-wrap:anywhere] rounded-lg bg-bg p-3">{sale.note}</p>}
       </Card>
+      <Confirmations sale={sale} canManage={canManage} onChanged={load} />
       <LinkedCalls query={`saleId=${sale.id}`} />
       <Card title="Historikk">
         <ol className="flex flex-col gap-4">
@@ -159,6 +161,130 @@ function StatusActions({ sale, onChanged, onError }: { sale: SaleDetail; onChang
             </button>
           ))}
         </div>
+      )}
+    </Card>
+  );
+}
+
+const CONFIRMATION_STATUS: Record<Confirmation["status"], string> = {
+  pending: "Venter på kunden",
+  accepted: "Godtatt",
+  rejected: "Avslått",
+  revoked: "Trukket tilbake",
+};
+
+const METHOD: Record<string, string> = { bankid: "BankID", vipps: "Vipps", none: "uten identifisering" };
+
+// Written acceptance from the customer (module 8): a secret link the seller sends, where the
+// customer reads the offer and accepts with BankID or Vipps.
+function Confirmations({ sale, canManage, onChanged }: { sale: SaleDetail; canManage: boolean; onChanged: () => Promise<unknown> }) {
+  const [link, setLink] = useState<{ url: string; expiresAt: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const canSend = canManage && (sale.status === "registered" || sale.status === "awaiting_confirmation");
+  if (!canSend && !sale.confirmations.length) return null;
+
+  async function send() {
+    const pending = sale.confirmations.some((c) => c.status === "pending");
+    if (pending && !window.confirm("Lage en ny lenke? Den forrige slutter å virke.")) return;
+    setError(null);
+    setCopied(false);
+    try {
+      setLink(await orgFetch<{ url: string; expiresAt: string }>(`/sales/${sale.id}/confirmations`, { method: "POST" }));
+      await onChanged();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  async function revoke(id: string) {
+    if (!window.confirm("Trekke tilbake lenken? Kunden kan da ikke svare på den.")) return;
+    setError(null);
+    try {
+      await orgFetch(`/sales/${sale.id}/confirmations/${id}/revoke`, { method: "POST" });
+      setLink(null);
+      await onChanged();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  return (
+    <Card
+      title="Kundens bekreftelse"
+      actions={
+        canSend && (
+          <button type="button" className={primaryButton} onClick={send}>
+            {sale.confirmations.some((c) => c.status === "pending") ? "Ny lenke" : "Send til kunden"}
+          </button>
+        )
+      }
+    >
+      <p className="text-muted">
+        Ved telefonsalg er kunden bare bundet når hen godtar tilbudet skriftlig etter samtalen. Kunden får tilbudet og vilkårene, og godtar med
+        BankID eller Vipps.
+      </p>
+      {link && (
+        <div className="mt-4 flex flex-col gap-2 rounded-lg bg-bg p-3">
+          <p className="font-semibold">Send denne lenken til kunden på SMS eller e-post:</p>
+          <p className="font-mono text-sm [overflow-wrap:anywhere]">{link.url}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className={secondaryButton}
+              onClick={() => navigator.clipboard.writeText(link.url).then(() => setCopied(true), () => setCopied(false))}
+            >
+              Kopier lenke
+            </button>
+            {copied && <span role="status">Kopiert.</span>}
+          </div>
+          <p className="text-sm text-muted">Lenken vises bare nå, og gjelder til {formatDateTime(link.expiresAt)}.</p>
+        </div>
+      )}
+      <ErrorMessage message={error} />
+      {sale.confirmations.length > 0 && (
+        <ul className="mt-4 divide-y divide-line">
+          {sale.confirmations.map((c) => (
+            <li key={c.id} className="flex flex-col gap-2 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                {c.status === "accepted" ? (
+                  <StatusBadge tone="ok">{CONFIRMATION_STATUS[c.status]}</StatusBadge>
+                ) : c.status === "rejected" ? (
+                  <StatusBadge tone="danger">{CONFIRMATION_STATUS[c.status]}</StatusBadge>
+                ) : c.status === "pending" ? (
+                  <StatusBadge tone="warning">{CONFIRMATION_STATUS[c.status]}</StatusBadge>
+                ) : (
+                  <span className="inline-flex items-center rounded-full border border-line px-3 py-1 text-sm font-medium">{CONFIRMATION_STATUS[c.status]}</span>
+                )}
+                <span className="text-sm text-muted">
+                  Sendt {formatDateTime(c.createdAt)}
+                  {c.createdByName && ` av ${c.createdByName}`}
+                  {c.viewedAt && `, åpnet ${formatDateTime(c.viewedAt)}`}
+                </span>
+              </div>
+              {c.decidedAt && (
+                <p className="text-sm">
+                  {c.status === "accepted" ? "Godtatt" : "Avslått"} {formatDateTime(c.decidedAt)}
+                  {c.method && ` ${c.method === "none" ? "uten identifisering" : `med ${METHOD[c.method]}`}`}
+                  {c.identityName && ` av ${c.identityName}`}
+                  {c.identityPhone && ` (${formatPhone(c.identityPhone)})`}
+                  {c.ip && `, fra ${c.ip}`}.
+                </p>
+              )}
+              {c.status === "accepted" && c.identityMatch === "none" && (
+                <p className="text-sm font-semibold">Navnet eller mobilnummeret stemmer ikke med kunden. Sjekk at riktig person har godtatt.</p>
+              )}
+              <p className="font-mono text-xs text-muted [overflow-wrap:anywhere]">Dokument-ID: {c.documentHash}</p>
+              {c.status === "pending" && canManage && (
+                <div>
+                  <button type="button" className={secondaryButton} onClick={() => revoke(c.id)}>
+                    Trekk tilbake
+                  </button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
     </Card>
   );

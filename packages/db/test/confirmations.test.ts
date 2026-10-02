@@ -1,0 +1,105 @@
+import { createHash, randomBytes } from "node:crypto";
+import { describe, expect, it } from "vitest";
+import { api, as, auth, createOrg, member, owner, rejects } from "./helpers.ts";
+
+async function setup() {
+  const org = await createOrg();
+  const product = (await owner.query("insert into products (organization_id, name) values ($1, 'Strøm') returning id", [org])).rows[0].id;
+  const version = (
+    await owner.query(
+      `insert into product_template_versions (organization_id, product_id, version, status, published_at, price_monthly)
+       values ($1, $2, 1, 'published', now(), 399) returning id`,
+      [org, product],
+    )
+  ).rows[0].id;
+  const customer = (
+    await owner.query("insert into customers (organization_id, kind, name, phone) values ($1, 'person', 'Kari Kunde', '+4791234567') returning id", [org])
+  ).rows[0].id;
+  const seller = await member(org, "seller");
+  const sale = (
+    await owner.query("insert into sales (organization_id, customer_id, product_id, seller_id) values ($1, $2, $3, $4) returning id", [
+      org,
+      customer,
+      product,
+      seller,
+    ])
+  ).rows[0].id;
+  await owner.query("update sales set status = 'awaiting_confirmation' where id = $1", [sale]);
+  return { org, product, version, customer, seller, sale };
+}
+
+async function confirmation(s: Awaited<ReturnType<typeof setup>>, expires = "7 days") {
+  const token = randomBytes(32);
+  const hash = createHash("sha256").update(token).digest();
+  const { rows } = await owner.query(
+    `insert into sale_confirmations (organization_id, sale_id, token_hash, document, document_hash, template_version_id, expires_at)
+     values ($1, $2, $3, '{"product": "Strøm"}', $4, $5, now() + $6::interval) returning id`,
+    [s.org, s.sale, hash, "a".repeat(64), s.version, expires],
+  );
+  return { id: rows[0].id as string, hash };
+}
+
+const decide = (id: string, decision: string, how = "vipps", name: string | null = "Kari Kunde", phone: string | null = "+4791234567") =>
+  auth.query("select app.confirmation_decide($1, $2, $3, $4, $5, $6, $7, $8, $9) as r", [
+    id,
+    decision,
+    how,
+    name,
+    phone,
+    decision === "accepted" ? "b".repeat(64) : null,
+    null,
+    "203.0.113.5",
+    "vitest",
+  ]);
+
+describe("sale confirmations", () => {
+  it("shows the offer through the token, accepts with a verified identity and confirms the sale", async () => {
+    const s = await setup();
+    const c = await confirmation(s);
+    const view = (await auth.query("select app.confirmation_view($1) as v", [c.hash])).rows[0].v;
+    expect(view).toMatchObject({ id: c.id, status: "pending", document: { product: "Strøm" } });
+    expect((await decide(c.id, "accepted")).rows[0].r).toBe("accepted");
+    const row = (await owner.query("select status, method, identity_match, ip::text from sale_confirmations where id = $1", [c.id])).rows[0];
+    expect(row).toEqual({ status: "accepted", method: "vipps", identity_match: "phone", ip: "203.0.113.5/32" });
+    const sale = (await owner.query("select status from sales where id = $1", [s.sale])).rows[0];
+    expect(sale.status).toBe("confirmed");
+    const event = (await owner.query("select note from sale_events where sale_id = $1 order by id desc limit 1", [s.sale])).rows[0];
+    expect(event.note).toBe("Godtatt skriftlig av kunden med Vipps");
+    // Decided once, and frozen.
+    expect((await decide(c.id, "rejected")).rows[0].r).toBe("not_pending");
+    await expect(owner.query("update sale_confirmations set document = '{}' where id = $1", [c.id])).rejects.toThrow(/cannot be changed/);
+  });
+
+  it("lets the customer decline without identifying, and refuses expired links", async () => {
+    const s = await setup();
+    const c = await confirmation(s);
+    expect((await decide(c.id, "rejected", "none", null, null)).rows[0].r).toBe("rejected");
+    expect((await owner.query("select status from sales where id = $1", [s.sale])).rows[0].status).toBe("rejected");
+
+    const s2 = await setup();
+    const old = await confirmation(s2, "-1 minute");
+    expect((await auth.query("select app.confirmation_view($1) as v", [old.hash])).rows[0].v.status).toBe("expired");
+    expect((await decide(old.id, "accepted")).rows[0].r).toBe("expired");
+    await expect(decide((await confirmation(await setup())).id, "accepted", "none")).rejects.toThrow(/verified identity/);
+  });
+
+  it("is visible with the sale, written with sales.manage, and closed to other call centres", async () => {
+    const s = await setup();
+    const c = await confirmation(s);
+    await as(api, { userId: s.seller, orgId: s.org }, async (db) => {
+      expect((await db.query("select id from sale_confirmations")).rows.map((r) => r.id)).toEqual([c.id]);
+      await db.query("update sale_confirmations set status = 'revoked' where id = $1", [c.id]);
+      await rejects(db, "update sale_confirmations set status = 'accepted' where id = $1", [c.id], /row-level security|cannot be changed/);
+    });
+    const compliance = await member(s.org, "compliance");
+    await as(api, { userId: compliance, orgId: s.org }, async (db) => {
+      expect((await db.query("update sale_confirmations set status = 'revoked' where id = $1", [c.id])).rowCount).toBe(0);
+    });
+    const stranger = await member(await createOrg(), "admin");
+    await as(api, { userId: stranger, orgId: s.org }, async (db) => {
+      expect((await db.query("select id from sale_confirmations")).rowCount).toBe(0);
+    });
+    // The login role reaches confirmations only through the functions.
+    await expect(auth.query("select * from sale_confirmations")).rejects.toThrow(/permission denied/);
+  });
+});

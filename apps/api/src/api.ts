@@ -32,6 +32,7 @@ import { resolveSession, revokeSession } from "./auth/session.ts";
 import { isProvider, SESSION_COOKIE, type AuthDeps } from "./auth/types.ts";
 import { loadAuthConfig } from "./config.ts";
 import { loadCallServices } from "./calls/runtime.ts";
+import { rejectConfirmation, resultPage, startConfirmation, TOKEN, viewConfirmation } from "./confirm/index.ts";
 import { isBlocked } from "./blocklist.ts";
 import { iamPool } from "./db.ts";
 import { clearCookie, corsHeaders, json, readCookie, redirect, requestMeta, sessionCookie, type Result } from "./http.ts";
@@ -57,6 +58,7 @@ export interface HandlerDeps {
 }
 
 const AUTH_ROUTE = /^\/auth\/([a-z]+)\/(start|callback)$/;
+const CONFIRM_ROUTE = /^\/confirm\/([^/]+)(?:\/(reject|bankid\/start|vipps\/start))?$/;
 
 // Deleting expired calls and finishing abandoned recordings needs a regular run of the worker.
 // Without a scheduler in the stack, the API starts one at most every 15 minutes per container,
@@ -115,6 +117,30 @@ export function createHandler(deps: HandlerDeps) {
         ? [sessionCookie(SESSION_COOKIE, result.sessionToken, SESSION_MAX_HOURS * 3600)]
         : [];
       return redirect(result.location, cookies);
+    }
+
+    // The customer's confirmation page (no session): view, decline, or accept with BankID/Vipps.
+    const confirm = CONFIRM_ROUTE.exec(path);
+    if (confirm && TOKEN.test(confirm[1]!)) {
+      const token = confirm[1]!;
+      const action = confirm[2];
+      if (method === "GET" && !action) {
+        const view = await viewConfirmation(auth.authDb, token);
+        return view ? json(200, view, cors) : json(404, { error: "Lenken er ugyldig." }, cors);
+      }
+      if (method === "POST" && action === "reject") {
+        if (event.headers?.origin !== auth.config.appOrigin) return json(403, { error: "Ikke tillatt." }, cors);
+        return json(200, { result: await rejectConfirmation(auth.authDb, token, requestMeta(event)) }, cors);
+      }
+      if (method === "GET" && (action === "bankid/start" || action === "vipps/start")) {
+        try {
+          return redirect(await startConfirmation(auth, token, action === "bankid/start" ? "bankid" : "vipps"));
+        } catch (error) {
+          console.error("confirmation start failed", error);
+          return redirect(resultPage(auth, "feil"));
+        }
+      }
+      return json(404, { error: "Fant ikke ressursen" }, cors);
     }
 
     if (path.startsWith("/auth/passkey/") || path.startsWith("/me/passkeys")) {

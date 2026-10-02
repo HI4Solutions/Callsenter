@@ -28,6 +28,7 @@ import {
   updateCall,
   updateReportTemplate,
 } from "./calls.ts";
+import { createConfirmation, revokeConfirmation } from "./confirmations.ts";
 import { createCustomer, getCustomer, listCustomers, updateCustomer } from "./customers.ts";
 import {
   createDraft,
@@ -61,6 +62,8 @@ const THREAD = /^\/org\/threads\/([^/]+)$/;
 const THREAD_MESSAGES = /^\/org\/threads\/([^/]+)\/messages$/;
 const CUSTOMER = /^\/org\/customers\/([^/]+)$/;
 const SALE = /^\/org\/sales\/([^/]+)$/;
+const SALE_CONFIRMATIONS = /^\/org\/sales\/([^/]+)\/confirmations$/;
+const SALE_CONFIRMATION_REVOKE = /^\/org\/sales\/([^/]+)\/confirmations\/([^/]+)\/revoke$/;
 const CALL = /^\/org\/calls\/([^/]+)$/;
 const CALL_ACTION = /^\/org\/calls\/([^/]+)\/(chunks|complete|retry|realtime-key|audio)$/;
 const CALL_ANALYSIS = /^\/org\/calls\/([^/]+)\/analyses\/([^/]+)$/;
@@ -279,6 +282,16 @@ export async function handleOrg(
         return reply(200, await updateReportTemplate(deps.appDb, session, template[1], body()));
       }
       return reply(404, { error: "Fant ikke ressursen." });
+    }
+    const confirmations = SALE_CONFIRMATIONS.exec(path);
+    if (confirmations && isUuid(confirmations[1]) && method === "POST") {
+      await requirePermission(deps.appDb, session, "sales.manage");
+      return reply(201, await createConfirmation(deps.appDb, session, deps.config.appOrigin, confirmations[1]));
+    }
+    const revoke = SALE_CONFIRMATION_REVOKE.exec(path);
+    if (revoke && isUuid(revoke[1]) && isUuid(revoke[2]) && method === "POST") {
+      await requirePermission(deps.appDb, session, "sales.manage");
+      return reply(200, await revokeConfirmation(deps.appDb, session, revoke[1], revoke[2]));
     }
     if (path === "/org/sales" || SALE.test(path)) {
       // Who sees which sales is decided by RLS (own, team or all); sales.manage changes them.
