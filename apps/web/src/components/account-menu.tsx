@@ -72,6 +72,14 @@ export function AccountMenu() {
           </select>
         </label>
       )}
+      {me.activeOrganizationId && (
+        <Link
+          href={me.permissions.includes("customers.read") ? "/kunder" : "/produkter"}
+          className="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold"
+        >
+          {me.permissions.includes("customers.read") ? "Kunder" : "Produkter"}
+        </Link>
+      )}
       {me.permissions.includes("users.manage") && (
         <Link href="/administrasjon" className="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold">
           Administrasjon

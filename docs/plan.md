@@ -260,3 +260,19 @@ Påbegynt 2. oktober 2026. Admin i et callsenter administrerer sitt eget callsen
 | Meldinger | Samtaletråder mellom admin og superadmin, med ulest-markering på begge sider, lukke og åpne. Superadmin ser dem under Meldinger → Samtaler og kan starte en samtale med et callsenter | PR E2 (laget) |
 
 Brukere som er med i flere callsentre, bytter aktivt callsenter i toppen (`POST /me/organization`). Superadmin kan gå inn i et hvilket som helst callsenter fra fanen Callsentre («Åpne adminportalen for callsenteret»).
+
+## 12. Grunndata: kunder, produkter og salg
+
+Påbegynt 2. oktober 2026 (modul 2 og 4). Sidene ligger på `/kunder` og `/produkter` i web-appen for alle aktive medlemmer i callsenteret, med API-et under `/org/customers` og `/org/products`. Alt kjører under RLS i øktens callsenter, og alle endringer skrives til `audit_log`.
+
+Beslutninger 2. oktober:
+
+- Kunder er både privatpersoner og bedrifter. Privatpersoner har navn og fødselsdato, bedrifter organisasjonsnummer og kontaktperson. **Ingen fødselsnumre**: identiteten bekreftes med BankID eller Vipps når kunden godtar (modul 8).
+- En produktmal har pris (engangs og/eller per måned), bindingstid, oppsigelsestid, angrefrist, vilkår, obligatoriske punkter (som AI-kontrollen sjekker hvert for seg) og godkjente og forbudte formuleringer.
+- Salg følger standardløpet `registrert → venter på bekreftelse → bekreftet → aktiv`, med sidesporene avvist, angret og kansellert. Klager kommer i fase 3.
+
+| Del | Innhold | Når |
+|---|---|---|
+| Kunder | Søk (navn, telefon, e-post, org.nr.), opprette, endre, arkivere og gjenopprette. Lese krever `customers.read`, endre krever `customers.manage`. Org.nr. er unikt blant aktive kunder | PR F1 (laget) |
+| Produkter og maler | Alle medlemmer ser produktene og gjeldende versjon (selgere ser ikke utkast). `products.manage` lager produkter og utkast, publiserer og arkiverer. Et nytt utkast kopierer siste versjon. Publisering krever pris, vilkår og minst ett obligatorisk punkt, og erstatter forrige versjon. Databasen nekter endring og sletting av publiserte og erstattede versjoner. Obligatoriske punkter beholder id-en sin mellom versjoner | PR F1 (laget) |
+| Salg | Salg med kunde, produkt og malversjonen som gjaldt (pris lagres på salget), statushistorikk, synlighet som for samtaler (egne, teamets eller alle), og salgshistorikk på kunden | PR F2 |

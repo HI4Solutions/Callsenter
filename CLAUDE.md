@@ -44,7 +44,9 @@ Ikke gjort:
 - CloudTrail til egen kryptert bøtte (revisjonslogg lag 1 i `docs/plan.md`, seksjon 3) er ikke satt opp.
 - Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.
 
-**Neste steg:** Fase 1, superadmin-portalen (`docs/plan.md`, seksjon 10). PR A–D er laget (Callsentre, Brukere, Roller og moduler, Sikkerhet, Meldinger og Vekst). Fanene System og Økonomi kommer i fase 2 og 4. Adminportalen for callsentrene (seksjon 11) har Brukere, Team, Roller og Meldinger. Neste er grunndataene i fase 1: kunder, selgere, produkter, produktmaler (versjonert) og salg.
+- Fase 1, PR F1 (grunndata): kunder (privat og bedrift, ingen fødselsnumre) og produkter med versjonerte produktmaler, migrasjonen `0011_customers_products.sql`, API under `/org/customers` og `/org/products`, og sidene `/kunder` og `/produkter` (`docs/plan.md`, seksjon 12).
+
+**Neste steg:** Fase 1, superadmin-portalen (`docs/plan.md`, seksjon 10). PR A–D er laget (Callsentre, Brukere, Roller og moduler, Sikkerhet, Meldinger og Vekst). Fanene System og Økonomi kommer i fase 2 og 4. Adminportalen for callsentrene (seksjon 11) har Brukere, Team, Roller og Meldinger. Grunndataene (seksjon 12) har kunder og produktmaler; neste er PR F2, salg med statushistorikk.
 
 ## Kommandoer
 
