@@ -14,6 +14,7 @@ import {
   revokeInvitation,
   updateOrganization,
 } from "./organizations.ts";
+import { accessLog, auditLog, blockIp, listBlockedIps, securityOverview, unblockIp } from "./security.ts";
 import { catalog, getUser, listUsers, removeIdentity, setPlatformAdmin, signOutEverywhere, updateUser } from "./users.ts";
 import { BadRequest, isUuid, parseBody } from "./validate.ts";
 
@@ -22,6 +23,7 @@ const INVITATIONS = /^\/admin\/organizations\/([^/]+)\/invitations$/;
 const INVITATION = /^\/admin\/organizations\/([^/]+)\/invitations\/([^/]+)$/;
 const USER = /^\/admin\/users\/([^/]+)$/;
 const USER_ACTION = /^\/admin\/users\/([^/]+)\/(logout|superadmin)$/;
+const BLOCKED_IP = /^\/admin\/security\/blocked-ips\/([^/]+)$/;
 const USER_IDENTITY = /^\/admin\/users\/([^/]+)\/identities\/([a-z]+)$/;
 
 export async function handleAdmin(
@@ -86,6 +88,18 @@ export async function handleAdmin(
       return reply(200, await removeIdentity(deps.appDb, session, match[1], match[2]!));
     }
     if (path === "/admin/catalog" && method === "GET") return reply(200, await catalog(deps.appDb, session));
+    const query = event.queryStringParameters ?? {};
+    if (method === "GET" && path === "/admin/security/overview") return reply(200, await securityOverview(deps.appDb, session, query));
+    if (method === "GET" && path === "/admin/security/audit") return reply(200, await auditLog(deps.appDb, session, query));
+    if (method === "GET" && path === "/admin/security/access") return reply(200, await accessLog(deps.appDb, session, query));
+    if (path === "/admin/security/blocked-ips") {
+      if (method === "GET") return reply(200, await listBlockedIps(deps.appDb, session));
+      if (method === "POST") {
+        return reply(201, await blockIp(deps.appDb, session, event.requestContext.http.sourceIp, body()));
+      }
+    }
+    match = BLOCKED_IP.exec(path);
+    if (match && isUuid(match[1]) && method === "DELETE") return reply(200, await unblockIp(deps.appDb, session, match[1]));
     return reply(404, { error: "Fant ikke ressursen." });
   } catch (error) {
     if (error instanceof BadRequest) return reply(400, { error: error.message });
@@ -97,6 +111,9 @@ export async function handleAdmin(
     }
     if (code === "23505" && constraint?.includes("phone")) {
       return reply(409, { error: "Mobilnummeret er allerede i bruk av en annen bruker." });
+    }
+    if (code === "23505" && constraint?.includes("blocked_ips")) {
+      return reply(409, { error: "Denne adressen er allerede sperret." });
     }
     if (code === "23505" && constraint?.includes("email")) {
       return reply(409, { error: "E-postadressen er allerede i bruk av en annen bruker." });

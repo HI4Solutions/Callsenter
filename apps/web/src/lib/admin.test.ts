@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { invitationState, organizationState, toCsv } from "./admin";
+import { changedFields, invitationState, organizationState, toCsv } from "./admin";
 
 const now = new Date("2026-10-02T12:00:00Z");
 
@@ -34,5 +34,17 @@ describe("CSV export", () => {
       "'=SUM(A1);3",
       "",
     ]);
+  });
+});
+
+describe("audit diff", () => {
+  it("lists changed fields and ignores updated_at", () => {
+    expect(
+      changedFields({ name: "A", note: null, updated_at: "1" }, { name: "B", note: null, updated_at: "2", status: "active" }),
+    ).toEqual([
+      { field: "name", before: "A", after: "B" },
+      { field: "status", before: null, after: "active" },
+    ]);
+    expect(changedFields(null, { id: "x" })).toEqual([{ field: "id", before: null, after: "x" }]);
   });
 });

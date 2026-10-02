@@ -12,6 +12,7 @@ import { handleCallback, startLogin } from "./auth/flow.ts";
 import { resolveSession, revokeSession } from "./auth/session.ts";
 import { isProvider, SESSION_COOKIE, type AuthDeps } from "./auth/types.ts";
 import { loadAuthConfig } from "./config.ts";
+import { isBlocked } from "./blocklist.ts";
 import { iamPool } from "./db.ts";
 import { clearCookie, corsHeaders, json, readCookie, redirect, requestMeta, sessionCookie, type Result } from "./http.ts";
 import { loadMe } from "./me.ts";
@@ -59,6 +60,9 @@ export function createHandler(deps: HandlerDeps) {
     const auth = await deps.auth();
     const cors = corsHeaders(event, auth.config.appOrigin);
     if (method === "OPTIONS") return { statusCode: 204, headers: cors };
+    if (await isBlocked(auth.authDb, event.requestContext.http.sourceIp)) {
+      return json(403, { error: "Tilgangen er sperret." }, cors);
+    }
 
     const route = AUTH_ROUTE.exec(path);
     if (method === "GET" && route && isProvider(route[1]!)) {

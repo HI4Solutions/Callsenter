@@ -152,3 +152,93 @@ export function toCsv(header: string[], rows: (string | number | boolean | null 
   };
   return `﻿${[header, ...rows].map((row) => row.map(cell).join(";")).join("\r\n")}\r\n`;
 }
+
+export interface SecurityOverview {
+  hours: number;
+  totals: { success: number; failed: number };
+  failedByIp: { ip: string; failures: number; users: number; lastAt: string; blocked: boolean }[];
+  failedByUser: { id: string; name: string; failures: number; lastAt: string }[];
+  recent: {
+    occurredAt: string;
+    provider: string;
+    result: string;
+    reason: string | null;
+    ip: string | null;
+    userAgent: string | null;
+    userId: string | null;
+    userName: string | null;
+  }[];
+}
+
+export interface AuditRow {
+  id: string;
+  occurredAt: string;
+  action: "insert" | "update" | "delete";
+  table: string;
+  recordId: string | null;
+  asPlatformAdmin: boolean;
+  oldData: Record<string, unknown> | null;
+  newData: Record<string, unknown> | null;
+  organizationId: string | null;
+  organizationName: string | null;
+  actorId: string | null;
+  actorName: string | null;
+}
+
+export interface AccessRow {
+  id: string;
+  occurredAt: string;
+  action: string;
+  resourceType: string;
+  resourceId: string;
+  ip: string | null;
+  organizationName: string;
+  userId: string;
+  userName: string;
+}
+
+export interface BlockedIp {
+  id: string;
+  network: string;
+  reason: string | null;
+  createdAt: string;
+  expiresAt: string | null;
+  createdByName: string | null;
+}
+
+export const AUDIT_ACTION: Record<string, string> = { insert: "Opprettet", update: "Endret", delete: "Slettet" };
+
+export const AUDIT_TABLE: Record<string, string> = {
+  organizations: "Callsenter",
+  organization_modules: "Modul",
+  users: "Bruker",
+  platform_admins: "Superadmin",
+  teams: "Team",
+  roles: "Rolle",
+  role_permissions: "Rettighet i rolle",
+  memberships: "Medlemskap",
+  invitations: "Invitasjon",
+  identities: "Innloggingsmetode",
+  sessions: "Økter",
+  blocked_ips: "IP-sperring",
+};
+
+// Fields that changed in an audit row (ignoring timestamps that change on every update).
+export function changedFields(oldData: Record<string, unknown> | null, newData: Record<string, unknown> | null) {
+  const ignore = new Set(["updated_at"]);
+  const keys = new Set([...Object.keys(oldData ?? {}), ...Object.keys(newData ?? {})]);
+  const changes: { field: string; before: unknown; after: unknown }[] = [];
+  for (const field of [...keys].sort()) {
+    if (ignore.has(field)) continue;
+    const before = oldData?.[field] ?? null;
+    const after = newData?.[field] ?? null;
+    if (JSON.stringify(before) !== JSON.stringify(after)) changes.push({ field, before, after });
+  }
+  return changes;
+}
+
+export function formatValue(value: unknown): string {
+  if (value === null || value === undefined) return "–";
+  if (typeof value === "string") return value;
+  return JSON.stringify(value);
+}

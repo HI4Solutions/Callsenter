@@ -14,7 +14,7 @@ const TABS: { label: string; href?: string; later?: string }[] = [
   { label: "Roller og moduler", href: "/admin/roller" },
   { label: "Økonomi", later: "Fase 2 og 4" },
   { label: "System", later: "Fase 2" },
-  { label: "Sikkerhet", later: "Kommer" },
+  { label: "Sikkerhet", href: "/admin/sikkerhet" },
 ];
 
 type Access = { status: "loading" } | { status: "denied"; reason: string } | { status: "ok"; me: Me };
