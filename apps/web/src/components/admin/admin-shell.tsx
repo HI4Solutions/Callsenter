@@ -8,10 +8,10 @@ import { API_URL, type Me } from "@/lib/auth";
 // The superadmin portal's tabs (docs/plan.md, section 10). Tabs without href come later.
 const TABS: { label: string; href?: string; later?: string }[] = [
   { label: "Callsentre", href: "/admin/callsentre" },
-  { label: "Brukere", later: "Kommer i neste PR" },
+  { label: "Brukere", href: "/admin/brukere" },
   { label: "Meldinger", later: "Kommer" },
   { label: "Vekst", later: "Kommer" },
-  { label: "Roller og moduler", later: "Kommer" },
+  { label: "Roller og moduler", href: "/admin/roller" },
   { label: "Økonomi", later: "Fase 2 og 4" },
   { label: "System", later: "Fase 2" },
   { label: "Sikkerhet", later: "Kommer" },

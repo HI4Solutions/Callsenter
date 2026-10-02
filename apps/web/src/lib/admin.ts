@@ -104,3 +104,51 @@ export function formatDateTime(value: string | null): string {
   if (!value) return "Aldri";
   return new Intl.DateTimeFormat("nb-NO", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
+
+export interface UserSummary {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  status: "invited" | "active" | "disabled";
+  lastLoginAt: string | null;
+  createdAt: string;
+  platformAdmin: boolean;
+  organizations: { id: string; name: string; role: string; status: string }[];
+}
+
+export interface UserDetail extends Omit<UserSummary, "organizations"> {
+  self: boolean;
+  organizations: { id: string; name: string; role: string; status: string }[];
+  identities: { provider: "bankid" | "vipps"; createdAt: string; lastUsedAt: string | null }[];
+  sessions: { provider: string; createdAt: string; lastSeenAt: string; expiresAt: string; ip: string | null; userAgent: string | null }[];
+  logins: { occurredAt: string; provider: string; result: string; ip: string | null }[];
+}
+
+export interface Catalog {
+  permissions: { key: string; description: string; requiresBankId: boolean }[];
+  defaultRoles: { key: string; name: string; permissions: string[] }[];
+  modules: { key: string; name: string; description: string; enabledIn: number }[];
+}
+
+export const USER_STATUS: Record<string, string> = { invited: "Invitert", active: "Aktiv", disabled: "Deaktivert" };
+export const PROVIDER: Record<string, string> = { bankid: "BankID", vipps: "Vipps" };
+export const LOGIN_RESULT: Record<string, string> = {
+  success: "Vellykket",
+  cancelled: "Avbrutt",
+  unknown_identity: "Ukjent bruker",
+  invalid: "Ugyldig",
+  error: "Feil",
+};
+
+// CSV for Excel with Norwegian settings: semicolon separated, with a byte order mark so
+// æ, ø and å survive.
+export function toCsv(header: string[], rows: (string | number | boolean | null | undefined)[][]): string {
+  const cell = (value: string | number | boolean | null | undefined) => {
+    const text = value === null || value === undefined ? "" : String(value);
+    // A leading =, +, - or @ would be read as a formula.
+    const safe = /^[=+\-@]/.test(text) ? `'${text}` : text;
+    return /[";\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+  };
+  return `﻿${[header, ...rows].map((row) => row.map(cell).join(";")).join("\r\n")}\r\n`;
+}

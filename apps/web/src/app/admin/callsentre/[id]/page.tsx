@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { isModuleKey, MODULES } from "@veriqall/shared";
+import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
 import {
@@ -13,9 +14,8 @@ import {
   invitationState,
   organizationState,
   type OrganizationDetail,
+  USER_STATUS,
 } from "@/lib/admin";
-
-const USER_STATUS: Record<string, string> = { invited: "Invitert", active: "Aktiv", disabled: "Deaktivert" };
 
 export default function CallCentrePage() {
   const { id } = useParams<{ id: string }>();
@@ -75,15 +75,6 @@ function BackLink() {
     <Link href="/admin/callsentre" className="inline-flex min-h-11 items-center font-semibold text-brand">
       ← Alle callsentre
     </Link>
-  );
-}
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface p-4 sm:p-6">
-      <h2 className="text-xl font-bold">{title}</h2>
-      <div className="mt-4">{children}</div>
-    </div>
   );
 }
 
@@ -235,7 +226,9 @@ function Members({ org }: { org: OrganizationDetail }) {
           {org.members.map((m) => (
             <li key={m.userId} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-semibold">{m.name}</p>
+                <Link href={`/admin/brukere/${m.userId}`} className="font-semibold text-brand">
+                  {m.name}
+                </Link>
                 <p className="text-sm text-muted">{[m.phone, m.email].filter(Boolean).join(" · ") || "Ingen kontaktinfo"}</p>
               </div>
               <p className="text-sm">

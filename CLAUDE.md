@@ -29,6 +29,7 @@ Ferdig:
 - Fase 0, PR 3 (innlogging): Vipps Logg inn og BankID via Idura i `apps/api/src/auth`, migrasjonen `0002_login.sql` (BankID kreves for administrative rettigheter og superadmin), `/logg-inn` i web-appen, og superadmin-invitasjon via migratoren (`infra/README.md`). Nøklene for Vipps og Idura (begge produksjonsmiljøet, ekte innlogging) og Soniox ligger i `callsenter/staging/app`. `IDURA_DOMAIN` er satt på Environment `staging`. Testet i staging 2. oktober: innlogging med både BankID og Vipps virker, og Nadeem er invitert som superadmin. Amplify-stacken er oppdatert med `NEXT_PUBLIC_API_URL`.
 
 - Fase 1, PR A (superadmin, Callsentre): `/admin` med faner og fanen Callsentre (opprette og endre callsentre, prøveperiode og suspensjon, moduler, brukere, invitasjonslenker), API under `/admin/*` i `apps/api/src/admin`, migrasjonen `0003_superadmin_portal.sql` og modulkatalogen i `packages/shared/src/modules.ts`.
+- Fase 1, PR B (superadmin, Brukere og Roller og moduler): søk på tvers av callsentre, brukerdetaljer (profil, deaktivering, superadmin av og på, callsentre, innloggingsmetoder, aktive økter, tvangsutlogging, siste innlogginger), CSV-eksport, og oversikt over moduler, standardroller og rettigheter. Migrasjonen `0004_superadmin_users.sql` (superadmin fra portalen med vern, og `app.admin_*`-funksjoner for oppslag og handlinger på tvers av callsentre).
 
 Ikke gjort:
 - Vipps-knappen må byttes til Vipps' offisielle før produksjon.
@@ -37,7 +38,7 @@ Ikke gjort:
 - CloudTrail til egen kryptert bøtte (revisjonslogg lag 1 i `docs/plan.md`, seksjon 3) er ikke satt opp.
 - Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.
 
-**Neste steg:** Fase 1, superadmin-portalen (`docs/plan.md`, seksjon 10). PR A (fanen Callsentre) er laget; deretter PR B (Brukere, Roller og moduler) og PR C (Sikkerhet, Meldinger, Vekst).
+**Neste steg:** Fase 1, superadmin-portalen (`docs/plan.md`, seksjon 10). PR A (Callsentre) og PR B (Brukere, Roller og moduler) er laget; neste er PR C (Sikkerhet, Meldinger, Vekst).
 
 ## Kommandoer
 

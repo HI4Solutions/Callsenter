@@ -79,7 +79,7 @@ Callback-Lambdaen må nå både internett (Idura og Vipps) og databasen. Det er 
 - **Tidsavbrudd:** 60 minutter uten aktivitet og maks 14 timer totalt.
 - **Ekte BankID i staging:** staging-applikasjonen ligger i Iduras produksjonsmiljø, så vi kan teste med egen BankID i stedet for testbrukere. Staging lagrer da ekte navn på interne testere (ikke fødselsnummer, som aldri hentes). Hver innlogging koster etter Iduras pris.
 - **Ekte Vipps i staging:** Vipps' testmiljø krever test-appen Vipps MT, så staging bruker også Vipps' produksjonsmiljø (`api.vipps.no`) med nøkler fra en salgsenhet der. Testmiljøet kan tas i bruk igjen ved å sette verten i `infra/deploy.sh`.
-- **Superadmins** opprettes bare via migrator-Lambdaen (`invite-platform-admin`, se `infra/README.md`), aldri fra API-et. Invitasjonen har ikke noe callsenter, og superadmin-rettighetene gjelder bare i økter startet med BankID.
+- **Superadmins:** den første opprettes via migrator-Lambdaen (`invite-platform-admin`, se `infra/README.md`). Fra 2. oktober kan en superadmin også gi og fjerne superadmin i portalen (fanen Brukere, migrasjon `0004_superadmin_users.sql`), bare i en BankID-økt. Ingen kan fjerne sin egen tilgang, og det må alltid finnes minst én superadmin. Invitasjonen har ikke noe callsenter, og superadmin-rettighetene gjelder bare i økter startet med BankID.
 
 ## Slik er det bygget (PR 3)
 
