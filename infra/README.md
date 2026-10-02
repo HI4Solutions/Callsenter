@@ -28,6 +28,8 @@ CloudFormation (YAML) for VeriQall, én stack per lag og miljø. Alle stacker he
 
 Produksjons-workflowen gjør ingenting før repo-variabelen `PRODUCTION_ENABLED` er satt til `true` (ved lansering).
 
+En deploy kan også startes manuelt: **Actions → Deploy to staging → Run workflow** (velg branchen `staging`). Det trengs for eksempel etter at en variabel på GitHub Environment er endret.
+
 ## Valgfrie variabler på GitHub Environment
 
 - `ALERT_EMAIL`: e-post når NAT-instansen er nede (staging).
