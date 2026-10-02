@@ -5,6 +5,7 @@ import type { ClientBase } from "pg";
 export const LOGINS = {
   veriqall_api: "app_user",
   veriqall_auth: "app_auth",
+  veriqall_worker: "app_worker",
 } as const;
 
 export interface ProvisionResult {

@@ -11,6 +11,8 @@ export interface Me {
   organizations: { id: string; name: string }[];
   activeOrganizationId: string | null;
   permissions: string[];
+  // Modules switched on for the active call centre.
+  modules: string[];
 }
 
 export async function withSession<T>(appDb: pg.Pool, session: Session, fn: (db: pg.PoolClient) => Promise<T>): Promise<T> {
@@ -47,6 +49,9 @@ export function loadMe(appDb: pg.Pool, session: Session): Promise<Me> {
       "select app.is_platform_admin() as platform_admin, app.current_org_id() as org",
     );
     const permissions = await db.query<{ p: string }>("select app.current_permissions() as p order by 1");
+    const modules = await db.query<{ module: string }>(
+      "select module from organization_modules where organization_id = app.current_org_id() and enabled order by 1",
+    );
     return {
       user: { id: session.userId, name: user.rows[0]?.full_name ?? "" },
       provider: session.provider,
@@ -55,6 +60,7 @@ export function loadMe(appDb: pg.Pool, session: Session): Promise<Me> {
       organizations: orgs.rows,
       activeOrganizationId: flags.rows[0]?.org ?? null,
       permissions: permissions.rows.map((r) => r.p),
+      modules: modules.rows.map((r) => r.module),
     };
   });
 }

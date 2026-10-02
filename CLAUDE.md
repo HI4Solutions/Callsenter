@@ -44,10 +44,11 @@ Ikke gjort:
 - CloudTrail til egen kryptert bøtte (revisjonslogg lag 1 i `docs/plan.md`, seksjon 3) er ikke satt opp.
 - Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.
 
+- Fase 2 (samtalen): opptak i nettleseren med mikrofon eller fanelyd, sanntid eller bitvis via Soniox i EU, lagret opptak i S3 med lagringstid 3–12 måneder per callsenter, AI-kontroll mot produktmalen og rapporter med Claude via Bedrock, worker-Lambdaen `veriqall-<env>-worker`, migrasjonen `0013_calls.sql` (`docs/plan.md`, seksjon 13).
 - Fase 1, PR F2 (salg): migrasjonen `0012_sales.sql` (salg med statusløp, historikk i `sale_events`, synlighet som for samtaler), statusløpet i `packages/shared/src/sales.ts`, API under `/org/sales`, og sidene `/salg` og `/salg/[id]`. Selgere lander på `/salg`.
 - Fase 1, PR F1 (grunndata): kunder (privat og bedrift, ingen fødselsnumre) og produkter med versjonerte produktmaler, migrasjonen `0011_customers_products.sql`, API under `/org/customers` og `/org/products`, og sidene `/kunder` og `/produkter` (`docs/plan.md`, seksjon 12).
 
-**Neste steg:** Fase 1 er på plass: superadmin-portalen (`docs/plan.md`, seksjon 10; fanene System og Økonomi kommer i fase 2 og 4), adminportalen for callsentrene (seksjon 11) og grunndataene (seksjon 12: kunder, produktmaler og salg). Neste er fase 2, samtalen: opptak, transkribering med Soniox, AI-kontroll mot produktmalen og rapporter.
+**Neste steg:** Test fase 2 i staging (Soniox-nøkkel fra EU-prosjekt, Claude slått på i Bedrock, moduler på for callsenteret). Deretter fase 3: salgsverifisering (kunden bekrefter via SMS eller Vipps), dokumentasjon og klagehåndtering.
 
 ## Kommandoer
 
@@ -83,7 +84,7 @@ Node 22 (se `.nvmrc`). Kjør fra reporoten:
 | API | API Gateway og Lambda (TypeScript) |
 | Database | PostgreSQL på RDS, samme motor i staging og prod, KMS-kryptert, `rds.force_ssl=1`, pgAudit, point-in-time recovery; Multi-AZ i prod |
 | Nettverk | Lambdaer i VPC; NAT-instans i staging, NAT Gateway i prod; migrasjoner via migrator-Lambda |
-| Lyd | S3 per miljø, SSE-KMS, kun TLS |
+| Lyd | Opptak i nettleseren (mikrofon og fanelyd), opplastet i biter til S3 per miljø, SSE-KMS, kun TLS, slettes etter 3–12 måneder |
 | Transkripsjon | Soniox API |
 | AI | Claude via AWS Bedrock i `eu-north-1` |
 | Innlogging | Vipps Logg inn og BankID via Idura, begge OIDC, og passkeys (WebAuthn) |

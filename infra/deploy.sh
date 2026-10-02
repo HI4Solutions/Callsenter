@@ -67,7 +67,7 @@ network_params=("NatMode=$nat_mode" "VpcCidr=$vpc_cidr")
 [[ -n "${ALERT_EMAIL:-}" ]] && network_params+=("AlertEmail=$ALERT_EMAIL")
 deploy network network.yml "${network_params[@]}"
 
-deploy data data.yml "MultiAz=$multi_az"
+deploy data data.yml "MultiAz=$multi_az" "AppOrigin=$app_origin"
 
 app_params=("ArtifactsBucket=$bucket" "ArtifactKey=$artifact_key" "AppOrigin=$app_origin"
   "VippsHost=$vipps_host" "IduraDomain=${IDURA_DOMAIN:-}")

@@ -41,7 +41,8 @@ Vipps-verten er `api.vipps.no` (produksjon) i begge miljøer. Staging bruker egn
 
 ## Etter første deploy
 
-- Fyll inn verdiene i hemmeligheten `callsenter/<miljø>/app` (Vipps, Idura, Soniox) i Secrets Manager. CloudFormation lager den tom og overskriver den aldri.
+- Fyll inn verdiene i hemmeligheten `callsenter/<miljø>/app` (Vipps, Idura, Soniox) i Secrets Manager. CloudFormation lager den tom og overskriver den aldri. `SONIOX_API_KEY` må komme fra et Soniox-prosjekt i EU-regionen, siden VeriQall bruker EU-endepunktene.
+- Slå på Claude-modellen (`BedrockModel` i `app.yml`, standard `anthropic.claude-opus-5-5`) under Model access i Bedrock-konsollen i `eu-north-1`. Workeren (`veriqall-<miljø>-worker`) bruker den til AI-kontroll og rapporter.
 - Hovedbrukeren i RDS (`veriqall_owner`) har et passord som AWS lager og roterer selv. Lambdaene for API og innlogging logger inn med IAM, uten passord.
 
 ## Opprette en superadmin

@@ -31,6 +31,7 @@ import {
 import { resolveSession, revokeSession } from "./auth/session.ts";
 import { isProvider, SESSION_COOKIE, type AuthDeps } from "./auth/types.ts";
 import { loadAuthConfig } from "./config.ts";
+import { loadCallServices } from "./calls/runtime.ts";
 import { isBlocked } from "./blocklist.ts";
 import { iamPool } from "./db.ts";
 import { clearCookie, corsHeaders, json, readCookie, redirect, requestMeta, sessionCookie, type Result } from "./http.ts";
@@ -198,12 +199,13 @@ let authDeps: Promise<AuthDeps> | undefined;
 export const handler = createHandler({
   checkDatabase: poolCheck(() => (apiPool ??= iamPool("veriqall_api"))),
   auth: () => {
-    authDeps ??= loadAuthConfig().then((config) => ({
+    authDeps ??= Promise.all([loadAuthConfig(), loadCallServices()]).then(([config, calls]) => ({
       config,
       authDb: iamPool("veriqall_auth"),
       appDb: (apiPool ??= iamPool("veriqall_api")),
       fetch,
       now: () => new Date(),
+      calls,
     }));
     // Try again on the next request if loading the secret failed.
     authDeps.catch(() => (authDeps = undefined));

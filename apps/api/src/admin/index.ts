@@ -35,6 +35,7 @@ import {
   signOutEverywhere,
   updateUser,
 } from "./users.ts";
+import { getSystem, updateSystem, usage } from "./system.ts";
 import { BadRequest, isUuid, parseBody } from "./validate.ts";
 
 const ORGANIZATION = /^\/admin\/organizations\/([^/]+)$/;
@@ -148,6 +149,11 @@ export async function handleAdmin(
       if (method === "PATCH") return reply(200, await updateAnnouncement(deps.appDb, session, match[1], body()));
       if (method === "DELETE") return reply(200, await deleteAnnouncement(deps.appDb, session, match[1]));
     }
+    if (path === "/admin/system") {
+      if (method === "GET") return reply(200, await getSystem(deps.appDb, session));
+      if (method === "PATCH") return reply(200, await updateSystem(deps.appDb, session, body()));
+    }
+    if (method === "GET" && path === "/admin/usage") return reply(200, await usage(deps.appDb, session, query.months));
     if (method === "GET" && path === "/admin/growth") return reply(200, await growth(deps.appDb, session, query.months));
     if (method === "POST" && path === "/admin/growth/events") return reply(201, await addGrowthEvent(deps.appDb, session, body()));
     match = GROWTH_EVENT.exec(path);

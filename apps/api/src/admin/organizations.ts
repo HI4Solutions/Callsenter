@@ -59,7 +59,16 @@ function organizationFields(body: Body) {
     note: optionalText(body, "note", "Notat", 2000),
     trial_ends_at: optionalDate(body, "trialEndsAt", "Slutt på prøveperiode"),
     status: status as (typeof STATUSES)[number] | undefined,
+    recording_retention_months: retentionMonths(body),
   };
+}
+
+// How long recordings and transcripts are kept (decided 2 October 2026: 3, 6, 9 or 12 months).
+function retentionMonths(body: Body): number | undefined {
+  const value = body.recordingRetentionMonths;
+  if (value === undefined) return undefined;
+  if (value !== 3 && value !== 6 && value !== 9 && value !== 12) throw new BadRequest("Lagringstiden må være 3, 6, 9 eller 12 måneder.");
+  return value;
 }
 
 function moduleChanges(body: Body): [string, boolean][] {
@@ -125,6 +134,7 @@ export async function getOrganization(db: pg.Pool, session: Session, orgId: stri
       `select id, name, org_number as "orgNumber", status, trial_ends_at as "trialEndsAt",
               contact_name as "contactName", contact_email as "contactEmail", contact_phone as "contactPhone",
               invoice_email as "invoiceEmail", invoice_address as "invoiceAddress", note,
+              recording_retention_months as "recordingRetentionMonths",
               created_at as "createdAt", updated_at as "updatedAt"
        from organizations where id = $1`,
       [orgId],

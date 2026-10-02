@@ -24,6 +24,13 @@ Parameters:
     Default: 7
     MinValue: 7
     MaxValue: 35
+  AppOrigin:
+    Type: String
+    Default: ""
+    Description: Origin of the web app; the only origin allowed to upload and play audio (bucket CORS).
+
+Conditions:
+  HasAppOrigin: !Not [!Equals [!Ref AppOrigin, ""]]
 
 Resources:
   # One key per environment for RDS, the master secret, the app secret, the audio bucket and
@@ -184,6 +191,31 @@ Resources:
           - ObjectOwnership: BucketOwnerEnforced
       VersioningConfiguration:
         Status: Enabled
+      # The browser uploads chunks and plays recordings through presigned URLs.
+      CorsConfiguration: !If
+        - HasAppOrigin
+        - CorsRules:
+            - AllowedOrigins: [!Ref AppOrigin]
+              AllowedMethods: [PUT, GET, HEAD]
+              AllowedHeaders: [content-type]
+              ExposedHeaders: [ETag]
+              MaxAge: 600
+        - !Ref AWS::NoValue
+      # Calls are deleted by the worker when their retention (at most 12 months) ends; these rules
+      # make sure nothing outlives it: deleted versions go after a day, and any object after
+      # 13 months.
+      LifecycleConfiguration:
+        Rules:
+          - Id: retention-backstop
+            Status: Enabled
+            ExpirationInDays: 400
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 1
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+          - Id: delete-markers
+            Status: Enabled
+            ExpiredObjectDeleteMarker: true
       Tags:
         - Key: project
           Value: veriqall

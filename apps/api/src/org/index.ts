@@ -11,6 +11,23 @@ import type { Session } from "../auth/session.ts";
 import type { AuthDeps } from "../auth/types.ts";
 import { json, type Result } from "../http.ts";
 import { withSession } from "../me.ts";
+import {
+  audioUrl,
+  callStatus,
+  chunkUrl,
+  completeCall,
+  createCall,
+  createReportTemplate,
+  getCall,
+  listCalls,
+  listReportTemplates,
+  renewRealtimeKey,
+  retryCall,
+  reviewAnalysis,
+  Unavailable,
+  updateCall,
+  updateReportTemplate,
+} from "./calls.ts";
 import { createCustomer, getCustomer, listCustomers, updateCustomer } from "./customers.ts";
 import {
   createDraft,
@@ -44,6 +61,10 @@ const THREAD = /^\/org\/threads\/([^/]+)$/;
 const THREAD_MESSAGES = /^\/org\/threads\/([^/]+)\/messages$/;
 const CUSTOMER = /^\/org\/customers\/([^/]+)$/;
 const SALE = /^\/org\/sales\/([^/]+)$/;
+const CALL = /^\/org\/calls\/([^/]+)$/;
+const CALL_ACTION = /^\/org\/calls\/([^/]+)\/(chunks|complete|retry|realtime-key|audio)$/;
+const CALL_ANALYSIS = /^\/org\/calls\/([^/]+)\/analyses\/([^/]+)$/;
+const REPORT_TEMPLATE = /^\/org\/report-templates\/([^/]+)$/;
 const PRODUCT = /^\/org\/products\/([^/]+)$/;
 const PRODUCT_DRAFT = /^\/org\/products\/([^/]+)\/draft$/;
 const VERSION = /^\/org\/products\/([^/]+)\/versions\/([^/]+)$/;
@@ -207,6 +228,56 @@ export async function handleOrg(
       }
       return reply(404, { error: "Fant ikke ressursen." });
     }
+    if (path === "/org/calls" || path.startsWith("/org/calls/")) {
+      const services = deps.calls;
+      if (!services) return reply(503, { error: "Opptak er ikke satt opp ennå." });
+      const meta = { ip: event.requestContext.http.sourceIp, userAgent: event.requestContext.http.userAgent };
+      if (method === "GET" && path === "/org/calls") return reply(200, await listCalls(deps.appDb, session, event.queryStringParameters ?? {}));
+      if (method === "POST" && path === "/org/calls") {
+        await requirePermission(deps.appDb, session, "calls.upload");
+        return reply(201, await createCall(deps.appDb, session, services, body()));
+      }
+      const action = CALL_ACTION.exec(path);
+      if (action && isUuid(action[1])) {
+        const [, id, name] = action;
+        if (method === "GET" && name === "audio") {
+          await requirePermission(deps.appDb, session, "calls.audio.play");
+          return reply(200, await audioUrl(deps.appDb, session, services, id, meta));
+        }
+        if (method === "POST") {
+          await requirePermission(deps.appDb, session, "calls.upload");
+          if (name === "chunks") return reply(200, await chunkUrl(deps.appDb, session, services, id, body()));
+          if (name === "complete") return reply(200, await completeCall(deps.appDb, session, services, id, body()));
+          if (name === "retry") return reply(200, await retryCall(deps.appDb, session, services, id));
+          if (name === "realtime-key") return reply(200, await renewRealtimeKey(deps.appDb, session, services, id));
+        }
+      }
+      const review = CALL_ANALYSIS.exec(path);
+      if (review && isUuid(review[1]) && isUuid(review[2]) && method === "PATCH") {
+        await requirePermission(deps.appDb, session, "flags.review");
+        return reply(200, await reviewAnalysis(deps.appDb, session, review[1], review[2], body()));
+      }
+      const one = CALL.exec(path);
+      if (one && isUuid(one[1])) {
+        if (method === "GET" && event.queryStringParameters?.status === "1") return reply(200, await callStatus(deps.appDb, session, one[1]));
+        if (method === "GET") return reply(200, await getCall(deps.appDb, session, one[1], meta));
+        if (method === "PATCH") {
+          await requirePermission(deps.appDb, session, "calls.upload");
+          return reply(200, await updateCall(deps.appDb, session, services, one[1], body()));
+        }
+      }
+      return reply(404, { error: "Fant ikke ressursen." });
+    }
+    if (path === "/org/report-templates" || REPORT_TEMPLATE.test(path)) {
+      if (method === "GET" && path === "/org/report-templates") return reply(200, await listReportTemplates(deps.appDb, session));
+      await requirePermission(deps.appDb, session, "report_templates.manage");
+      if (method === "POST" && path === "/org/report-templates") return reply(201, await createReportTemplate(deps.appDb, session, body()));
+      const template = REPORT_TEMPLATE.exec(path);
+      if (template && isUuid(template[1]) && method === "PATCH") {
+        return reply(200, await updateReportTemplate(deps.appDb, session, template[1], body()));
+      }
+      return reply(404, { error: "Fant ikke ressursen." });
+    }
     if (path === "/org/sales" || SALE.test(path)) {
       // Who sees which sales is decided by RLS (own, team or all); sales.manage changes them.
       if (method !== "GET") await requirePermission(deps.appDb, session, "sales.manage");
@@ -292,13 +363,14 @@ export async function handleOrg(
       });
     }
     if (error instanceof BadRequest) return reply(400, { error: error.message });
+    if (error instanceof Unavailable) return reply(503, { error: "Sanntidstekst er ikke tilgjengelig nå. Opptaket fortsetter." });
     if (error instanceof NotFound) return reply(404, { error: "Fant ikke ressursen." });
     const code = (error as { code?: string }).code;
     const constraint = (error as { constraint?: string }).constraint ?? "";
     if (code === "42501" && path.startsWith("/org/roles")) {
       return reply(403, { error: "Du kan ikke gi en rolle rettigheter du ikke har selv." });
     }
-    if (code === "42501" && /^\/org\/(customers|products|sales)(\/|$)/.test(path)) {
+    if (code === "42501" && /^\/org\/(customers|products|sales|calls|report-templates)(\/|$)/.test(path)) {
       return reply(403, { error: "Du har ikke tilgang til dette.", code: "ingen_tilgang" });
     }
     if (code === "42501") return reply(403, { error: "Du kan ikke gi en rolle med rettigheter du ikke har selv." });
@@ -307,6 +379,9 @@ export async function handleOrg(
     }
     if (code === "23505" && constraint === "products_org_name_key") {
       return reply(409, { error: "Det finnes allerede et produkt med dette navnet." });
+    }
+    if (code === "23505" && constraint === "report_templates_default") {
+      return reply(409, { error: "Noen andre endret standardmalen samtidig. Last siden på nytt." });
     }
     if (code === "23505" && constraint.startsWith("product_template_versions")) {
       return reply(409, { error: "Noen andre endret produktet samtidig. Last siden på nytt." });

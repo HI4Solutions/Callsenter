@@ -9,8 +9,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/bedrock-sdk": "^0.34.2",
+    "@anthropic-ai/sdk": "^0.131.0",
+    "@aws-sdk/client-lambda": "^3.1145.0",
+    "@aws-sdk/client-s3": "^3.1145.0",
     "@aws-sdk/client-secrets-manager": "^3.1145.0",
     "@aws-sdk/rds-signer": "^3.1145.0",
+    "@aws-sdk/s3-request-presigner": "^3.1145.0",
     "@simplewebauthn/server": "^14.0.3",
     "@veriqall/db": "*",
     "jose": "^6.2.12",

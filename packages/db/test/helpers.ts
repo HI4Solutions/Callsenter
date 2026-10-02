@@ -16,6 +16,8 @@ afterAll(async () => {
 export const owner = pool(inject("ownerUrl"));
 export const api = pool(inject("apiUrl"));
 export const auth = pool(inject("authUrl"));
+// The worker Lambda: transcribes, analyses and deletes expired calls, for no particular user.
+export const worker = pool(inject("workerUrl"));
 
 export interface Context {
   userId?: string;

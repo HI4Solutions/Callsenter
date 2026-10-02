@@ -9,6 +9,7 @@ interface AppSecret {
   VIPPS_MSN?: string;
   IDURA_CLIENT_ID?: string;
   IDURA_CLIENT_SECRET?: string;
+  SONIOX_API_KEY?: string;
 }
 
 // Builds the login configuration. A provider is enabled only when its host and keys are all
@@ -50,12 +51,19 @@ export function buildAuthConfig(env: NodeJS.ProcessEnv, secret: AppSecret): Auth
   };
 }
 
-export async function loadAuthConfig(): Promise<AuthConfig> {
+// The provider keys (callsenter/<env>/app in Secrets Manager), read once per container.
+let secretPromise: Promise<AppSecret> | undefined;
+export function loadAppSecret(): Promise<AppSecret> {
   const secretArn = process.env.APP_SECRET_ARN;
-  let secret: AppSecret = {};
-  if (secretArn) {
-    const { SecretString } = await new SecretsManagerClient({}).send(new GetSecretValueCommand({ SecretId: secretArn }));
-    secret = JSON.parse(SecretString ?? "{}") as AppSecret;
-  }
-  return buildAuthConfig(process.env, secret);
+  if (!secretArn) return Promise.resolve({});
+  secretPromise ??= new SecretsManagerClient({})
+    .send(new GetSecretValueCommand({ SecretId: secretArn }))
+    .then(({ SecretString }) => JSON.parse(SecretString ?? "{}") as AppSecret);
+  // Try again next time if reading the secret failed.
+  secretPromise.catch(() => (secretPromise = undefined));
+  return secretPromise;
+}
+
+export async function loadAuthConfig(): Promise<AuthConfig> {
+  return buildAuthConfig(process.env, await loadAppSecret());
 }

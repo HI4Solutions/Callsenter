@@ -28,6 +28,7 @@ export interface OrganizationDetail {
   orgNumber: string | null;
   status: "active" | "suspended";
   trialEndsAt: string | null;
+  recordingRetentionMonths: 3 | 6 | 9 | 12;
   contactName: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
