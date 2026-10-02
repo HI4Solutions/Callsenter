@@ -48,10 +48,10 @@ export function AccountMenu() {
           Superadmin
         </Link>
       )}
-      <span className="hidden text-sm sm:inline">
+      <Link href="/konto" className="inline-flex min-h-11 items-center text-sm">
         {state.me.user.name}
-        <span className="sr-only">, innlogget med {state.me.provider === "bankid" ? "BankID" : "Vipps"}</span>
-      </span>
+        <span className="sr-only">, min konto</span>
+      </Link>
       <button type="button" onClick={logout} className="inline-flex min-h-11 items-center whitespace-nowrap rounded-lg px-3 font-semibold">
         Logg ut
       </button>

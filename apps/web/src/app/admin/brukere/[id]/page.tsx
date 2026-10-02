@@ -286,6 +286,36 @@ function Logins({ user, onChanged }: { user: UserDetail; onChanged: () => Promis
         </ul>
       )}
 
+      <h3 className="mt-6 font-semibold">Passkeys</h3>
+      {user.passkeys.length === 0 ? (
+        <p className="mt-1 text-sm text-muted">Ingen passkeys.</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-line">
+          {user.passkeys.map((p) => (
+            <li key={p.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold">{p.name}</p>
+                <p className="text-sm text-muted">
+                  Lagt til {formatDate(p.createdAt)} · sist brukt {formatDateTime(p.lastUsedAt)}
+                </p>
+              </div>
+              <button
+                type="button"
+                className={secondaryButton}
+                disabled={busy}
+                onClick={() =>
+                  run(`Fjerne passkeyen «${p.name}» fra ${user.name}? Brukeren logges ut overalt.`, () =>
+                    adminFetch(`/users/${user.id}/passkeys/${p.id}`, { method: "DELETE" }),
+                  )
+                }
+              >
+                Fjern
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <h3 className="mt-6 font-semibold">Aktive økter</h3>
       {user.sessions.length === 0 ? (
         <p className="mt-1 text-sm text-muted">Ingen aktive økter.</p>

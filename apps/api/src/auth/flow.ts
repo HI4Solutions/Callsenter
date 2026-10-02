@@ -4,7 +4,7 @@ import { SESSION_MAX_HOURS } from "@veriqall/shared";
 import { pkceChallenge, randomToken, sha256 } from "./crypto.ts";
 import { authorizationUrl, completeLogin } from "./oidc.ts";
 import { normalizePhone } from "./phone.ts";
-import { AuthFailure, type AuthDeps, type Identity, type LoginError, type Provider } from "./types.ts";
+import { AuthFailure, type AuthDeps, type Identity, type LoginError, type LoginMethod, type Provider } from "./types.ts";
 
 const STATE_LIFETIME_MINUTES = 10;
 
@@ -37,7 +37,7 @@ export function loginPage(deps: AuthDeps, error: LoginError, extra: Record<strin
   return url.toString();
 }
 
-async function withTransaction<T>(db: pg.Pool, fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {
+export async function withTransaction<T>(db: pg.Pool, fn: (client: pg.PoolClient) => Promise<T>): Promise<T> {
   const client = await db.connect();
   try {
     await client.query("begin");
@@ -52,9 +52,9 @@ async function withTransaction<T>(db: pg.Pool, fn: (client: pg.PoolClient) => Pr
   }
 }
 
-async function logEvent(
+export async function logEvent(
   deps: AuthDeps,
-  provider: Provider,
+  provider: LoginMethod,
   result: "success" | "cancelled" | "unknown_identity" | "invalid" | "error",
   meta: RequestMeta,
   userId?: string,
@@ -170,6 +170,32 @@ async function linkUser(db: pg.PoolClient, deps: AuthDeps, identity: Identity, s
   throw new AuthFailure("ukjent", "unknown_identity", "unknown identity without invitation");
 }
 
+// A new session in the user's default call centre. Only the hash of the token is stored.
+export async function insertSession(
+  db: pg.PoolClient,
+  sessionToken: string,
+  userId: string,
+  method: LoginMethod,
+  acr: string | null,
+  now: Date,
+  meta: RequestMeta,
+) {
+  await db.query(
+    `insert into sessions (id_hash, user_id, provider, acr, active_organization_id, created_at, last_seen_at, expires_at, ip, user_agent)
+     values ($1, $2, $3, $4, app.default_organization_for($2), $5, $5, $6, $7, $8)`,
+    [
+      sha256(sessionToken),
+      userId,
+      method,
+      acr,
+      now,
+      new Date(now.getTime() + SESSION_MAX_HOURS * 3_600_000),
+      meta.ip ?? null,
+      meta.userAgent?.slice(0, 500) ?? null,
+    ],
+  );
+}
+
 async function insertIdentity(db: pg.PoolClient, userId: string, identity: Identity, now: Date) {
   try {
     await db.query(
@@ -240,20 +266,7 @@ export async function handleCallback(
         identity.subject,
         now,
       ]);
-      await db.query(
-        `insert into sessions (id_hash, user_id, provider, acr, active_organization_id, created_at, last_seen_at, expires_at, ip, user_agent)
-         values ($1, $2, $3, $4, app.default_organization_for($2), $5, $5, $6, $7, $8)`,
-        [
-          sha256(sessionToken),
-          id,
-          provider,
-          identity.acr ?? null,
-          now,
-          new Date(now.getTime() + SESSION_MAX_HOURS * 3_600_000),
-          meta.ip ?? null,
-          meta.userAgent?.slice(0, 500) ?? null,
-        ],
-      );
+      await insertSession(db, sessionToken, id, provider, identity.acr ?? null, now, meta);
       return id;
     });
     await logEvent(deps, provider, "success", meta, userId);
