@@ -11,7 +11,7 @@ const deps: AuthDeps = {
   config: { appOrigin: ORIGIN, callbackBase: "https://api.test", providers: {} },
   authDb: auth,
   appDb: api,
-  fetch: (async (input: RequestInfo | URL) =>
+  fetch: (async (input: string | URL | Request) =>
     String(input).includes("norges-bank")
       ? new Response(
           JSON.stringify({
