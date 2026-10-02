@@ -2,6 +2,7 @@
 // session is in. Everything runs as app_user under RLS with the session's user and call centre,
 // so the database decides what is visible and refuses grants of permissions the caller lacks.
 // The checks here only give clearer answers.
+import { type Permission, STRONG_AUTH_PERMISSIONS } from "@veriqall/shared";
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import type pg from "pg";
 import { inviteMember, NotFound, revokeInvitation } from "../admin/organizations.ts";
@@ -10,10 +11,29 @@ import type { Session } from "../auth/session.ts";
 import type { AuthDeps } from "../auth/types.ts";
 import { json, type Result } from "../http.ts";
 import { withSession } from "../me.ts";
+import { createCustomer, getCustomer, listCustomers, updateCustomer } from "./customers.ts";
+import {
+  createDraft,
+  createProduct,
+  deleteDraft,
+  getProduct,
+  listProducts,
+  publishDraft,
+  updateDraft,
+  updateProduct,
+} from "./products.ts";
 import { createRole, listRoles, updateRole } from "./roles.ts";
 import { getThread, listThreads, reply as replyThread, setThreadStatus, startThread } from "./threads.ts";
 
-class Forbidden extends Error {}
+class Forbidden extends Error {
+  // Only administrative permissions need BankID or a passkey; for the rest, signing in
+  // differently would not help.
+  needsStrongSession: boolean;
+  constructor(permission: Permission, session: Session) {
+    super(permission);
+    this.needsStrongSession = !session.strong && STRONG_AUTH_PERMISSIONS.includes(permission);
+  }
+}
 
 const MEMBER = /^\/org\/members\/([^/]+)$/;
 const INVITATION = /^\/org\/invitations\/([^/]+)$/;
@@ -21,13 +41,18 @@ const TEAM = /^\/org\/teams\/([^/]+)$/;
 const ROLE = /^\/org\/roles\/([^/]+)$/;
 const THREAD = /^\/org\/threads\/([^/]+)$/;
 const THREAD_MESSAGES = /^\/org\/threads\/([^/]+)\/messages$/;
+const CUSTOMER = /^\/org\/customers\/([^/]+)$/;
+const PRODUCT = /^\/org\/products\/([^/]+)$/;
+const PRODUCT_DRAFT = /^\/org\/products\/([^/]+)\/draft$/;
+const VERSION = /^\/org\/products\/([^/]+)\/versions\/([^/]+)$/;
+const VERSION_PUBLISH = /^\/org\/products\/([^/]+)\/versions\/([^/]+)\/publish$/;
 
-async function requirePermission(db: pg.Pool, session: Session, permission: string) {
+async function requirePermission(db: pg.Pool, session: Session, permission: Permission) {
   const ok = await withSession(db, session, async (c) => {
     const { rows } = await c.query<{ ok: boolean }>("select app.has_permission($1) as ok", [permission]);
     return rows[0]?.ok === true;
   });
-  if (!ok) throw new Forbidden();
+  if (!ok) throw new Forbidden(permission, session);
 }
 
 export async function overview(db: pg.Pool, session: Session) {
@@ -165,6 +190,44 @@ export async function handleOrg(
       if (role && isUuid(role[1]) && method === "PATCH") return reply(200, await updateRole(deps.appDb, session, role[1], body()));
       return reply(404, { error: "Fant ikke ressursen." });
     }
+    if (path === "/org/customers" || CUSTOMER.test(path)) {
+      await requirePermission(deps.appDb, session, method === "GET" ? "customers.read" : "customers.manage");
+      if (method === "GET" && path === "/org/customers") {
+        return reply(200, await listCustomers(deps.appDb, session, event.queryStringParameters ?? {}));
+      }
+      if (method === "POST" && path === "/org/customers") return reply(201, await createCustomer(deps.appDb, session, body()));
+      const customer = CUSTOMER.exec(path);
+      if (customer && isUuid(customer[1])) {
+        if (method === "GET") return reply(200, await getCustomer(deps.appDb, session, customer[1]));
+        if (method === "PATCH") return reply(200, await updateCustomer(deps.appDb, session, customer[1], body()));
+      }
+      return reply(404, { error: "Fant ikke ressursen." });
+    }
+    if (path === "/org/products" || path.startsWith("/org/products/")) {
+      // Every member reads products (sellers pick them for sales); products.manage changes them.
+      if (method !== "GET") await requirePermission(deps.appDb, session, "products.manage");
+      if (method === "GET" && path === "/org/products") {
+        return reply(200, await listProducts(deps.appDb, session, event.queryStringParameters?.archived === "1"));
+      }
+      if (method === "POST" && path === "/org/products") return reply(201, await createProduct(deps.appDb, session, body()));
+      const product = PRODUCT.exec(path);
+      if (product && isUuid(product[1])) {
+        if (method === "GET") return reply(200, await getProduct(deps.appDb, session, product[1]));
+        if (method === "PATCH") return reply(200, await updateProduct(deps.appDb, session, product[1], body()));
+      }
+      const draft = PRODUCT_DRAFT.exec(path);
+      if (draft && isUuid(draft[1]) && method === "POST") return reply(201, await createDraft(deps.appDb, session, draft[1]));
+      const version = VERSION.exec(path);
+      if (version && isUuid(version[1]) && isUuid(version[2])) {
+        if (method === "PATCH") return reply(200, await updateDraft(deps.appDb, session, version[1], version[2], body()));
+        if (method === "DELETE") return reply(200, await deleteDraft(deps.appDb, session, version[1], version[2]));
+      }
+      const publish = VERSION_PUBLISH.exec(path);
+      if (publish && isUuid(publish[1]) && isUuid(publish[2]) && method === "POST") {
+        return reply(200, await publishDraft(deps.appDb, session, publish[1], publish[2]));
+      }
+      return reply(404, { error: "Fant ikke ressursen." });
+    }
     await requirePermission(deps.appDb, session, "users.manage");
     if (path === "/org/threads") {
       if (method === "GET") return reply(200, await listThreads(deps.appDb, session, "org"));
@@ -206,8 +269,8 @@ export async function handleOrg(
   } catch (error) {
     if (error instanceof Forbidden) {
       return reply(403, {
-        error: session.strong ? "Du har ikke tilgang til dette." : "Dette krever innlogging med BankID eller passkey.",
-        code: session.strong ? "ingen_tilgang" : "krever_bankid",
+        error: error.needsStrongSession ? "Dette krever innlogging med BankID eller passkey." : "Du har ikke tilgang til dette.",
+        code: error.needsStrongSession ? "krever_bankid" : "ingen_tilgang",
       });
     }
     if (error instanceof BadRequest) return reply(400, { error: error.message });
@@ -218,6 +281,19 @@ export async function handleOrg(
       return reply(403, { error: "Du kan ikke gi en rolle rettigheter du ikke har selv." });
     }
     if (code === "42501") return reply(403, { error: "Du kan ikke gi en rolle med rettigheter du ikke har selv." });
+    if (code === "23505" && constraint === "customers_org_number_key") {
+      return reply(409, { error: "Det finnes allerede en kunde med dette organisasjonsnummeret." });
+    }
+    if (code === "23505" && constraint === "products_org_name_key") {
+      return reply(409, { error: "Det finnes allerede et produkt med dette navnet." });
+    }
+    if (code === "23505" && constraint.startsWith("product_template_versions")) {
+      return reply(409, { error: "Noen andre endret produktet samtidig. Last siden på nytt." });
+    }
+    if (code === "23514" && path.startsWith("/org/products/")) {
+      return reply(409, { error: "Versjonen er publisert og kan ikke endres." });
+    }
+    if (code === "22007" || code === "22008") return reply(400, { error: "Ugyldig dato." });
     if (code === "23505" && constraint.includes("phone")) return reply(409, { error: "Mobilnummeret er allerede i bruk." });
     if (code === "23505" && constraint.includes("email")) return reply(409, { error: "E-postadressen er allerede i bruk." });
     if (code === "23503") return reply(400, { error: "Ukjent rolle eller team." });

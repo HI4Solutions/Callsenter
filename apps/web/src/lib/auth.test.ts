@@ -30,6 +30,7 @@ describe("where a signed-in user lands", () => {
   it("picks the starting point by access", () => {
     expect(signedInDestination({ ...base, platformAdmin: true })).toBe("/admin");
     expect(signedInDestination({ ...base, permissions: ["users.manage"] })).toBe("/administrasjon");
+    expect(signedInDestination({ ...base, permissions: ["customers.read"] })).toBe("/kunder");
     expect(signedInDestination(base)).toBe("/konto");
   });
 });
