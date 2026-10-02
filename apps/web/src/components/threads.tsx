@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
-import { apiFetch, formatDateTime } from "@/lib/admin";
+import { apiFetch } from "@/lib/api";
+import { formatDateTime } from "@/lib/format";
 
 interface ThreadSummary {
   id: string;

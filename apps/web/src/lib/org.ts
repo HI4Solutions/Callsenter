@@ -1,5 +1,5 @@
 // The call centre's admin portal (apps/api/src/org).
-import { apiFetch } from "./admin";
+import { apiFetch } from "./api";
 
 export interface OrgOverview {
   members: {

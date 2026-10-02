@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   title: { default: "VeriQall", template: "%s · VeriQall" },
   description: "Dokumentert og verifisert telefonsalg for callsentre.",
   icons: { icon: "/brand/favicon.svg", apple: "/brand/apple-touch-icon.png" },
+  // The app is behind login; nothing here is meant for search engines.
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

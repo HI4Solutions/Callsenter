@@ -1,3 +1,5 @@
+// Design system reference for us while building. A .dev.tsx page: next.config.ts only builds it
+// in development, so on staging and production /design does not exist.
 import type { Metadata } from "next";
 import { Flag } from "@/components/flag";
 import { derived, palette } from "@/lib/tokens";

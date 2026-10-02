@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PasskeyLogin } from "@/components/passkey-login";
-import { loginErrorMessage, loginStartUrl } from "@/lib/auth";
+import { SignedInRedirect } from "@/components/signed-in-redirect";
+import { loginErrorMessage, loginStartUrl, safeNext } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Logg inn" };
 
@@ -14,15 +15,17 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   const params = await searchParams;
   const error = loginErrorMessage(first(params.feil));
   const invite = first(params.invitasjon);
-  const next = first(params.neste);
+  // Only a path inside the app survives; anything else is dropped here (and again in the API).
+  const next = safeNext(first(params.neste));
 
   return (
     <section className="mx-auto max-w-md">
+      <SignedInRedirect next={next} skip={Boolean(error || invite)} />
       <h1 className="text-3xl font-extrabold tracking-tight">Logg inn</h1>
       <p className="mt-3 text-muted">
         {invite
           ? "Du er invitert til VeriQall. Logg inn for å ta imot invitasjonen."
-          : "Logg inn med Vipps eller BankID."}
+          : "Logg inn med Vipps, BankID eller passkey."}
       </p>
 
       {error && (
@@ -47,11 +50,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         </a>
         {!invite && <PasskeyLogin next={next} />}
       </div>
-
-      <p className="mt-6 text-sm text-muted">
-        Tilgang til revisjonslogg, brukere, roller og alle samtaler krever innlogging med BankID eller en passkey. En
-        passkey legger du til under Min konto etter at du har logget inn med BankID.
-      </p>
     </section>
   );
 }

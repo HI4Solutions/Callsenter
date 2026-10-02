@@ -1,9 +1,10 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
 import { type Tab, TabNav } from "@/components/tab-nav";
-import { API_URL, type Me } from "@/lib/auth";
+import { API_URL, fetchMe, loginPathFor, type Me } from "@/lib/auth";
+import { usePageTitle } from "@/lib/use-page-title";
 
 const TABS: (Omit<Tab, "active" | "href"> & { href: string; permission?: string })[] = [
   { label: "Brukere", icon: "users", href: "/administrasjon" },
@@ -21,6 +22,7 @@ type Access = { status: "loading" } | { status: "denied"; reason: string } | { s
 // needs a BankID or passkey session.
 export function OrgShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [access, setAccess] = useState<Access>(
     API_URL ? { status: "loading" } : { status: "denied", reason: "API-adressen er ikke satt opp." },
   );
@@ -28,26 +30,27 @@ export function OrgShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!API_URL) return;
     let cancelled = false;
-    fetch(`${API_URL}/me`, { credentials: "include" })
-      .then(async (res) => (res.ok ? ((await res.json()) as Me) : null))
-      .catch(() => null)
-      .then((me) => {
-        if (cancelled) return;
-        if (!me) setAccess({ status: "denied", reason: "Du må logge inn." });
-        else if (!me.activeOrganizationId) setAccess({ status: "denied", reason: "Du er ikke medlem av noe callsenter." });
-        else if (!me.permissions.includes("users.manage")) {
-          setAccess({
-            status: "denied",
-            reason: me.strongAuthentication
-              ? "Du har ikke tilgang til administrasjonen i dette callsenteret."
-              : "Administrasjon krever innlogging med BankID eller passkey. Logg ut og logg inn igjen.",
-          });
-        } else setAccess({ status: "ok", me });
-      });
+    fetchMe().then((me) => {
+      if (cancelled) return;
+      if (me === "signed-out") router.replace(loginPathFor(pathname));
+      else if (!me) setAccess({ status: "denied", reason: "Får ikke kontakt med serveren. Prøv igjen om litt." });
+      else if (!me.activeOrganizationId) setAccess({ status: "denied", reason: "Du er ikke medlem av noe callsenter." });
+      else if (!me.permissions.includes("users.manage")) {
+        setAccess({
+          status: "denied",
+          reason: me.strongAuthentication
+            ? "Du har ikke tilgang til administrasjonen i dette callsenteret."
+            : "Administrasjon krever innlogging med BankID eller passkey. Logg ut og logg inn igjen.",
+        });
+      } else setAccess({ status: "ok", me });
+    });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [pathname, router]);
+
+  // The tab title appears only once access is confirmed, so a signed-out visitor never sees it.
+  usePageTitle(access.status === "ok" ? "Administrasjon · VeriQall" : null);
 
   if (access.status === "loading") return <p className="text-muted">Laster …</p>;
   if (access.status === "denied") {

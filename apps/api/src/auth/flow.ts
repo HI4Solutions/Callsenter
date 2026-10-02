@@ -1,6 +1,6 @@
 // The login flow from docs/auth.md: start -> provider -> callback -> session.
 import type pg from "pg";
-import { SESSION_MAX_HOURS } from "@veriqall/shared";
+import { safeAppPath, SESSION_MAX_HOURS } from "@veriqall/shared";
 import { pkceChallenge, randomToken, sha256 } from "./crypto.ts";
 import { authorizationUrl, completeLogin } from "./oidc.ts";
 import { normalizePhone } from "./phone.ts";
@@ -23,11 +23,10 @@ export function callbackUri(deps: AuthDeps, provider: Provider): string {
   return `${deps.config.callbackBase}/auth/${provider}/callback`;
 }
 
-// Only relative paths inside the app; anything else becomes "/". Mirrors the check
-// constraint on auth_states.return_to.
+// Only paths inside the app; anything else becomes "/". The rule is shared with the web app
+// (safeAppPath in packages/shared) and backed by the check constraint on auth_states.return_to.
 export function safeReturnPath(next: string | undefined): string {
-  if (!next || !/^\/[^/\\]/.test(next) || /[\r\n]/.test(next)) return "/";
-  return next.length > 512 ? "/" : next;
+  return safeAppPath(next) ?? "/";
 }
 
 export function loginPage(deps: AuthDeps, error: LoginError, extra: Record<string, string> = {}): string {

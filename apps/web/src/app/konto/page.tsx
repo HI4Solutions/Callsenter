@@ -1,10 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
-import { formatDate, formatDateTime } from "@/lib/admin";
-import { API_URL, type Me } from "@/lib/auth";
+import { formatDate, formatDateTime } from "@/lib/format";
+import { fetchMe, loginPathFor, type Me } from "@/lib/auth";
 import {
   addPasskey,
   listPasskeys,
@@ -18,6 +19,7 @@ import {
 const METHOD: Record<string, string> = { bankid: "BankID", vipps: "Vipps", passkey: "passkey" };
 
 export default function AccountPage() {
+  const router = useRouter();
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const [passkeys, setPasskeys] = useState<MyPasskey[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -26,31 +28,33 @@ export default function AccountPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${API_URL}/me`, { credentials: "include" })
-      .then(async (res) => (res.ok ? ((await res.json()) as Me) : null))
-      .catch(() => null)
-      .then(async (user) => {
-        if (cancelled) return;
-        setMe(user);
-        if (user) {
-          const list = await listPasskeys().catch((e: Error) => {
-            setError(e.message);
-            return [];
-          });
-          if (!cancelled) setPasskeys(list);
-        }
-      });
+    fetchMe().then(async (result) => {
+      if (cancelled) return;
+      if (result === "signed-out") {
+        router.replace(loginPathFor("/konto"));
+        return;
+      }
+      const user = result;
+      setMe(user);
+      if (user) {
+        const list = await listPasskeys().catch((e: Error) => {
+          setError(e.message);
+          return [];
+        });
+        if (!cancelled) setPasskeys(list);
+      }
+    });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [router]);
 
   if (me === undefined) return <p className="text-muted">Laster …</p>;
   if (me === null) {
     return (
       <section className="max-w-md">
         <h1 className="text-3xl font-extrabold tracking-tight">Min konto</h1>
-        <p className="mt-4">Du må logge inn for å se kontoen din.</p>
+        <p className="mt-4">Får ikke kontakt med serveren. Prøv igjen om litt.</p>
       </section>
     );
   }

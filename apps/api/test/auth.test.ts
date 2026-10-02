@@ -189,7 +189,7 @@ describe("state and redirects", () => {
 
   it("only returns to relative paths inside the app", async () => {
     expect(safeReturnPath("/samtaler?side=2")).toBe("/samtaler?side=2");
-    for (const bad of ["//evil.example", "https://evil.example", "/\\evil.example", "samtaler", undefined]) {
+    for (const bad of ["//evil.example", "https://evil.example", "/\\evil.example", "/\t/evil.example", "/%09/x", "/.//evil.example", "/a/..//evil.example", "samtaler", undefined]) {
       expect(safeReturnPath(bad)).toBe("/");
     }
     const phone = randomPhone();
