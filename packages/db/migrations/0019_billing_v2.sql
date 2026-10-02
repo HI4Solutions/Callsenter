@@ -147,6 +147,9 @@ create or replace function app.guard_invoice() returns trigger
       if new.status = 'scheduled' and (new.issue_date is null or new.issue_date <= today) then
         raise exception 'a scheduled invoice needs a future invoice date' using errcode = 'check_violation';
       end if;
+      if new.status = 'scheduled' and old.status = 'draft' and not exists (select 1 from invoice_lines where invoice_id = old.id) then
+        raise exception 'an invoice needs at least one line' using errcode = 'check_violation';
+      end if;
       new.updated_at := now();
       return new;
     end if;
@@ -300,10 +303,13 @@ create function app.apply_invoice_access() returns trigger
       return null;
     end if;
     if old.status in ('draft', 'scheduled') and new.status = 'sent' and new.grant_access then
-      -- Open through the last day of the period, 23:59 Norwegian time.
-      until := (new.period_end + 1)::timestamp at time zone 'Europe/Oslo';
-      update organizations set access_until = greatest(coalesce(access_until, until), until), trial_ends_at = null
-      where id = new.organization_id;
+      -- Open through the last day of the period, 23:59 Norwegian time. A period already over
+      -- (invoicing afterwards) does not change access.
+      if new.period_end >= today then
+        until := (new.period_end + 1)::timestamp at time zone 'Europe/Oslo';
+        update organizations set access_until = greatest(coalesce(access_until, until), until), trial_ends_at = null
+        where id = new.organization_id;
+      end if;
       insert into organization_modules (organization_id, module, enabled)
       select distinct new.organization_id, m, true
       from invoice_lines l join billing_packages p on p.id = l.package_id, unnest(p.modules) m
@@ -312,7 +318,11 @@ create function app.apply_invoice_access() returns trigger
     elsif new.status = 'payment_missed' and old.status <> 'payment_missed' and new.grant_access then
       update organizations set access_until = now() where id = new.organization_id;
       update recurring_invoices set paused = true, updated_at = now() where organization_id = new.organization_id and active;
-    elsif old.status = 'payment_missed' and new.status = 'paid' then
+    elsif old.status = 'payment_missed' and new.status in ('paid', 'credited') and new.grant_access
+          -- Only when nothing else is still unpaid.
+          and not exists (
+            select 1 from invoices x where x.organization_id = new.organization_id and x.status = 'payment_missed' and x.id <> new.id
+          ) then
       -- Fixed agreements go on from their next due date; skipped months are not invoiced.
       for r in select * from recurring_invoices where organization_id = new.organization_id and paused for update loop
         while r.next_date < today loop
@@ -323,13 +333,16 @@ create function app.apply_invoice_access() returns trigger
         where id = r.id;
         resumed := least(coalesce(resumed, r.next_date), r.next_date);
       end loop;
-      -- Open again through the paid period, or until the next agreement invoice is due.
-      until := greatest(
-        coalesce((new.period_end + 1)::timestamp at time zone 'Europe/Oslo', now()),
-        coalesce((resumed + 1)::timestamp at time zone 'Europe/Oslo', now())
-      );
-      if new.grant_access and until > now() then
-        update organizations set access_until = until where id = new.organization_id;
+      -- Paid: open again through the paid period, or until the next agreement invoice is due.
+      -- Credited: the invoice no longer stands, so it opens nothing by itself.
+      if new.status = 'paid' then
+        until := greatest(
+          coalesce((new.period_end + 1)::timestamp at time zone 'Europe/Oslo', now()),
+          coalesce((resumed + 1)::timestamp at time zone 'Europe/Oslo', now())
+        );
+        if until > now() then
+          update organizations set access_until = greatest(coalesce(access_until, until), until) where id = new.organization_id;
+        end if;
       end if;
     end if;
     return null;
@@ -345,8 +358,14 @@ create function app.draft_from_agreement(r recurring_invoices, due date) returns
   declare
     draft uuid;
   begin
-    insert into invoices (organization_id, recurring_id, note, due_date, grant_access, created_by)
-    values (r.organization_id, r.id, r.name, due, r.grant_access, app.current_user_id())
+    -- The period is the agreement's: from this due date to the day before the next one.
+    insert into invoices (organization_id, recurring_id, note, due_date, grant_access, period_start, period_end, created_by)
+    values (
+      r.organization_id, r.id, r.name, due, r.grant_access,
+      case when r.grant_access then r.next_date end,
+      case when r.grant_access then (r.start_date + make_interval(months => (r.billed_periods + 1) * r.interval_months))::date - 1 end,
+      app.current_user_id()
+    )
     returning id into draft;
     insert into invoice_lines (invoice_id, organization_id, position, kind, package_id, description, quantity, unit_price, vat_rate)
     select draft, r.organization_id, (l.ord - 1)::int,
@@ -377,9 +396,15 @@ create function app.billing_daily() returns setof uuid
     end if;
     select recurring_days_before into default_days from billing_settings;
 
+    -- One invoice that cannot be sent (no lines, incomplete settings) is skipped with a warning
+    -- and stays scheduled; it does not stop the rest.
     for inv_id in select i.id from invoices i where i.status = 'scheduled' and i.issue_date <= today order by i.created_at for update loop
-      update invoices set status = 'sent' where invoices.id = inv_id;
-      return next inv_id;
+      begin
+        update invoices set status = 'sent' where invoices.id = inv_id;
+        return next inv_id;
+      exception when others then
+        raise warning 'scheduled invoice % not sent: %', inv_id, sqlerrm;
+      end;
     end loop;
 
     for r in
@@ -388,9 +413,15 @@ create function app.billing_daily() returns setof uuid
       order by next_date
       for update
     loop
-      inv_id := app.draft_from_agreement(r, greatest(r.next_date, today));
-      update invoices set status = 'sent' where invoices.id = inv_id;
-      return next inv_id;
+      begin
+        inv_id := app.draft_from_agreement(r, greatest(r.next_date, today));
+        update invoices set status = 'sent' where invoices.id = inv_id;
+        return next inv_id;
+      exception when others then
+        -- Rolled back to before the draft; the agreement is tried again tomorrow.
+        raise warning 'agreement % not invoiced: %', r.id, sqlerrm;
+        continue;
+      end;
       -- The next one; skipped periods (the job did not run) are not invoiced afterwards.
       loop
         r.billed_periods := r.billed_periods + 1;
@@ -428,3 +459,37 @@ create function app.invoice_logo(out logo bytea, out logo_type text)
   as $$ select logo, logo_type from billing_settings $$;
 revoke all on function app.invoice_logo() from public;
 grant execute on function app.invoice_logo() to app_user, app_worker;
+
+-- A credit note can also cancel an invoice whose payment was missed.
+create or replace function app.credit_invoice(original uuid, reason text) returns uuid
+  language plpgsql security definer set search_path = pg_catalog, public
+  as $$
+  declare
+    inv invoices;
+    credit uuid;
+  begin
+    if not app.is_platform_admin() then
+      raise exception 'only superadmins can credit invoices' using errcode = 'insufficient_privilege';
+    end if;
+    select * into inv from invoices where id = original for update;
+    if not found or inv.kind <> 'invoice' or inv.status not in ('sent', 'paid', 'payment_missed') then
+      raise exception 'only a sent invoice can be credited' using errcode = 'check_violation';
+    end if;
+    insert into invoices (organization_id, kind, credit_of, note, created_by)
+    values (inv.organization_id, 'credit', inv.id, left(coalesce(nullif(trim(reason), ''), 'Kreditnota for faktura ' || inv.number), 2000), app.current_user_id())
+    returning id into credit;
+    insert into invoice_lines (invoice_id, organization_id, position, kind, package_id, description, quantity, unit_price, vat_rate)
+    select credit, organization_id, position, kind, package_id, description, -quantity, unit_price, vat_rate from invoice_lines where invoice_id = inv.id;
+    update invoices set status = 'sent' where id = credit;
+    update invoices set status = 'credited' where id = inv.id;
+    return credit;
+  end
+  $$;
+
+-- The call centre sees its invoices once they are sent, not while they are scheduled.
+drop policy invoices_billing_read on invoices;
+create policy invoices_billing_read on invoices for select to app_user
+  using (
+    organization_id = (select app.current_org_id()) and status not in ('draft', 'scheduled')
+    and (select app.has_permission('billing.read'))
+  );

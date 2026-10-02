@@ -93,7 +93,7 @@ describe("invoicing", () => {
       expect(sent).toHaveLength(1);
       const inv = (
         await db.query(
-          `select status, note, grant_access, due_date = app.oslo_today() + 10 as due, period_start = app.oslo_today() as starts,
+          `select status, note, grant_access, due_date = app.oslo_today() + 10 as due, period_start = app.oslo_today() + 10 as starts,
                   total::text from invoices where id = $1`,
           [sent[0]],
         )

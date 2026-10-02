@@ -30,7 +30,7 @@ function inOrganization<T>(db: pg.Pool, session: Session, orgId: string | null, 
 export async function listOrganizations(db: pg.Pool, session: Session) {
   return inOrganization(db, session, null, async (c) => {
     const { rows } = await c.query(
-      `select o.id, o.name, o.org_number as "orgNumber", o.status, o.trial_ends_at as "trialEndsAt",
+      `select o.id, o.name, o.org_number as "orgNumber", o.status, o.trial_ends_at as "trialEndsAt", o.access_until as "accessUntil",
               o.created_at as "createdAt",
               coalesce(v.active_members, 0) as "activeMembers",
               coalesce(v.invited_members, 0) as "invitedMembers",
@@ -132,7 +132,7 @@ export async function updateOrganization(db: pg.Pool, session: Session, orgId: s
 export async function getOrganization(db: pg.Pool, session: Session, orgId: string) {
   return inOrganization(db, session, orgId, async (c) => {
     const org = await c.query(
-      `select id, name, org_number as "orgNumber", status, trial_ends_at as "trialEndsAt",
+      `select id, name, org_number as "orgNumber", status, trial_ends_at as "trialEndsAt", access_until as "accessUntil",
               contact_name as "contactName", contact_email as "contactEmail", contact_phone as "contactPhone",
               invoice_email as "invoiceEmail", invoice_address as "invoiceAddress", note,
               recording_retention_months as "recordingRetentionMonths",

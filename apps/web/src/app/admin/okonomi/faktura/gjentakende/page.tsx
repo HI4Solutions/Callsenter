@@ -117,9 +117,28 @@ export default function RecurringPage() {
                   <td className="px-2 py-3 text-right tabular-nums">{kr(a.lines.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0))}</td>
                   <td className="px-2 py-3">{!a.active ? "Stoppet" : a.paused ? "På pause (betaling uteblitt)" : "Aktiv"}</td>
                   <td className="px-2 py-3 text-right">
-                    <button type="button" className={secondaryButton} onClick={() => setEditing(a)}>
-                      Endre
-                    </button>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      {a.paused && (
+                        <button
+                          type="button"
+                          className={secondaryButton}
+                          onClick={async () => {
+                            if (!window.confirm("Gjenoppta uten at betalingen er registrert? Neste faktura sendes som vanlig.")) return;
+                            try {
+                              await adminFetch(`/recurring-invoices/${a.id}`, { method: "PATCH", body: { paused: false } });
+                              await load();
+                            } catch (e) {
+                              setError((e as Error).message);
+                            }
+                          }}
+                        >
+                          Gjenoppta
+                        </button>
+                      )}
+                      <button type="button" className={secondaryButton} onClick={() => setEditing(a)}>
+                        Endre
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

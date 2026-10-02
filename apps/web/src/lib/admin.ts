@@ -16,6 +16,8 @@ export interface OrganizationSummary {
   orgNumber: string | null;
   status: "active" | "suspended";
   trialEndsAt: string | null;
+  // Set when invoices control access (docs/plan.md, section 16).
+  accessUntil?: string | null;
   createdAt: string;
   activeMembers: number;
   invitedMembers: number;
@@ -28,6 +30,8 @@ export interface OrganizationDetail {
   orgNumber: string | null;
   status: "active" | "suspended";
   trialEndsAt: string | null;
+  // Set when invoices control access (docs/plan.md, section 16).
+  accessUntil?: string | null;
   recordingRetentionMonths: 3 | 6 | 9 | 12;
   contactName: string | null;
   contactEmail: string | null;
@@ -60,8 +64,9 @@ export interface OrganizationDetail {
 }
 
 // Status as shown to the superadmin: a trial is an active call centre with an end date.
-export function organizationState(org: { status: string; trialEndsAt: string | null }, now = new Date()) {
+export function organizationState(org: { status: string; trialEndsAt: string | null; accessUntil?: string | null }, now = new Date()) {
   if (org.status === "suspended") return { label: "Suspendert", tone: "danger" as const };
+  if (org.accessUntil && new Date(org.accessUntil) <= now) return { label: "Stengt (ubetalt faktura)", tone: "danger" as const };
   if (org.trialEndsAt) {
     return new Date(org.trialEndsAt) > now
       ? { label: `Prøveperiode til ${formatDate(org.trialEndsAt)}`, tone: "warning" as const }

@@ -179,7 +179,7 @@ export async function invoicePdf(i: InvoiceForPdf, logo?: Logo | null, draftPrev
     newPageIfNeeded(desc.length * 12 + 6);
     if (y > A4[1] - margin - 1) header();
     text(desc[0]!, cols.desc, y);
-    text(Number(l.quantity).toLocaleString("nb-NO").replace(/[  ]/g, " "), cols.qty, y, { right: true });
+    text(Number(l.quantity).toLocaleString("nb-NO").replace(/[\u202f\u00a0]/g, " ").replace("\u2212", "-"), cols.qty, y, { right: true });
     text(kr(l.unitPrice), cols.price, y, { right: true });
     text(`${Math.round(l.vatRate * 100)} %`, cols.vat, y, { right: true });
     text(kr(l.amount), cols.amount, y, { right: true });

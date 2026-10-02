@@ -54,7 +54,13 @@ export async function handler(event: { callId?: unknown; task?: unknown }, conte
   deps.catch(() => (deps = undefined));
   const d = await deps;
   const remaining = () => context?.getRemainingTimeInMillis() ?? Infinity;
-  if (event.task === "daily") console.log("billing", JSON.stringify(await billingDaily(d.db)));
+  if (event.task === "daily") {
+    // A failure here must not stop the rest of the morning run.
+    await billingDaily(d.db).then(
+      (r) => console.log("billing", JSON.stringify(r)),
+      (error: unknown) => console.error("billing failed", error),
+    );
+  }
   if (typeof event.callId === "string" && /^[0-9a-f-]{36}$/.test(event.callId)) await processCall(d, event.callId);
   const more = await housekeeping(d, () => remaining() > 60_000);
   for (const id of more) {

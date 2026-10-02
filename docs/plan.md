@@ -395,11 +395,16 @@ Besluttet 2. oktober (Nadeem):
   - Callsenteret stenges, og de gjentakende fakturaene settes på pause.
   - Når betalingen registreres, åpnes callsenteret igjen ut den betalte perioden. De gjentakende fakturaene fortsetter fra neste forfall, uten fakturaer for månedene som ble hoppet over.
   - Et stengt callsenter ser heller ikke sine egne fakturaer før det åpnes igjen. Fakturaen er sendt på e-post.
+  - Gjenåpningen skjer bare når ingen andre fakturaer har «betaling uteblitt». En faktura med uteblitt betaling kan også krediteres. Da fortsetter avtalene, men kreditnotaen åpner ikke callsenteret i seg selv.
+  - Superadmin kan endre tilgangen for hånd under Kunder (dato, eller la fakturaene slutte å styre den), og gjenoppta en avtale under Gjentakende.
+  - Under Callsentre vises et slikt callsenter som «Stengt (ubetalt faktura)».
 - **Kreditnota** for hele fakturaen speiler originalen (avsender, mottaker og mva) og sendes på e-post.
 - **Gjentakende:**
   - forfall samme dag hver måned (eller hvert kvartal, halvår eller år);
   - sendes et fast antall dager før forfall (standard 14, kan endres per avtale og under Innstillinger);
+  - perioden på fakturaen er avtalens (fra forfall til dagen før neste), så en kvartalsavtale gir tilgang hele kvartalet;
   - linjer fra pakker eller fritekst, og om fakturaen gir tilgang.
+- **Feil stopper ikke morgenkjøringen:** en faktura eller avtale som ikke kan sendes (ingen linjer, ufullstendige innstillinger), hoppes over med en advarsel i loggen og prøves igjen neste morgen. En periode som allerede er over (etterfakturering), endrer ikke tilgangen.
 - **Morgenkjøringen** kjører kl. 04:00 UTC (EventBridge til workeren) og kan startes med «Kjør nå». Den gjør tre ting:
   1. sender planlagte fakturaer;
   2. sender gjentakende fakturaer som skal ut;

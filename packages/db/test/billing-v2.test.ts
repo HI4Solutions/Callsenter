@@ -132,6 +132,80 @@ describe("invoicing v2", () => {
     });
   });
 
+  it("gives a fixed agreement's invoice the agreement's whole period", async () => {
+    const s = await setup();
+    await as(api, { userId: s.admin }, async (db) => {
+      await db.query(
+        `insert into recurring_invoices (organization_id, name, lines, interval_months, start_date, next_date)
+         values ($1, 'Kvartal', '[{"description": "Pro", "quantity": 1, "unitPrice": 100}]', 3, app.oslo_today() + 10, app.oslo_today() + 10)`,
+        [s.org],
+      );
+      const [id] = (await db.query("select app.billing_daily() as id")).rows.map((r) => r.id);
+      const inv = (
+        await db.query(
+          `select period_start = app.oslo_today() + 10 as starts,
+                  period_end = ((app.oslo_today() + 10) + interval '3 months')::date - 1 as ends
+           from invoices where id = $1`,
+          [id],
+        )
+      ).rows[0];
+      expect(inv).toEqual({ starts: true, ends: true });
+      const open = await db.query(
+        "select access_until = (((app.oslo_today() + 10) + interval '3 months')::date)::timestamp at time zone 'Europe/Oslo' as ok from organizations where id = $1",
+        [s.org],
+      );
+      expect(open.rows[0].ok).toBe(true);
+    });
+  });
+
+  it("keeps scheduled invoices from the call centre, and one bad invoice from stopping the run", async () => {
+    const s = await setup();
+    // Committed, so the worker's run sees them.
+    const bad: string = (await owner.query("insert into invoices (organization_id) values ($1) returning id", [s.org])).rows[0].id;
+    await owner.query("insert into invoice_lines (invoice_id, organization_id, description, quantity, unit_price) values ($1, $2, 'X', 1, 1)", [bad, s.org]);
+    await owner.query("update invoices set status = 'scheduled', issue_date = app.oslo_today() + 1 where id = $1", [bad]);
+    await owner.query("delete from invoice_lines where invoice_id = $1", [bad]);
+    const good: string = (await owner.query("insert into invoices (organization_id) values ($1) returning id", [s.org])).rows[0].id;
+    await owner.query("insert into invoice_lines (invoice_id, organization_id, description, quantity, unit_price) values ($1, $2, 'Y', 1, 1)", [good, s.org]);
+    await owner.query("update invoices set status = 'scheduled', issue_date = app.oslo_today() + 1 where id = $1", [good]);
+
+    const orgAdmin = await member(s.org, "admin");
+    await as(api, { userId: orgAdmin, orgId: s.org }, async (db) => {
+      expect((await db.query("select 1 from invoices where id = any($1)", [[bad, good]])).rowCount).toBe(0);
+    });
+
+    // Both are due today: the bad one is skipped, the good one is sent.
+    const c = await owner.connect();
+    try {
+      await c.query("begin");
+      await c.query("alter table invoices disable trigger invoices_guard");
+      await c.query("update invoices set issue_date = app.oslo_today() where id = any($1)", [[bad, good]]);
+      await c.query("alter table invoices enable trigger invoices_guard");
+      await c.query("commit");
+    } finally {
+      c.release();
+    }
+    const sent = (await worker.query("select app.billing_daily() as id")).rows.map((r) => r.id);
+    expect(sent).toContain(good);
+    expect(sent).not.toContain(bad);
+    expect((await owner.query("select status from invoices where id = $1", [bad])).rows[0].status).toBe("scheduled");
+  });
+
+  it("credits an invoice whose payment was missed, and does not let a period in the past close the call centre", async () => {
+    const s = await setup();
+    await as(api, { userId: s.admin }, async (db) => {
+      const old = await packageInvoice(db, s.org, s.pkg);
+      await db.query("update invoices set period_start = '2025-09-01', period_end = '2025-09-30' where id = $1", [old]);
+      await db.query("update invoices set status = 'sent' where id = $1", [old]);
+      expect((await db.query("select access_until from organizations where id = $1", [s.org])).rows[0].access_until).toBeNull();
+
+      await db.query("update invoices set status = 'payment_missed' where id = $1", [old]);
+      const credit = (await db.query("select app.credit_invoice($1, 'Bestridt') as id", [old])).rows[0].id;
+      expect((await db.query("select status from invoices where id = $1", [old])).rows[0].status).toBe("credited");
+      expect((await db.query("select kind, status from invoices where id = $1", [credit])).rows[0]).toEqual({ kind: "credit", status: "sent" });
+    });
+  });
+
   it("lets only superadmins and the worker run invoicing, and keeps packages to superadmins", async () => {
     const s = await setup();
     const orgAdmin = await member(s.org, "admin");

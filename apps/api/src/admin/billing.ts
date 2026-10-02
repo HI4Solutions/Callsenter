@@ -12,6 +12,7 @@ import { type InvoiceForPdf, invoicePdf, type Logo } from "./invoice-pdf.ts";
 import { NotFound } from "./organizations.ts";
 import { BadRequest, type Body, isUuid, optionalText, requiredText } from "./validate.ts";
 import { isModuleKey } from "@veriqall/shared";
+import { PDFDocument } from "pdf-lib";
 
 export const VAT_RATES = [0.25, 0.15, 0.12, 0] as const;
 const INTERVALS = [1, 3, 6, 12];
@@ -176,8 +177,14 @@ export async function setLogo(db: pg.Pool, session: Session, body: Body) {
   if (typeof body.data !== "string") throw new BadRequest("Mangler bildet.");
   const bytes = Buffer.from(body.data, "base64");
   if (!bytes.length || bytes.length > 500_000) throw new BadRequest("Logoen kan være opptil 500 kB.");
-  const magic = type === "image/png" ? bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) : bytes[0] === 0xff && bytes[1] === 0xd8;
-  if (!magic) throw new BadRequest("Filen er ikke et gyldig bilde.");
+  // Checked by embedding it the way invoices will, so a broken image never breaks the PDFs.
+  try {
+    const doc = await PDFDocument.create();
+    if (type === "image/png") await doc.embedPng(bytes);
+    else await doc.embedJpg(bytes);
+  } catch {
+    throw new BadRequest("Filen er ikke et gyldig bilde.");
+  }
   return withSession(db, session, async (c) => {
     await c.query("update billing_settings set logo = $1, logo_type = $2, updated_at = now()", [bytes, type]);
     return { ok: true };
@@ -272,6 +279,21 @@ export async function listCustomers(db: pg.Pool, session: Session) {
        order by o.customer_number`,
     );
     return rows;
+  });
+}
+
+// Opens a call centre again by hand (or closes it): access until a date, or not controlled by
+// invoices at all (null).
+export async function setCustomerAccess(db: pg.Pool, session: Session, id: string, body: Body) {
+  const until = optionalDate(body, "until", "tilgang til");
+  if (until === undefined) throw new BadRequest("Velg en dato, eller fjern grensen.");
+  return withSession(db, session, async (c) => {
+    const { rowCount } = await c.query(
+      "update organizations set access_until = case when $2::date is null then null else ($2::date + 1)::timestamp at time zone 'Europe/Oslo' end where id = $1",
+      [id, until],
+    );
+    if (!rowCount) throw new NotFound();
+    return { ok: true };
   });
 }
 
@@ -681,6 +703,8 @@ function recurringValues(body: Body, creating: boolean) {
   }
   if (body.grantAccess !== undefined) values.grant_access = body.grantAccess === true;
   if (body.active !== undefined) values.active = body.active === true;
+  // Resumed by hand (normally a payment does it).
+  if (body.paused === false) values.paused = false;
   return values;
 }
 

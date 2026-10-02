@@ -15,6 +15,21 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<BillingCustomer[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  async function changeAccess(c: BillingCustomer) {
+    const answer = window.prompt(
+      `Tilgang for ${c.name} til og med dato (ÅÅÅÅ-MM-DD), eller tomt for å la fakturaene slutte å styre tilgangen:`,
+      c.accessUntil ? new Date(c.accessUntil).toISOString().slice(0, 10) : "",
+    );
+    if (answer === null) return;
+    setError(null);
+    try {
+      await adminFetch(`/billing/customers/${c.id}/access`, { method: "PUT", body: { until: answer.trim() || null } });
+      setCustomers(await adminFetch<BillingCustomer[]>("/billing/customers"));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
     adminFetch<BillingCustomer[]>("/billing/customers")
@@ -62,6 +77,11 @@ export default function CustomersPage() {
                   <td className="px-2 py-3">
                     {c.open ? <StatusBadge tone="ok">Åpent</StatusBadge> : <StatusBadge tone="danger">Stengt</StatusBadge>}
                     {c.accessUntil && <span className="block text-sm text-muted">til {formatDateTime(c.accessUntil)}</span>}
+                    {c.accessUntil && (
+                      <button type="button" className="mt-1 block text-sm font-semibold text-brand" onClick={() => changeAccess(c)}>
+                        Endre tilgang
+                      </button>
+                    )}
                     {c.agreements > 0 && <span className="block text-sm text-muted">{c.agreements} gjentakende</span>}
                   </td>
                   <td className="px-2 py-3 text-right tabular-nums">{kr(c.outstanding)}</td>

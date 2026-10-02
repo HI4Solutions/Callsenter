@@ -58,6 +58,7 @@ import {
   markPaymentMissed,
   runBilling,
   sendInvoice,
+  setCustomerAccess,
   setLogo,
   unscheduleInvoice,
   updateBillingSettings,
@@ -82,6 +83,7 @@ const USER_PASSKEY = /^\/admin\/users\/([^/]+)\/passkeys\/([^/]+)$/;
 const INVOICE = /^\/admin\/invoices\/([^/]+)$/;
 const INVOICE_ACTION = /^\/admin\/invoices\/([^/]+)\/(send|payments|credit|usage|email|unschedule|missed)$/;
 const INVOICE_PDF = /^\/admin\/invoices\/([^/]+)\/pdf$/;
+const CUSTOMER_ACCESS = /^\/admin\/billing\/customers\/([^/]+)\/access$/;
 const PACKAGE = /^\/admin\/billing\/packages\/([^/]+)$/;
 const RECURRING = /^\/admin\/recurring-invoices\/([^/]+)$/;
 const USER_IDENTITY = /^\/admin\/users\/([^/]+)\/identities\/([a-z]+)$/;
@@ -209,6 +211,8 @@ export async function handleAdmin(
     match = PACKAGE.exec(path);
     if (match && isUuid(match[1]) && method === "PATCH") return reply(200, await updatePackage(deps.appDb, session, match[1], body()));
     if (method === "GET" && path === "/admin/billing/customers") return reply(200, await listCustomers(deps.appDb, session));
+    match = CUSTOMER_ACCESS.exec(path);
+    if (match && isUuid(match[1]) && method === "PUT") return reply(200, await setCustomerAccess(deps.appDb, session, match[1], body()));
     if (method === "POST" && path === "/admin/billing/run") return reply(200, await runBilling(deps.appDb, session));
     match = INVOICE_PDF.exec(path);
     if (match && isUuid(match[1]) && method === "GET") {
