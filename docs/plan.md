@@ -191,7 +191,6 @@ Logoen kan genereres på nytt med `tools/brand/`: last ned fonten til `tools/bra
 - **Hvordan kommer lydopptakene inn?** Opplasting etter samtalen, eller integrasjon med callsenterets telefonisystem? Dette avgjør fase 2.
 - **IaC-verktøy:** Terraform eller AWS CDK.
 - **Kontooppsett:** egne AWS-kontoer for staging og produksjon (anbefalt) eller én konto med tagger. I dag ligger begge i samme konto.
-- **Innlogging:** skal rettigheter med høy risiko (`audit.read`, `users.manage`, `roles.manage`, `calls.read.all`) kreve en økt startet med BankID? Og tidsavbrudd for økter. Se [`auth.md`](auth.md).
 - **SMS-leverandør** for salgsverifisering (modul 8).
 - **Bedrock:** hvilke Claude-modeller er tilgjengelige direkte i `eu-north-1`, og krever noen EU cross-region inference (behandling i andre EU-regioner)?
 - **Lovkrav:** sjekk hva angrerettloven krever av bekreftelse og skriftlig aksept ved telefonsalg. Modul 8 bør bygges rundt det.
@@ -208,6 +207,7 @@ Besluttet 2. oktober 2026:
 - **Nettverk:** NAT-instans i staging, NAT Gateway i produksjon (seksjon 3). Ikke delte Lambdaer, ikke Aurora.
 - **Produksjon opprettes først ved lansering.** Fram til da betales bare staging.
 - **Domene:** `veriqall.no` hos one.com, DNS blir der.
+- **Innlogging:** administrativ tilgang (revisjonslogg, brukere og ansatte, roller, alle samtaler, fakturaer) krever en økt startet med BankID. Økter utløper etter 60 minutter uten aktivitet og maks 14 timer. Se [`auth.md`](auth.md).
 
 Kostnader i tomgang (USD per måned, `eu-north-1`). Priser merket * er slått opp i AWS sin prisliste; resten er anslag.
 
