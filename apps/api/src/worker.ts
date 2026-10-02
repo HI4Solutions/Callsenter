@@ -4,6 +4,7 @@
 // morning ({task: "daily"}, EventBridge) it also runs invoicing (docs/plan.md, section 16).
 import type pg from "pg";
 import { deliverInvoice } from "./admin/billing.ts";
+import { updateUsdNok } from "./exchange.ts";
 import { type WorkerDeps, housekeeping, processCall } from "./calls/process.ts";
 import { loadAi, loadSoniox } from "./calls/runtime.ts";
 import { s3Store } from "./calls/store.ts";
@@ -55,10 +56,15 @@ export async function handler(event: { callId?: unknown; task?: unknown }, conte
   const d = await deps;
   const remaining = () => context?.getRemainingTimeInMillis() ?? Infinity;
   if (event.task === "daily") {
-    // A failure here must not stop the rest of the morning run.
+    // Failures here must not stop the rest of the morning run.
     await billingDaily(d.db).then(
       (r) => console.log("billing", JSON.stringify(r)),
       (error: unknown) => console.error("billing failed", error),
+    );
+    // Norges Bank's USD rate for Forbruk; yesterday's stays in use if this fails.
+    await updateUsdNok(d.db).then(
+      (r) => console.log("usd-nok", JSON.stringify(r)),
+      (error: unknown) => console.error("exchange rate failed", error),
     );
   }
   if (typeof event.callId === "string" && /^[0-9a-f-]{36}$/.test(event.callId)) await processCall(d, event.callId);

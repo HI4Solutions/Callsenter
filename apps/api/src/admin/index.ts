@@ -67,6 +67,7 @@ import {
   updateRecurring,
 } from "./billing.ts";
 import { getSystem, updateSystem, usage } from "./system.ts";
+import { getPrices, organizationUsage, refreshRate, updatePrices, usageByOrganization, usageSummary } from "./usage.ts";
 import { BadRequest, isUuid, parseBody } from "./validate.ts";
 
 const ORGANIZATION = /^\/admin\/organizations\/([^/]+)$/;
@@ -84,6 +85,7 @@ const INVOICE = /^\/admin\/invoices\/([^/]+)$/;
 const INVOICE_ACTION = /^\/admin\/invoices\/([^/]+)\/(send|payments|credit|usage|email|unschedule|missed)$/;
 const INVOICE_PDF = /^\/admin\/invoices\/([^/]+)\/pdf$/;
 const CUSTOMER_ACCESS = /^\/admin\/billing\/customers\/([^/]+)\/access$/;
+const USAGE_ORG = /^\/admin\/usage\/organizations\/([^/]+)$/;
 const PACKAGE = /^\/admin\/billing\/packages\/([^/]+)$/;
 const RECURRING = /^\/admin\/recurring-invoices\/([^/]+)$/;
 const USER_IDENTITY = /^\/admin\/users\/([^/]+)\/identities\/([a-z]+)$/;
@@ -191,6 +193,15 @@ export async function handleAdmin(
       if (method === "PATCH") return reply(200, await updateSystem(deps.appDb, session, body()));
     }
     if (method === "GET" && path === "/admin/usage") return reply(200, await usage(deps.appDb, session, query.months));
+    if (method === "GET" && path === "/admin/usage/summary") return reply(200, await usageSummary(deps.appDb, session, query));
+    if (method === "GET" && path === "/admin/usage/organizations") return reply(200, await usageByOrganization(deps.appDb, session));
+    match = USAGE_ORG.exec(path);
+    if (match && isUuid(match[1]) && method === "GET") return reply(200, await organizationUsage(deps.appDb, session, match[1], query));
+    if (path === "/admin/usage/prices") {
+      if (method === "GET") return reply(200, await getPrices(deps.appDb, session));
+      if (method === "PATCH") return reply(200, await updatePrices(deps.appDb, session, body()));
+    }
+    if (method === "POST" && path === "/admin/usage/rate") return reply(200, await refreshRate(deps.appDb, session, deps.fetch));
     if (method === "GET" && path === "/admin/billing/overview") return reply(200, await billingOverview(deps.appDb, session));
     if (path === "/admin/billing/settings") {
       if (method === "GET") return reply(200, await getBillingSettings(deps.appDb, session));

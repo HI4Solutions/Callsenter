@@ -360,10 +360,30 @@ Første versjon ble bygget 2. oktober 2026 (modul 15). Samme dag ble den lagt om
 
 | Underfane | Innhold | Status |
 |---|---|---|
-| Forbruk | Forbruk per callsenter (samtaler, lydminutter, AI-tokens). Kostnader, valutakurs og eID kommer | Delvis (PR 2 kommer) |
+| Forbruk | Forbruk og kostnad per callsenter og totalt: KI, Soniox og eID, per modul og modell, med pristabell og valutakurs | Bygget (PR 2) |
 | Stripe | Kortabonnement, priser og MRR fra Stripe | Venter på Stripe-konto og nøkler |
 | Faktura | Fakturaer, Kunder, Gjentakende, Pakker og Innstillinger | Bygget |
 | Regnskap | Nøkkeltall fra fakturaene (MRR, ARR, fakturert, utestående). Kostnader, nettoresultat og omsetningsrapport kommer | Delvis (PR 3 kommer) |
+
+### Forbruk
+
+- **Periode:** dag, uke eller måned. Standard er denne måneden, og «Nullstill» gir hele perioden.
+- **Forbruksstatistikk:**
+  - KI-generering: antall kall, tokens inn og ut, kostnad.
+  - Soniox: transkripsjoner, timer lyd etter samtalen og i sanntid, kostnad.
+  - BankID og Vipps: innlogginger, registreringer (første innlogging), mislykkede og avbrutte, kostnad i kroner.
+- **Per callsenter** (i stedet for per bruker i MedSide):
+  - kostnad i dag, denne uken, denne måneden, i år og totalt, og antall transkripsjoner;
+  - kolonnene kan sorteres;
+  - en rad åpnes med detaljer per modul, per modell, Soniox og eID for valgt periode.
+  - eID knyttes til callsentrene brukeren er medlem av (en bruker i to callsentre telles i begge).
+- **Per modul** (transkribering, sanntidstekst, AI-kontroll, rapporter) og **per modell**.
+- **Pristabell** som superadmin endrer:
+  - Claude per million tokens i USD per Bedrock-modell. Standardverdiene er listeprisene: Sonnet 3/15, Opus 4.5 5/25, Haiku 1/5.
+  - Soniox per time lyd i USD (0,10 etter samtalen og 0,12 i sanntid).
+  - BankID og Vipps per innlogging i kroner. Disse er ikke satt, fordi de avhenger av avtalene.
+- **Valutakurs:** USD/NOK hentes fra Norges Bank hver morgen. Den kan også hentes med «Hent kurs nå».
+- **Hva kostnaden er:** vår beregning fra forbruksloggen. Behandles en samtale på nytt, koster det oss igjen og telles med. Soniox' faktiske forbruk hentes ikke ennå. Det krever Soniox' bruks-API og kan komme sammen med Regnskap.
 
 ### Faktura
 
@@ -428,7 +448,6 @@ Besluttet 2. oktober (Nadeem):
 **Ikke med ennå:**
 - KID (ikke foreløpig, besluttet 2. oktober).
 - Stripe-fanen (venter på nøkler).
-- Forbruk med kostnader og valutakurs (PR 2).
 - Regnskap med kostnader, inntekter, nettoresultat og omsetningsrapport (PR 3).
 
 | Del | Innhold |
