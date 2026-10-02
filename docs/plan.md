@@ -190,7 +190,7 @@ Logoen kan genereres på nytt med `tools/brand/`: last ned fonten til `tools/bra
 
 - **Hvordan kommer lydopptakene inn?** Opplasting etter samtalen, eller integrasjon med callsenterets telefonisystem? Dette avgjør fase 2.
 - **Kontooppsett:** egne AWS-kontoer for staging og produksjon (anbefalt) eller én konto med tagger. I dag ligger begge i samme konto.
-- **SMS-leverandør** for salgsverifisering (modul 8). Til da sender selgeren lenken selv (seksjon 14).
+- ~~SMS-leverandør~~: trengs ikke. Besluttet 2. oktober at bekreftelse og signering av salg ikke gjøres av VeriQall (seksjon 14).
 - **Bedrock:** hvilke Claude-modeller er tilgjengelige direkte i `eu-north-1`, og krever noen EU cross-region inference (behandling i andre EU-regioner)?
 - **Lovkrav:** sjekk hva angrerettloven krever av bekreftelse og skriftlig aksept ved telefonsalg. Modul 8 er bygget som skriftlig aksept med BankID eller Vipps (seksjon 14), men trenger en juridisk vurdering.
 - **Lagringstid** for opptak og transkripsjoner, og sletting på forespørsel.
@@ -244,7 +244,7 @@ Besluttet 2. oktober 2026, etter mønster fra adminportalen i MedSide. Forskjell
 | Vekst | Nøkkeltall, brukere totalt, nye callsentre og innlogginger per måned, med markedsføringshendelser som markører. Samtaler fra fase 2 | Fase 1, PR D (laget) |
 | Roller og moduler | Modulkatalogen, standardrollene nye callsentre får, og rettighetskatalogen (lesbar) | Fase 1, PR B (laget) |
 | System | Innloggingsmetoder av og på, AI-modell og prompt per funksjon, Soniox-ordliste, kvoter for Bedrock og Soniox | Fase 2 |
-| Økonomi | Forbruk per callsenter (lydminutter, AI-tokens, BankID-innlogginger), Stripe, faktura og regnskap (MRR, kostnader, netto) | Forbruk i fase 2, resten i fase 4 |
+| Økonomi | Forbruk per callsenter (lydminutter, AI-tokens), fakturaer, faste avtaler, innstillinger og nøkkeltall (MRR, fakturert, utestående). Stripe og kostnader/netto kommer senere | Forbruk i fase 2, fakturering i fase 4B (seksjon 16) |
 
 Fra MedSide tas ikke med: passord og 2FA (vi har bare BankID og Vipps), legespesialiteter og PreVisit-nivåer, og globale roller (roller er per callsenter her).
 
@@ -329,7 +329,9 @@ Beslutninger 2. oktober (til godkjenning):
 
 Modulene Salgsverifisering, Dokumentasjon og Klagehåndtering slås på per callsenter og sjekkes i API-et. «Åpnet» på en lenke betyr at lenken er åpnet, ikke nødvendigvis av kunden (selgeren kan ha åpnet den selv).
 
-Må sjekkes før produksjon: at lenke med BankID- eller Vipps-aksept oppfyller kravet om skriftlig aksept (juridisk vurdering), hvilken tekst bekreftelsessiden skal ha om angreretten (angrerettskjema), og om Vipps Logg inn er godkjent brukt til aksept (Vipps sier selv at Login ikke er en elektronisk ID; BankID er sikrest).
+**Besluttet 2. oktober (Nadeem):** bekreftelse og signering av salg gjøres ikke av VeriQall foreløpig. Modulen Salgsverifisering står av, koden blir liggende, og salg settes til «bekreftet» for hånd. Ingen SMS.
+
+Må sjekkes hvis modulen tas i bruk: at lenke med BankID- eller Vipps-aksept oppfyller kravet om skriftlig aksept (juridisk vurdering), hvilken tekst bekreftelsessiden skal ha om angreretten (angrerettskjema), og om Vipps Logg inn er godkjent brukt til aksept (Vipps sier selv at Login ikke er en elektronisk ID; BankID er sikrest).
 
 ## 15. Dashboard og coaching
 
@@ -349,3 +351,27 @@ Beslutninger 2. oktober (til godkjenning):
 | Database | `0016_dashboard_coaching.sql`: `coaching_notes` med RLS, `app.can_coach` og `app.dashboard` |
 | API | `GET /org/dashboard` (`scope` = me, seller, team eller all, `target`, `from`, `to`), `GET`/`POST /org/coaching` og `POST /org/coaching/{id}/read` |
 | Web | `/oversikt` (Meg, team og hele callsenteret), `/oversikt/selgere/[id]` og tilbakemelding på samtalesiden |
+
+## 16. Fakturering
+
+Bygget 2. oktober 2026 (modul 15) som fase 4B, oppå fase 4A. Claude tok beslutningene alene, og de venter på Nadeems godkjenning.
+
+Beslutninger 2. oktober (til godkjenning):
+
+- **MedInnova fakturerer callsentrene.** Callsentrene fakturerer ikke sine egne kunder i VeriQall. Superadmin fakturerer under Økonomi, og admin i callsenteret (`billing.read`, krever BankID eller passkey) ser sine sendte fakturaer under Administrasjon → Fakturaer.
+- **Utkast, sending og frys.** En faktura lages som utkast, for hånd, fra en fast avtale eller med forbruk, og kan endres og slettes fritt. Ved sending får den neste nummer i én ubrutt nummerserie (kreditnotaer inkludert). Avsender, mottaker, linjer, beløp, fakturadato og forfall fryses da i databasen. Feil rettes med kreditnota for hele fakturaen, aldri ved å endre eller slette. Kreditnotaen speiler originalen (avsender, mottaker og mva), og en faktura kan bare bli «kreditert» gjennom en kreditnota. Datoer følger norsk tid. Nummeret kan bare settes høyere enn det siste brukte.
+- **Mva** settes per linje (25, 15, 12 eller 0 %). Hele fakturaen er uten mva hvis avsenderen ikke er mva-registrert.
+- **Betaling** registreres for hånd (beløp, dato, bank, Stripe eller annet, og referanse). Fakturaen blir betalt når betalingene dekker den, og en sendt faktura etter forfall vises som forfalt. Betalinger kan ikke endres eller slettes.
+- **Faste avtaler** (månedlig, kvartalsvis, halvårlig eller årlig) telles fra startdatoen, så en avtale fra den 31. ikke glir til den 28. De blir utkast per periode når superadmin trykker «Lag utkast som forfaller». Det skjer ikke automatisk, så ingenting sendes uten at noen har sett på det.
+- **Forbruk** (timer lyd og antall AI-kontroller for en måned) kan legges til et utkast til prisene under Innstillinger. Hver samtale faktureres én gang, også om den ble behandlet på nytt etter en feil.
+- **Ingen e-post og ingen Stripe ennå.** Fakturaen skrives ut eller lagres som PDF og sendes av superadmin. Stripe-nøkler kommer fra Nadeem senere og legges i Secrets Manager. Nadeem lager en egen beskrivelse av fakturamodulen, så denne seksjonen kan endres. Betalingsmåten «Stripe» finnes allerede for manuell registrering.
+- **Nøkkeltall** under Økonomi: faste inntekter per måned (MRR, eks. mva), fakturert denne måneden og i år, utestående og forfalt.
+- **Oppbevaring:** fakturaer kan ikke slettes, heller ikke når callsenteret slettes (bokføringsloven krever fem år). Fremmednøkkelen hindrer at et callsenter med fakturaer slettes.
+
+| Del | Innhold |
+|---|---|
+| Database | `0017_invoicing.sql`: `billing_settings`, `invoices`, `invoice_lines`, `invoice_payments`, `recurring_invoices`, regler i triggere, `app.credit_invoice` og `app.generate_recurring_invoices` |
+| API | `/admin/billing/overview` og `/admin/billing/settings`, `/admin/invoices` (opprette, endre utkast, slette utkast, `send`, `payments`, `credit`, `usage`), `/admin/recurring-invoices` (og `generate`), og `/org/invoices` |
+| Web | Økonomi med Oversikt og forbruk, Fakturaer, Faste avtaler og Innstillinger. Fakturaen kan skrives ut. Administrasjon → Fakturaer for callsenteret |
+
+Må sjekkes før bruk: at fakturaen oppfyller kravene i bokføringsforskriften (blant annet at «Foretaksregisteret» står ved organisasjonsnummeret for aksjeselskap, som kan legges i bunnteksten), KID brukes ikke foreløpig (besluttet 2. oktober).

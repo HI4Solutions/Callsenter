@@ -5,6 +5,7 @@
 import { type ModuleKey, MODULES, type Permission, STRONG_AUTH_PERMISSIONS } from "@veriqall/shared";
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import type pg from "pg";
+import { invoiceDetail } from "../admin/billing.ts";
 import { inviteMember, NotFound, revokeInvitation } from "../admin/organizations.ts";
 import { BadRequest, type Body, isUuid, optionalText, parseBody, requiredText } from "../admin/validate.ts";
 import type { Session } from "../auth/session.ts";
@@ -33,6 +34,7 @@ import { createConfirmation, revokeConfirmation } from "./confirmations.ts";
 import { createCustomer, getCustomer, listCustomers, updateCustomer } from "./customers.ts";
 import { createCoaching, getDashboard, listCoaching, readCoaching } from "./dashboard.ts";
 import { getSaleDocumentation } from "./documentation.ts";
+import { listOrgInvoices } from "./invoices.ts";
 import {
   createDraft,
   createProduct,
@@ -67,6 +69,7 @@ const CUSTOMER = /^\/org\/customers\/([^/]+)$/;
 const SALE = /^\/org\/sales\/([^/]+)$/;
 const SALE_CONFIRMATIONS = /^\/org\/sales\/([^/]+)\/confirmations$/;
 const SALE_DOCUMENTATION = /^\/org\/sales\/([^/]+)\/documentation$/;
+const INVOICE = /^\/org\/invoices\/([^/]+)$/;
 const COACHING_READ = /^\/org\/coaching\/([^/]+)\/read$/;
 const COMPLAINT = /^\/org\/complaints\/([^/]+)$/;
 const COMPLAINT_NOTES = /^\/org\/complaints\/([^/]+)\/notes$/;
@@ -320,6 +323,16 @@ export async function handleOrg(
       const notes = COMPLAINT_NOTES.exec(path);
       if (notes && isUuid(notes[1]) && method === "POST") return reply(201, await addComplaintNote(deps.appDb, session, notes[1], body()));
       return reply(404, { error: "Fant ikke ressursen." });
+    }
+    // The call centre's own invoices from VeriQall (billing.read, which needs BankID or a passkey).
+    if (method === "GET" && (path === "/org/invoices" || INVOICE.test(path))) {
+      await requirePermission(deps.appDb, session, "billing.read");
+      const one = INVOICE.exec(path);
+      if (one) {
+        if (!isUuid(one[1])) return reply(404, { error: "Fant ikke ressursen." });
+        return reply(200, await withSession(deps.appDb, session, (c) => invoiceDetail(c, one[1]!)));
+      }
+      return reply(200, await listOrgInvoices(deps.appDb, session));
     }
     // Everyone sees their own numbers and feedback; the database checks the rest.
     if (path === "/org/dashboard" || path === "/org/coaching" || COACHING_READ.test(path)) {
