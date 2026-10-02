@@ -37,7 +37,7 @@ En deploy kan også startes manuelt: **Actions → Deploy to staging → Run wor
 - `IDURA_DOMAIN`: Idura-domenet for BankID, uten `https://`. Mangler den, er BankID-knappen «ikke satt opp».
 - `APP_ORIGIN`: adressen til web-appen. Standard er `https://staging.veriqall.no` og `https://app.veriqall.no`.
 
-Vipps-verten følger miljøet: `apitest.vipps.no` i staging og `api.vipps.no` i produksjon.
+Vipps-verten er `api.vipps.no` (produksjon) i begge miljøer. Staging bruker egne nøkler fra en salgsenhet i Vipps-produksjon, se `docs/auth.md`.
 
 ## Etter første deploy
 
