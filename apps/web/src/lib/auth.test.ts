@@ -10,7 +10,7 @@ describe("login helpers", () => {
   });
 
   it("never passes a return path that leaves the app", () => {
-    for (const next of ["//evil.example", "https://evil.example", "/\\evil.example", "/a\r\nb", "x"]) {
+    for (const next of ["//evil.example", "https://evil.example", "/\\evil.example", "/a\r\nb", "/\t/evil.example", "x"]) {
       expect(safeNext(next)).toBeUndefined();
     }
     expect(safeNext("/innstillinger")).toBe("/innstillinger");
@@ -27,13 +27,7 @@ describe("login helpers", () => {
 
 describe("where a signed-in user lands", () => {
   const base = { platformAdmin: false, permissions: [] as string[] };
-  it("goes to the requested page when it is inside the app", () => {
-    expect(signedInDestination(base, "/administrasjon/team")).toBe("/administrasjon/team");
-    expect(signedInDestination(base, "//evil.example")).toBe("/konto");
-    expect(signedInDestination(base, "/logg-inn?neste=/admin")).toBe("/konto");
-  });
-
-  it("otherwise picks the starting point by access", () => {
+  it("picks the starting point by access", () => {
     expect(signedInDestination({ ...base, platformAdmin: true })).toBe("/admin");
     expect(signedInDestination({ ...base, permissions: ["users.manage"] })).toBe("/administrasjon");
     expect(signedInDestination(base)).toBe("/konto");

@@ -1,6 +1,8 @@
 // Login against the API (apps/api). The API runs the OIDC flows with Vipps and Idura (BankID)
 // and sets the session cookie on its own host; see docs/auth.md.
 
+import { safeAppPath } from "@veriqall/shared";
+
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
 export type LoginProvider = "vipps" | "bankid";
@@ -25,8 +27,7 @@ export function loginErrorMessage(code: string | undefined): string | undefined 
 
 // Only paths inside the app, never another site (the API checks this again).
 export function safeNext(next: string | undefined): string | undefined {
-  if (!next || !/^\/[^/\\]/.test(next) || /[\r\n]/.test(next) || next.length > 512) return undefined;
-  return next;
+  return safeAppPath(next);
 }
 
 export function loginStartUrl(provider: LoginProvider, options: { invite?: string; next?: string } = {}): string {
@@ -48,11 +49,9 @@ export interface Me {
   permissions: string[];
 }
 
-// Where a signed-in user lands when they open the login page: the requested page, or their
-// starting point (superadmin portal, the call centre's administration, or their account).
-export function signedInDestination(me: Pick<Me, "platformAdmin" | "permissions">, next?: string): string {
-  const requested = safeNext(next);
-  if (requested && requested !== "/logg-inn" && !requested.startsWith("/logg-inn?")) return requested;
+// Where a signed-in user lands when they open the login page: their starting point (superadmin
+// portal, the call centre's administration, or their account).
+export function signedInDestination(me: Pick<Me, "platformAdmin" | "permissions">): string {
   if (me.platformAdmin) return "/admin";
   if (me.permissions.includes("users.manage")) return "/administrasjon";
   return "/konto";
