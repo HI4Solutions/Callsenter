@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { API_URL, type Me } from "@/lib/auth";
 import { switchOrganization } from "@/lib/org";
@@ -14,10 +14,12 @@ type State = { status: "loading" } | { status: "signed-out" } | { status: "signe
 // credentials; the API only allows this app's origin (CORS).
 export function AccountMenu() {
   const router = useRouter();
+  // Customers confirming a sale are not users: no login or account links on their pages.
+  const customerPage = usePathname().startsWith("/bekreft");
   const [state, setState] = useState<State>(API_URL ? { status: "loading" } : { status: "signed-out" });
 
   useEffect(() => {
-    if (!API_URL) return;
+    if (!API_URL || customerPage) return;
     let cancelled = false;
     fetch(`${API_URL}/me`, { credentials: "include" })
       .then(async (res) => (res.ok ? ((await res.json()) as Me) : null))
@@ -28,7 +30,7 @@ export function AccountMenu() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [customerPage]);
 
   async function logout() {
     await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => undefined);
@@ -36,7 +38,7 @@ export function AccountMenu() {
     router.push("/logg-inn");
   }
 
-  if (state.status === "loading") return <span className="min-h-11" aria-hidden />;
+  if (customerPage || state.status === "loading") return <span className="min-h-11" aria-hidden />;
   if (state.status === "signed-out") {
     return (
       <Link href="/logg-inn" className="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold">

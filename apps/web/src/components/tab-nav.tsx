@@ -22,7 +22,7 @@ const BREAKPOINT = {
 export function TabNav({ label, tabs, labelsFrom }: { label: string; tabs: Tab[]; labelsFrom: keyof typeof BREAKPOINT }) {
   const bp = BREAKPOINT[labelsFrom];
   return (
-    <nav aria-label={label} className="mt-3 border-b border-line">
+    <nav aria-label={label} className="mt-3 border-b border-line print:hidden">
       <ul className={`grid auto-cols-fr grid-flow-col ${bp.row}`}>
         {tabs.map((tab) => (
           <li key={tab.label} className={`${tab.href ? "flex" : bp.later} ${bp.cell}`}>

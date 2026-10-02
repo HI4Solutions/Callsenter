@@ -5,10 +5,12 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, primaryButton, secondaryButton } from "@/components/admin/field";
+import { ComplaintStatusBadge } from "@/components/work/complaint-status";
 import { CustomerForm } from "@/components/work/customer-form";
 import { LinkedCalls } from "@/components/work/linked-calls";
 import { SaleList } from "@/components/work/sale-list";
 import { NoAccess, useWorkMe } from "@/components/work/work-shell";
+import { type ComplaintSummary } from "@/lib/complaints";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 import { canSeeSales, type Customer, CUSTOMER_KIND, formatOrgNumber, formatPhone, type SaleSummary } from "@/lib/work";
@@ -119,6 +121,7 @@ export default function CustomerPage() {
         </Card>
       )}
       <CustomerSales customerId={customer.id} canSell={(me?.permissions.includes("sales.manage") ?? false) && !customer.archivedAt} />
+      <CustomerComplaints customerId={customer.id} />
       <LinkedCalls query={`customerId=${customer.id}`} />
     </section>
   );
@@ -161,6 +164,56 @@ function CustomerSales({ customerId, canSell }: { customerId: string; canSell: b
         <p className="text-muted">Ingen salg du har tilgang til.</p>
       ) : (
         <SaleList sales={sales} showCustomer={false} />
+      )}
+    </Card>
+  );
+}
+
+// The customer's complaints, for those who handle complaints.
+function CustomerComplaints({ customerId }: { customerId: string }) {
+  const me = useWorkMe();
+  const visible = me?.permissions.includes("complaints.manage") ?? false;
+  const [complaints, setComplaints] = useState<ComplaintSummary[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    orgFetch<ComplaintSummary[]>(`/complaints?customerId=${customerId}`)
+      .then((rows) => !cancelled && setComplaints(rows))
+      .catch((e: Error) => !cancelled && setError(e.message));
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId, visible]);
+
+  if (!visible) return null;
+  return (
+    <Card
+      title="Klager"
+      actions={
+        <Link href={`/klager?kunde=${customerId}`} className={secondaryButton}>
+          Ny klage
+        </Link>
+      }
+    >
+      <ErrorMessage message={error} />
+      {!complaints ? (
+        !error && <p className="text-muted">Laster …</p>
+      ) : complaints.length === 0 ? (
+        <p className="text-muted">Ingen klager.</p>
+      ) : (
+        <ul className="divide-y divide-line">
+          {complaints.map((k) => (
+            <li key={k.id}>
+              <Link href={`/klager/${k.id}`} className="flex flex-wrap items-center gap-3 py-3 hover:bg-bg">
+                <span className="min-w-0 flex-1 font-semibold [overflow-wrap:anywhere]">{k.summary}</span>
+                <span className="text-sm text-muted">{formatDate(k.receivedOn)}</span>
+                <ComplaintStatusBadge status={k.status} />
+              </Link>
+            </li>
+          ))}
+        </ul>
       )}
     </Card>
   );

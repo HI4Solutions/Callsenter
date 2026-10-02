@@ -13,6 +13,7 @@ const TABS: (Omit<Tab, "active" | "href"> & { href: string; show?: (me: Me) => b
   { label: "Samtaler", icon: "phone", href: "/samtaler", show: canSeeCalls },
   { label: "Salg", icon: "receipt", href: "/salg", show: (me) => canSeeSales(me.permissions) },
   { label: "Kunder", icon: "contacts", href: "/kunder", show: (me) => me.permissions.includes("customers.read") },
+  { label: "Klager", icon: "inbox", href: "/klager", show: (me) => me.permissions.includes("complaints.manage") && (me.modules ?? []).includes("complaints") },
   { label: "Produkter", icon: "box", href: "/produkter" },
 ];
 
@@ -64,7 +65,7 @@ export function WorkShell({ children }: { children: React.ReactNode }) {
 
   return (
     <MeContext.Provider value={access.me}>
-      <p className="text-sm font-medium uppercase tracking-wide text-muted">{orgName}</p>
+      <p className="text-sm font-medium uppercase tracking-wide text-muted print:hidden">{orgName}</p>
       <TabNav
         label="Callsenter"
         labelsFrom="sm"

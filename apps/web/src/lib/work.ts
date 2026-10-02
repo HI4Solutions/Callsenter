@@ -155,6 +155,37 @@ export interface SaleDetail extends SaleSummary {
     actorName: string | null;
     createdAt: string;
   }[];
+  confirmations: Confirmation[];
+}
+
+export interface Confirmation {
+  id: string;
+  status: "pending" | "accepted" | "rejected" | "revoked";
+  createdAt: string;
+  expiresAt: string;
+  viewedAt: string | null;
+  decidedAt: string | null;
+  method: "bankid" | "vipps" | "none" | null;
+  identityName: string | null;
+  identityPhone: string | null;
+  identityMatch: "phone" | "name" | "none" | null;
+  ip: string | null;
+  documentHash: string;
+  createdByName: string | null;
+}
+
+// The offer document the customer sees and accepts (apps/api/src/org/confirmations.ts).
+export interface OfferDocument {
+  issuedAt: string;
+  seller: { company: string; orgNumber: string | null; salesperson: string | null };
+  customer: { kind: Customer["kind"]; name: string; orgNumber: string | null; birthDate: string | null; phone: string | null; email: string | null; address: string | null };
+  product: { name: string; templateVersion: number };
+  price: { currency: "NOK"; once: string | null; monthly: string | null };
+  bindingMonths: number;
+  noticeMonths: number;
+  withdrawalDays: number;
+  terms: string;
+  soldAt: string;
 }
 
 // Sales are seen with any of the call permissions (own, team, all) and made with sales.manage.
