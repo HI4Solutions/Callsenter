@@ -16,6 +16,7 @@ import {
   type OrganizationDetail,
   USER_STATUS,
 } from "@/lib/admin";
+import { switchOrganization } from "@/lib/org";
 
 export default function CallCentrePage() {
   const { id } = useParams<{ id: string }>();
@@ -59,6 +60,7 @@ export default function CallCentrePage() {
           <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
         </div>
         <p className="mt-2 text-muted">Opprettet {formatDate(org.createdAt)}</p>
+        <OpenAsAdmin orgId={org.id} />
       </div>
 
       <Details org={org} onSaved={load} />
@@ -67,6 +69,28 @@ export default function CallCentrePage() {
       <Invite org={org} onInvited={load} />
       <Invitations org={org} onChanged={load} />
     </section>
+  );
+}
+
+// Steps into the call centre (the session's current call centre) and opens its admin portal.
+function OpenAsAdmin({ orgId }: { orgId: string }) {
+  const [error, setError] = useState<string | null>(null);
+  async function open() {
+    try {
+      await switchOrganization(orgId);
+      // A full page load (absolute URL), so the header picks up the new call centre.
+      window.location.href = new URL("/administrasjon", window.location.origin).href;
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  return (
+    <div className="mt-4">
+      <button type="button" className={secondaryButton} onClick={open}>
+        Åpne adminportalen for callsenteret
+      </button>
+      <ErrorMessage message={error} />
+    </div>
   );
 }
 

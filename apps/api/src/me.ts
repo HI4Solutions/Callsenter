@@ -38,8 +38,10 @@ export function loadMe(appDb: pg.Pool, session: Session): Promise<Me> {
     const user = await db.query<{ id: string; full_name: string }>("select id, full_name from users where id = $1", [
       session.userId,
     ]);
+    // The user's call centres, plus the current one when a superadmin has stepped into it.
     const orgs = await db.query<{ id: string; name: string }>(
-      "select id, name from organizations where id in (select app.my_organization_ids()) order by name",
+      `select id, name from organizations
+       where id in (select app.my_organization_ids()) or id = app.current_org_id() order by name`,
     );
     const flags = await db.query<{ platform_admin: boolean; org: string | null }>(
       "select app.is_platform_admin() as platform_admin, app.current_org_id() as org",

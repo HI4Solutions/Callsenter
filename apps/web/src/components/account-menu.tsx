@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { API_URL, type Me } from "@/lib/auth";
+import { switchOrganization } from "@/lib/org";
 
 type State = { status: "loading" } | { status: "signed-out" } | { status: "signed-in"; me: Me };
 
@@ -41,8 +42,41 @@ export function AccountMenu() {
       </Link>
     );
   }
+  const { me } = state;
+  async function changeOrganization(id: string) {
+    try {
+      await switchOrganization(id);
+      // A full reload, so every page picks up the new call centre.
+      window.location.reload();
+    } catch (e) {
+      window.alert((e as Error).message);
+    }
+  }
+
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
+      {me.organizations.length > 1 && (
+        <label className="flex items-center gap-2 text-sm">
+          <span className="sr-only">Callsenter</span>
+          <select
+            className="min-h-11 rounded-lg border border-line bg-surface px-2"
+            value={me.activeOrganizationId ?? ""}
+            onChange={(e) => changeOrganization(e.target.value)}
+          >
+            {!me.activeOrganizationId && <option value="">Velg callsenter</option>}
+            {me.organizations.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {me.permissions.includes("users.manage") && (
+        <Link href="/administrasjon" className="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold">
+          Administrasjon
+        </Link>
+      )}
       {state.me.platformAdmin && (
         <Link href="/admin" className="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold">
           Superadmin
