@@ -13,7 +13,8 @@ region="${AWS_REGION:-eu-north-1}"
 case "$env" in
   staging)
     nat_mode=instance multi_az=false vpc_cidr=10.40.0.0/16
-    app_origin="${APP_ORIGIN:-https://staging.veriqall.no}" vipps_host=https://apitest.vipps.no ;;
+    # Vipps production, like Idura: tested with real Vipps instead of the MT test app (docs/auth.md).
+    app_origin="${APP_ORIGIN:-https://staging.veriqall.no}" vipps_host=https://api.vipps.no ;;
   production)
     nat_mode=gateway multi_az=true vpc_cidr=10.41.0.0/16
     app_origin="${APP_ORIGIN:-https://app.veriqall.no}" vipps_host=https://api.vipps.no ;;

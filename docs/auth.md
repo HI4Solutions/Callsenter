@@ -77,7 +77,8 @@ Callback-Lambdaen må nå både internett (Idura og Vipps) og databasen. Det er 
 
 - **BankID kreves for administrativ tilgang.** Rettighetene `audit.read` (revisjons- og tilgangslogg), `users.manage` (brukere, ansatte og team), `roles.manage` (roller og rettigheter), `calls.read.all` (alle samtaler i callsenteret) og `billing.read` (fakturaer) gjelder bare i en økt startet med BankID. En økt startet med Vipps har de andre rettighetene i rollen, men ikke disse. Kravet er knyttet til rettigheter, ikke rollenavn, og listen ligger i `STRONG_AUTH_PERMISSIONS` i `packages/shared`.
 - **Tidsavbrudd:** 60 minutter uten aktivitet og maks 14 timer totalt.
-- **Ekte BankID i staging:** staging-applikasjonen ligger i Iduras produksjonsmiljø, så vi kan teste med egen BankID i stedet for testbrukere. Staging lagrer da ekte navn på interne testere (ikke fødselsnummer, som aldri hentes). Hver innlogging koster etter Iduras pris. Vipps bruker fortsatt testmiljøet.
+- **Ekte BankID i staging:** staging-applikasjonen ligger i Iduras produksjonsmiljø, så vi kan teste med egen BankID i stedet for testbrukere. Staging lagrer da ekte navn på interne testere (ikke fødselsnummer, som aldri hentes). Hver innlogging koster etter Iduras pris.
+- **Ekte Vipps i staging:** Vipps' testmiljø krever test-appen Vipps MT, så staging bruker også Vipps' produksjonsmiljø (`api.vipps.no`) med nøkler fra en salgsenhet der. Testmiljøet kan tas i bruk igjen ved å sette verten i `infra/deploy.sh`.
 - **Superadmins** opprettes bare via migrator-Lambdaen (`invite-platform-admin`, se `infra/README.md`), aldri fra API-et. Invitasjonen har ikke noe callsenter, og superadmin-rettighetene gjelder bare i økter startet med BankID.
 
 ## Slik er det bygget (PR 3)
