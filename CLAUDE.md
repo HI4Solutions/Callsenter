@@ -26,8 +26,8 @@ Ferdig:
 - Fase 0, PR 1 (skjelett og design): monorepo med npm workspaces, Next.js 16 i `apps/web` med Tailwind 4, designtokens i lys og mørk modus (system, lys, mørk, huskes i nettleseren), Schibsted Grotesk via `@fontsource-variable` (selvhostet), `/design` med paletten og AI-flagg, og `ci.yml` (lint, typecheck, test og build på hver PR, ingen deploy). Tokens og kontrast er dekket av tester. De godkjente brandfilene, `docs/brand-preview.png` og `tools/brand/` er lagt inn (logoen er ikke formelt godkjent ennå).
 
 Ikke gjort:
-- Ingen innlogging. Staging-infrastrukturen fra PR 4 er ikke deployet ennå. Produksjon er ikke opprettet, og skal ikke opprettes før lansering.
-- Egne domener (`staging.veriqall.no`, `api.staging.veriqall.no`) er ikke satt opp. De trengs før innloggingen kan testes i staging.
+- Ingen innlogging. Staging: `veriqall-staging-network` og `veriqall-staging-data` (RDS) er deployet 2. oktober. Første forsøk på `veriqall-staging-app` feilet fordi nye AWS-kontoer bare har 10 samtidige Lambda-kjøringer og ikke godtar reservert samtidighet; rettet ved å fjerne reservasjonen. Be om økt Lambda-kvote før produksjon. Produksjon er ikke opprettet, og skal ikke opprettes før lansering.
+- Egne domener: `staging.veriqall.no` er koblet til Amplify (CNAME hos one.com). `api.staging.veriqall.no` venter på at ACM-sertifikatet godkjennes; deretter settes GitHub-variablene `API_DOMAIN_NAME` og `API_CERTIFICATE_ARN` i Environment `staging`, og en CNAME `api.staging` legges inn hos one.com.
 - Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.
 
 **Neste steg:** merge PR 4, så deployes staging automatisk. Deretter egne domener (`staging.veriqall.no`, `api.staging.veriqall.no`) og fase 0, PR 3 (innlogging, se `docs/auth.md`).

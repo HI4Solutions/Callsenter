@@ -79,8 +79,9 @@ Resources:
       Role: !GetAtt MigratorRole.Arn
       MemorySize: 512
       Timeout: 300
-      # Never two migrations at once.
-      ReservedConcurrentExecutions: 1
+      # Two migrations never run at once: the deploy workflow has a concurrency group and the
+      # migrator takes a Postgres advisory lock. (Reserved concurrency is not used: new accounts
+      # have a Lambda concurrency limit of 10, and AWS refuses reservations below that floor.)
       VpcConfig:
         SubnetIds: !Split [",", !ImportValue {"Fn::Sub": "veriqall-${Environment}-private-subnets"}]
         SecurityGroupIds:
