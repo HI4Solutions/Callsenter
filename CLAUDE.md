@@ -18,7 +18,7 @@ Oppdater denne seksjonen i hver PR som endrer status, så neste økt alltid vet 
 Ferdig:
 - Repoet er opprettet (heter fortsatt `Callsenter`, kan døpes om til `veriqall`). Rulesettet `main-protection` er aktivt på `main` og krever PR, og forbyr sletting og force-push. `staging` finnes og er ubeskyttet.
 - AWS-konto i `eu-north-1`. OIDC mot AWS virker fra Environment `staging` (kjøring #5 av `deploy-staging.yml` gikk grønt 26. sep. etter å ha rettet trust policy). Rollenavn og rettigheter er ikke gjennomgått.
-- `deploy-staging.yml` og `deploy-production.yml` ligger på `staging`. De logger bare inn i AWS og kjører `sts get-caller-identity`; migrasjoner og øvrige deploy-steg er TODO (PR 4). Ingenting av dette ligger på `main` ennå, så produksjons-workflowen har aldri kjørt.
+- `deploy-staging.yml` og `deploy-production.yml` ligger på `staging` og kjører `infra/deploy.sh` (se PR 4 under). Ingenting av dette ligger på `main` ennå, så produksjons-workflowen har aldri kjørt.
 - Hele planen i `docs/plan.md`, med beslutningene fra 2. oktober i seksjon 9: AWS med RDS (ikke Supabase), NAT-instans i staging og NAT Gateway i produksjon, produksjon opprettes først ved lansering. Innloggingsdesignet i `docs/auth.md`.
 - Fase 0, PR 2 (datamodell og tilgang): migrasjonen `packages/db/migrations/0001_foundation.sql` med fase 0-tabellene, RLS, rollene `app_user` og `app_auth`, rettighetskatalogen (speilet fra `packages/shared/src/permissions.ts`), seeding av standardroller per callsenter, vern mot å gi bort rettigheter man ikke har, og append-only `audit_log` og `access_log`. Migreringsverktøy i `packages/db/src`. 31 databasetester kjører i CI mot Postgres 17 (og lokalt mot 16).
 - Staging er deployet 2. oktober: `veriqall-staging-network`, `-data` (RDS Postgres 17.9) og `-app`. Migrasjonen `0001_foundation` er kjørt av migratoren, innloggingsbrukerne har IAM-innlogging, pgAudit er på, og `GET /health` svarer `ok`. Deploy kan også startes manuelt (Actions → Deploy to staging → Run workflow).
@@ -26,15 +26,16 @@ Ferdig:
 - Staging-frontend: Amplify-appen `veriqall-staging` (Next.js SSR) er opprettet i `eu-north-1` med CloudFormation-stacken `veriqall-staging-web` fra `infra/amplify-web.yml`. Første bygg av PR-branchen gikk grønt (Node 22, Next 16). URL-en står i stackens output og i Amplify-konsollen. Amplify GitHub-appen er installert og GitHub-tokenet ligger i Secrets Manager (`callsenter/staging/github-token`). Staging og produksjon ligger i samme AWS-konto (planen anbefaler separate, se seksjon 8). Amplify-stacken kjøres fortsatt manuelt.
 - Fase 0, PR 1 (skjelett og design): monorepo med npm workspaces, Next.js 16 i `apps/web` med Tailwind 4, designtokens i lys og mørk modus (system, lys, mørk, huskes i nettleseren), Schibsted Grotesk via `@fontsource-variable` (selvhostet), `/design` med paletten og AI-flagg, og `ci.yml` (lint, typecheck, test og build på hver PR, ingen deploy). Tokens og kontrast er dekket av tester. De godkjente brandfilene, `docs/brand-preview.png` og `tools/brand/` er lagt inn (logoen er ikke formelt godkjent ennå).
 
-- Fase 0, PR 3 (innlogging): Vipps Logg inn og BankID via Idura i `apps/api/src/auth`, migrasjonen `0002_login.sql` (BankID kreves for administrative rettigheter og superadmin), `/logg-inn` i web-appen, og superadmin-invitasjon via migratoren (`infra/README.md`). Nøklene for Vipps og Idura (begge produksjonsmiljøet, ekte innlogging) og Soniox ligger i `callsenter/staging/app`. `IDURA_DOMAIN` er satt på Environment `staging`.
+- Fase 0, PR 3 (innlogging): Vipps Logg inn og BankID via Idura i `apps/api/src/auth`, migrasjonen `0002_login.sql` (BankID kreves for administrative rettigheter og superadmin), `/logg-inn` i web-appen, og superadmin-invitasjon via migratoren (`infra/README.md`). Nøklene for Vipps og Idura (begge produksjonsmiljøet, ekte innlogging) og Soniox ligger i `callsenter/staging/app`. `IDURA_DOMAIN` er satt på Environment `staging`. Testet i staging 2. oktober: innlogging med både BankID og Vipps virker, og Nadeem er invitert som superadmin. Amplify-stacken er oppdatert med `NEXT_PUBLIC_API_URL`.
 
 Ikke gjort:
-- Amplify-stacken `veriqall-staging-web` må oppdateres manuelt med `infra/amplify-web.yml` (gir `NEXT_PUBLIC_API_URL`), og første superadmin må inviteres. Vipps-knappen må byttes til Vipps' offisielle før produksjon.
+- Vipps-knappen må byttes til Vipps' offisielle før produksjon.
 - Produksjon er ikke opprettet, og skal ikke opprettes før lansering. Be om økt Lambda-kvote (nye kontoer har 10 samtidige kjøringer) før produksjon.
-- Egne domener: `staging.veriqall.no` virker (Amplify, CNAME hos one.com). `api.staging.veriqall.no` har godkjent sertifikat og GitHub-variablene `API_DOMAIN_NAME` og `API_CERTIFICATE_ARN` er satt; etter neste deploy mangler bare CNAME `api.staging` hos one.com (målet er stack-outputen `ApiDomainTarget`).
+- Egne domener for produksjon (`app.veriqall.no`, `api.veriqall.no`). I staging virker `staging.veriqall.no` og `api.staging.veriqall.no`.
+- CloudTrail til egen kryptert bøtte (revisjonslogg lag 1 i `docs/plan.md`, seksjon 3) er ikke satt opp.
 - Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.
 
-**Neste steg:** Test innloggingen i staging (oppdater Amplify-stacken, inviter superadmin, logg inn med BankID og Vipps), deretter resten av fase 0 i `docs/plan.md`.
+**Neste steg:** Fase 0 er ferdig. Neste er fase 1 i `docs/plan.md`: superadmin-portalen (opprette callsentre og invitere admin), deretter adminportalen.
 
 ## Kommandoer
 
