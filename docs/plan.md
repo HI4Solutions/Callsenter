@@ -1,6 +1,6 @@
 # VeriQall – plan og beslutninger
 
-Overlevering fra planleggingen i Claude-chat, 2. oktober 2026. Dette er den levende planen: oppdater den når noe blir besluttet, og flytt punkter ut av «Åpne beslutninger» når de er avklart.
+Overlevering fra planleggingen i Claude-chat, 2. oktober 2026, oppdatert samme dag med beslutningene om database, nettverk og kostnader (seksjon 3 og 9) og innloggingsdesignet i [`auth.md`](auth.md). Dette er den levende planen: oppdater den når noe blir besluttet, og flytt punkter ut av «Åpne beslutninger» når de er avklart.
 
 ## 1. Moduler
 
@@ -47,15 +47,19 @@ Hver fase bygger på den forrige.
 - **Frontend:** Next.js på AWS Amplify Hosting. `staging`-branchen går til staging-appen og `main` til produksjonsappen, med egne miljøvariabler per app.
 - **API:** serverløst med API Gateway og Lambda.
 - **Samtalepipeline:** lydfil til S3 → Lambda sender til Soniox → transkripsjon og segmenter lagres i Postgres → AI-kontroll med Bedrock mot malversjonen → flagg, rapport og varsler.
-- **Database:** PostgreSQL på RDS, én instans per miljø (`db.t4g.micro` til å begynne med).
+- **Database:** PostgreSQL på RDS, én instans per miljø (`db.t4g.micro` til å begynne med), samme motor og versjon i staging og produksjon. Automatiske backuper med point-in-time recovery er på i begge (inkludert i prisen så lenge backupene ikke er større enn databasen). Produksjon får Multi-AZ ved lansering.
+- **Nettverk:** Lambdaene ligger i VPC-en sammen med databasen. Veien ut til internett (Soniox, Vipps, Idura) går via en NAT-instans (`t4g.nano`, fck-nat i en Auto Scaling-gruppe med én maskin og CloudWatch-alarm) i staging, og via NAT Gateway i produksjon. Innloggingen er én Lambda. Bytte mellom NAT-instans og NAT Gateway er bare en endring i rutetabellen.
+- **Migrasjoner** kjøres av en migrator-Lambda i VPC-en, som CI starter med OIDC-rollen. GitHub-runnere når ikke databasen direkte.
+- **Databaseroller:** migrasjonene eier skjemaet. API-et bruker rollen `app_user`, som er underlagt RLS. Innloggingen bruker den smale rollen `app_auth`, som bare når innloggingstabellene (se seksjon 4).
+- **Domener:** `veriqall.no` ligger hos one.com, og DNS blir der. Staging bruker `staging.veriqall.no` (app) og `api.staging.veriqall.no` (API); produksjon for eksempel `app.veriqall.no` og `api.veriqall.no`. Sertifikater fra ACM, validert med CNAME-poster hos one.com.
 - **Transkripsjon:** Soniox via API (rundt 0,10 USD per time lyd).
 - **AI:** Claude via AWS Bedrock. Senere kanskje Gemini via Google Vertex AI, med egen GCP-tjenestekonto og nøkkel i Secrets Manager.
 - **Innlogging:** Vipps Logg inn (via Vipps bedrift) og BankID via Idura, begge OIDC. Brukeren identifiseres med `sub`. Etter innlogging utsteder appen sin egen kortlevde sesjon.
 - **Kryptering i hvile:** egen kundeadministrert KMS-nøkkel per miljø for RDS (må velges når instansen opprettes), S3, CloudWatch Logs og Secrets Manager.
 - **Kryptering i transitt:** TLS overalt, `rds.force_ssl=1`, og en S3-bøttepolicy som nekter trafikk uten TLS (`aws:SecureTransport`) og ukrypterte opplastinger.
 - **Revisjonslogg i tre lag:** CloudTrail til en egen kryptert bøtte med log file validation, pgAudit i Postgres, og `audit_log` og `access_log` i appen.
-- **Secrets per miljø:** `VIPPS_CLIENT_ID`, `VIPPS_CLIENT_SECRET`, `VIPPS_SUBSCRIPTION_KEY`, `VIPPS_MSN`, `IDURA_CLIENT_ID`, `IDURA_CLIENT_SECRET`, `SONIOX_API_KEY`.
-- **Kostnadsanslag** ved 0–100 samtaler per dag, begge miljøer: omtrent 70–200 USD i måneden for AWS, Soniox og Bedrock, uten Vipps og Idura. RDS, Amplify og KMS er faste poster; resten vokser med antall samtaler.
+- **Secrets per miljø:** samlet i én hemmelighet per miljø (JSON) i Secrets Manager: `VIPPS_CLIENT_ID`, `VIPPS_CLIENT_SECRET`, `VIPPS_SUBSCRIPTION_KEY`, `VIPPS_MSN`, `IDURA_CLIENT_ID`, `IDURA_CLIENT_SECRET`, `SONIOX_API_KEY`.
+- **Kostnader:** se seksjon 9.
 
 ### Foreslått mappestruktur
 
@@ -85,7 +89,11 @@ docs/             plan og beslutninger
 
 ### Tabeller i fase 0
 
-`organizations`, `organization_modules` (moduler av og på per callsenter), `users`, `platform_admins`, `teams`, `memberships` (bruker, callsenter, rolle og team), `roles`, `role_permissions`, `auth_states` (OIDC-state, nonce, PKCE-verifier, retur-URL og brukt-tidspunkt), `eid_identities` (leverandør, `sub`, `ssn_hash` og bruker), `login_events`, `audit_log`, `access_log`.
+- **Callsentre og tilgang:** `organizations`, `organization_modules` (moduler av og på per callsenter), `users` (navn, mobil, e-post, status), `platform_admins`, `teams`, `roles`, `role_permissions`, `permissions` (rettighetskatalogen speilet fra koden), `memberships` (bruker, callsenter, rolle og team, én rolle per callsenter).
+- **Innlogging** (se [`auth.md`](auth.md)): `invitations` (engangstoken som hash, utløp etter 72 timer), `auth_states` (OIDC-state som hash, nonce, PKCE-verifier, provider, invitasjon, retur-sti og brukt-tidspunkt), `identities` (bruker, provider, `sub`, valgfri HMAC av fødselsnummer), `sessions` (hash av økt-ID, bruker, provider, `acr`, tidspunkter, IP og user agent), `login_events`.
+- **Sporing:** `audit_log` (append-only, skrives av triggere), `access_log` (append-only, skrives av API-et).
+
+Rollene `app_user` og `app_auth` er beskrevet i seksjon 3. Callsenter-tabellene har RLS med `FORCE ROW LEVEL SECURITY`, og `app.current_org_id()` gir bare et callsenter når brukeren er aktivt medlem (eller superadmin). Rettigheter som gis til en rolle eller via et medlemskap, sjekkes også i databasen mot det den som gjør endringen selv har.
 
 ### Senere faser
 
@@ -182,8 +190,8 @@ Logoen kan genereres på nytt med `tools/brand/`: last ned fonten til `tools/bra
 
 - **Hvordan kommer lydopptakene inn?** Opplasting etter samtalen, eller integrasjon med callsenterets telefonisystem? Dette avgjør fase 2.
 - **IaC-verktøy:** Terraform eller AWS CDK.
-- **Database og nettverk:** Lambdaer i VPC trenger NAT Gateway for å nå Soniox, Vipps og Idura (rundt 32–35 USD i måneden per miljø). Alternativene er Aurora Serverless v2 med Data API (ingen VPC eller NAT) eller å dele Lambdaene. Dette henger sammen med to ting til: Amplify sin SSR kan etter det vi vet ikke nå en privat database i VPC (verifiser), så all datatilgang bør gå via API-et. Og GitHub-runnere står utenfor VPC-en, så migrasjoner må kjøres via en Lambda i VPC eller via Data API.
-- **Kontooppsett:** egne AWS-kontoer for staging og produksjon (anbefalt) eller én konto med tagger.
+- **Kontooppsett:** egne AWS-kontoer for staging og produksjon (anbefalt) eller én konto med tagger. I dag ligger begge i samme konto.
+- **Innlogging:** skal rettigheter med høy risiko (`audit.read`, `users.manage`, `roles.manage`, `calls.read.all`) kreve en økt startet med BankID? Og tidsavbrudd for økter. Se [`auth.md`](auth.md).
 - **SMS-leverandør** for salgsverifisering (modul 8).
 - **Bedrock:** hvilke Claude-modeller er tilgjengelige direkte i `eu-north-1`, og krever noen EU cross-region inference (behandling i andre EU-regioner)?
 - **Lovkrav:** sjekk hva angrerettloven krever av bekreftelse og skriftlig aksept ved telefonsalg. Modul 8 bør bygges rundt det.
@@ -191,3 +199,25 @@ Logoen kan genereres på nytt med `tools/brand/`: last ned fonten til `tools/bra
 - **Fakturamodul:** antatt at det er callsentrene som faktureres for bruk av VeriQall. Bekreft.
 - **Logo:** venter på Nadeems godkjenning.
 - **Repo:** døpe om til `veriqall`, og gjøre det privat før ekte nøkler eller kundedata.
+
+## 9. Beslutninger og kostnader
+
+Besluttet 2. oktober 2026:
+
+- **AWS med RDS, ikke Supabase.** Point-in-time recovery er et krav i produksjon, siden data skal brukes som bevis i klagesaker. På RDS er det inkludert; på Supabase koster det rundt 100 USD i måneden per prosjekt. AWS gir i tillegg egen KMS-nøkkel, privat database og logger i egen konto.
+- **Nettverk:** NAT-instans i staging, NAT Gateway i produksjon (seksjon 3). Ikke delte Lambdaer, ikke Aurora.
+- **Produksjon opprettes først ved lansering.** Fram til da betales bare staging.
+- **Domene:** `veriqall.no` hos one.com, DNS blir der.
+
+Kostnader i tomgang (USD per måned, `eu-north-1`). Priser merket * er slått opp i AWS sin prisliste; resten er anslag.
+
+| Post | Staging | Produksjon (fra lansering) |
+|---|---|---|
+| RDS `db.t4g.micro` | 11,70* | 23,40* (Multi-AZ) |
+| Lagring 20 GB, backup og PITR inkludert | ca. 2,40 | ca. 4,80 |
+| Vei ut til internett | NAT-instans 3,10* + disk og IP ca. 4,40 | NAT Gateway 33,60* + IP ca. 3,70 |
+| KMS, Secrets Manager, logger, alarmer, CloudTrail | ca. 3–4 | ca. 4–7 |
+| Amplify, API Gateway, Lambda, S3 | ca. 0–2 | ca. 2–8 |
+| **Sum** | **ca. 25–28 (260–300 kr)** | **ca. 72–82 (750–860 kr)** |
+
+Etter bruk kommer i tillegg: Soniox (0,10 USD per time lyd), Bedrock (avhenger av modell, anslag 50–100 USD ved 100 samtaler om dagen), NAT-trafikk (0,046 USD* per GB), lydlagring i S3, og per innlogging hos Idura og Vipps samt SMS etter avtale. Utenfor AWS: domenet og GitHub Pro når repoet gjøres privat.
