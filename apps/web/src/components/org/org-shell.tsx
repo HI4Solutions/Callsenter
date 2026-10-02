@@ -1,15 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
+import { type Tab, TabNav } from "@/components/tab-nav";
 import { API_URL, type Me } from "@/lib/auth";
 
-const TABS: { label: string; href: string; permission?: string }[] = [
-  { label: "Brukere", href: "/administrasjon" },
-  { label: "Team", href: "/administrasjon/team" },
-  { label: "Roller", href: "/administrasjon/roller", permission: "roles.manage" },
-  { label: "Meldinger", href: "/administrasjon/meldinger" },
+const TABS: (Omit<Tab, "active" | "href"> & { href: string; permission?: string })[] = [
+  { label: "Brukere", icon: "users", href: "/administrasjon" },
+  { label: "Team", icon: "team", href: "/administrasjon/team" },
+  { label: "Roller", icon: "roles", href: "/administrasjon/roller", permission: "roles.manage" },
+  { label: "Meldinger", icon: "message", href: "/administrasjon/meldinger" },
 ];
 
 const MeContext = createContext<Me | null>(null);
@@ -63,26 +63,14 @@ export function OrgShell({ children }: { children: React.ReactNode }) {
   return (
     <MeContext.Provider value={access.me}>
       <p className="text-sm font-medium uppercase tracking-wide text-muted">Administrasjon · {orgName}</p>
-      <nav aria-label="Administrasjon" className="mt-3 -mx-4 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0">
-        <ul className="flex gap-1">
-          {TABS.filter((tab) => !tab.permission || access.me.permissions.includes(tab.permission)).map((tab) => {
-            const active = tab.href === "/administrasjon" ? pathname === tab.href : pathname.startsWith(tab.href);
-            return (
-              <li key={tab.label}>
-                <Link
-                  href={tab.href}
-                  aria-current={active ? "page" : undefined}
-                  className={`inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 font-semibold ${
-                    active ? "border-brand text-fg" : "border-transparent text-muted hover:text-fg"
-                  }`}
-                >
-                  {tab.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <TabNav
+        label="Administrasjon"
+        labelsFrom="sm"
+        tabs={TABS.filter((tab) => !tab.permission || access.me.permissions.includes(tab.permission)).map((tab) => ({
+          ...tab,
+          active: tab.href === "/administrasjon" ? pathname === tab.href : pathname.startsWith(tab.href),
+        }))}
+      />
       <div className="mt-8">{children}</div>
     </MeContext.Provider>
   );

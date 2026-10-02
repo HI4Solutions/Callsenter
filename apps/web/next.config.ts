@@ -7,6 +7,8 @@ const repoRoot = path.join(import.meta.dirname, "../..");
 
 const config: NextConfig = {
   reactStrictMode: true,
+  // next dev would otherwise write AGENTS.md and CLAUDE.md into apps/web on every start.
+  agentRules: false,
   // Workspace package shipped as TypeScript source (permission and module catalogs).
   transpilePackages: ["@veriqall/shared"],
   outputFileTracingRoot: repoRoot,
