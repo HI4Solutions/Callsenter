@@ -1,7 +1,18 @@
 # Env / secrets
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Infrastructure as code: state and local output can contain secrets
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+*.auto.tfvars
+cdk.out/
+.aws-sam/
 
 # Node
 node_modules/
@@ -29,3 +40,11 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 apps/web/public/brand/
+
+# Brand generator (font and output are not committed)
+tools/brand/*.ttf
+tools/brand/out/
+tools/brand/*.png
+
+# Test and coverage output
+coverage/

@@ -1,12 +1,12 @@
-export type FlagLevel = "godkjent" | "avvik" | "brudd";
+export type FlagLevel = "approved" | "deviation" | "violation";
 
 const labels: Record<FlagLevel, string> = {
-  godkjent: "Godkjent",
-  avvik: "Avvik",
-  brudd: "Brudd",
+  approved: "Godkjent",
+  deviation: "Avvik",
+  violation: "Brudd",
 };
 
-// AI-flagg (grønn, gul, rød). Betydningen står også som tekst, så den ikke bare bæres av fargen.
+// AI flag (green, yellow, red). The meaning is also written as text, so it is not carried by color alone.
 export function Flag({ level, children }: { level: FlagLevel; children?: React.ReactNode }) {
   return (
     <span

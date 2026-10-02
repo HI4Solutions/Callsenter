@@ -5,6 +5,29 @@ import { derived, palette } from "./tokens";
 
 const css = readFileSync(path.join(import.meta.dirname, "../app/globals.css"), "utf8");
 
+// Returns the body of the first rule whose selector line starts with `selector`.
+function ruleBody(source: string, selector: string): string {
+  const start = source.indexOf(`${selector} {`);
+  if (start === -1) throw new Error(`selector not found: ${selector}`);
+  const open = source.indexOf("{", start);
+  return source.slice(open + 1, source.indexOf("}", open));
+}
+
+function variables(body: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [, name, value] of body.matchAll(/--([\w-]+):\s*(#[0-9a-f]{6})/gi)) {
+    result[name as string] = (value as string).toLowerCase();
+  }
+  return result;
+}
+
+const lower = (hex: string) => hex.toLowerCase();
+
+const light = variables(ruleBody(css, ":root"));
+const dark = variables(ruleBody(css, ':root[data-theme="dark"]'));
+const darkFallback = variables(ruleBody(css, ":root:not([data-theme])"));
+const flags = variables(css.slice(css.indexOf("AI flags are"), css.indexOf("@theme")));
+
 function luminance(hex: string): number {
   const [r, g, b] = [1, 3, 5].map((i) => {
     const c = parseInt(hex.slice(i, i + 2), 16) / 255;
@@ -18,39 +41,62 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-describe("palette", () => {
-  it("ligger i globals.css med samme verdier", () => {
-    for (const hex of Object.values(palette)) {
-      expect(css.toLowerCase(), hex).toContain(hex.toLowerCase());
-    }
-    for (const mode of [derived.light, derived.dark]) {
-      for (const hex of Object.values(mode)) {
-        expect(css.toLowerCase(), hex).toContain(hex.toLowerCase());
-      }
-    }
+describe("CSS variables match the palette", () => {
+  it("light mode", () => {
+    expect(light).toMatchObject({
+      bg: lower(palette.paper),
+      fg: lower(palette.ink),
+      brand: lower(palette.stamp),
+      surface: lower(derived.light.surface),
+      border: lower(derived.light.border),
+      muted: lower(derived.light.muted),
+    });
   });
 
-  it("har tekstkontrast på minst 4,5:1 i lys modus", () => {
-    expect(contrast(palette.skrift, palette.papir)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(palette.skrift, derived.light.surface)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(derived.light.muted, palette.papir)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(derived.light.muted, derived.light.surface)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(palette.stempel, palette.papir)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast("#ffffff", palette.stempel)).toBeGreaterThanOrEqual(4.5);
+  it("dark mode", () => {
+    expect(dark).toMatchObject({
+      bg: lower(palette.night),
+      fg: lower(palette.mist),
+      brand: lower(palette.stampLight),
+      surface: lower(derived.dark.surface),
+      border: lower(derived.dark.border),
+      muted: lower(derived.dark.muted),
+    });
   });
 
-  it("har tekstkontrast på minst 4,5:1 i mørk modus", () => {
-    expect(contrast(palette.take, palette.natt)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(palette.take, derived.dark.surface)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(derived.dark.muted, palette.natt)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(derived.dark.muted, derived.dark.surface)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(palette.stempelLys, palette.natt)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(palette.natt, palette.stempelLys)).toBeGreaterThanOrEqual(4.5);
+  it("no-JavaScript dark fallback is identical to dark mode", () => {
+    expect(darkFallback).toEqual(dark);
   });
 
-  it("holder flaggfargene utenfor Tailwind-temaet", () => {
+  it("AI flags", () => {
+    expect(flags).toEqual({
+      "flag-approved": lower(palette.approved),
+      "flag-deviation": lower(palette.deviation),
+      "flag-violation": lower(palette.violation),
+    });
+  });
+
+  it("keeps flag colors out of the Tailwind theme", () => {
     const theme = css.match(/@theme[^{]*\{[^}]*\}/)?.[0];
     expect(theme).toContain("--color-brand");
-    expect(theme).not.toMatch(/godkjent|avvik|brudd/i);
+    expect(theme).not.toMatch(/approved|deviation|violation|godkjent|avvik|brudd/i);
   });
+});
+
+describe("text contrast is at least 4.5:1", () => {
+  const modes = {
+    light: { bg: light["bg"]!, surface: light["surface"]!, fg: light["fg"]!, muted: light["muted"]!, brand: light["brand"]!, onBrand: light["on-brand"]! },
+    dark: { bg: dark["bg"]!, surface: dark["surface"]!, fg: dark["fg"]!, muted: dark["muted"]!, brand: dark["brand"]!, onBrand: dark["on-brand"]! },
+  };
+
+  for (const [mode, c] of Object.entries(modes)) {
+    it(`${mode} mode`, () => {
+      expect(contrast(c.fg, c.bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(c.fg, c.surface)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(c.muted, c.bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(c.muted, c.surface)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(c.brand, c.bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(c.onBrand, c.brand)).toBeGreaterThanOrEqual(4.5);
+    });
+  }
 });

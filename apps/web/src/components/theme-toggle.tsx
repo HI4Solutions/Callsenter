@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import {
+  applyResolvedTheme,
   isThemePreference,
   resolveTheme,
   THEME_STORAGE_KEY,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/theme";
 
 const CHANGE_EVENT = "veriqall-theme-change";
+const DARK_QUERY = "(prefers-color-scheme: dark)";
 
 const options: { value: ThemePreference; label: string }[] = [
   { value: "system", label: "System" },
@@ -16,50 +18,53 @@ const options: { value: ThemePreference; label: string }[] = [
   { value: "dark", label: "Mørk" },
 ];
 
+// Fallback for when localStorage is blocked: the choice then holds until the page reloads.
+let memoryPreference: ThemePreference | null = null;
+
 function readPreference(): ThemePreference {
   try {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    return isThemePreference(stored) ? stored : "system";
+    if (isThemePreference(stored)) return stored;
   } catch {
-    return "system";
+    // Storage unavailable; fall through to the in-memory value.
   }
+  return memoryPreference ?? "system";
 }
 
+function applyPreference(preference: ThemePreference) {
+  applyResolvedTheme(resolveTheme(preference, window.matchMedia(DARK_QUERY).matches));
+}
+
+// Anything that can change the theme (this tab, another tab, the OS) lands here:
+// apply the stored preference to the page, then tell React to re-read it.
 function subscribe(onChange: () => void) {
-  window.addEventListener("storage", onChange);
-  window.addEventListener(CHANGE_EVENT, onChange);
+  const query = window.matchMedia(DARK_QUERY);
+  const handler = () => {
+    applyPreference(readPreference());
+    onChange();
+  };
+  window.addEventListener("storage", handler);
+  window.addEventListener(CHANGE_EVENT, handler);
+  query.addEventListener("change", handler);
   return () => {
-    window.removeEventListener("storage", onChange);
-    window.removeEventListener(CHANGE_EVENT, onChange);
+    window.removeEventListener("storage", handler);
+    window.removeEventListener(CHANGE_EVENT, handler);
+    query.removeEventListener("change", handler);
   };
 }
 
-function applyTheme(preference: ThemePreference) {
-  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  document.documentElement.dataset.theme = resolveTheme(preference, prefersDark);
+function choose(next: ThemePreference) {
+  memoryPreference = next;
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, next);
+  } catch {
+    // Storage blocked; memoryPreference carries the choice.
+  }
+  window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
 export function ThemeToggle() {
   const preference = useSyncExternalStore(subscribe, readPreference, () => "system" as const);
-
-  // Følg systemet live så lenge valget er «System».
-  useEffect(() => {
-    if (preference !== "system") return;
-    const query = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => applyTheme("system");
-    query.addEventListener("change", onChange);
-    return () => query.removeEventListener("change", onChange);
-  }, [preference]);
-
-  function choose(next: ThemePreference) {
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, next);
-    } catch {
-      // Lagring kan være blokkert; valget gjelder da bare til siden lastes på nytt.
-    }
-    applyTheme(next);
-    window.dispatchEvent(new Event(CHANGE_EVENT));
-  }
 
   return (
     <div role="group" aria-label="Fargemodus" className="inline-flex rounded-full border border-line bg-surface p-0.5">

@@ -1,29 +1,24 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import Link from "next/link";
 import "@fontsource-variable/schibsted-grotesk";
 import "./globals.css";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { themeInitScript } from "@/lib/theme";
+import { THEME_COLORS, themeInitScript } from "@/lib/theme";
 
 export const metadata: Metadata = {
   title: { default: "VeriQall", template: "%s · VeriQall" },
   description: "Dokumentert og verifisert telefonsalg for callsentre.",
-  icons: { icon: "/brand/favicon.svg" },
-};
-
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fafafc" },
-    { media: "(prefers-color-scheme: dark)", color: "#10122a" },
-  ],
+  icons: { icon: "/brand/favicon.svg", apple: "/brand/apple-touch-icon.png" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    // data-theme settes av skriptet under før første maling, derfor suppressHydrationWarning.
+    // data-theme and theme-color are set by the script below before first paint,
+    // hence suppressHydrationWarning.
     <html lang="nb" suppressHydrationWarning>
       <head>
+        <meta name="theme-color" content={THEME_COLORS.light} />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-dvh antialiased">

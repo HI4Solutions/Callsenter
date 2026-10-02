@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
-/* Mørk modus styres av data-theme på <html>, satt av et inline-skript før første maling
-   (se lib/theme.ts). Uten JavaScript følger vi systemets innstilling. */
+/* Dark mode is driven by data-theme on <html>, set by an inline script before first paint
+   (see lib/theme.ts). Without data-theme (no JavaScript) we follow the system setting. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
@@ -39,12 +39,12 @@
   }
 }
 
-/* AI-flaggene er de eneste stedene grønt, gult og rødt brukes. Fargene er bevisst
-   ikke tilgjengelige som Tailwind-verktøyklasser, så de ikke havner som pynt. */
+/* AI flags are the only place green, yellow and red are used. The colors are deliberately
+   not exposed as Tailwind utilities, so they do not end up as decoration. */
 :root {
-  --flag-godkjent: #1e9e5a;
-  --flag-avvik: #e0a100;
-  --flag-brudd: #d7382f;
+  --flag-approved: #1e9e5a;
+  --flag-deviation: #e0a100;
+  --flag-violation: #d7382f;
 }
 
 @theme inline {
@@ -69,7 +69,7 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
-/* Logo: begge variantene ligger i DOM-en, og data-theme avgjør hvilken som vises. */
+/* Logo: both variants are in the DOM; the theme decides which one shows. */
 .logo-dark {
   display: none;
 }
@@ -79,18 +79,26 @@ body {
 [data-theme="dark"] .logo-dark {
   display: block;
 }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .logo-light {
+    display: none;
+  }
+  :root:not([data-theme]) .logo-dark {
+    display: block;
+  }
+}
 
 .flag {
   --flag-color: var(--muted);
 }
-.flag[data-flag="godkjent"] {
-  --flag-color: var(--flag-godkjent);
+.flag[data-flag="approved"] {
+  --flag-color: var(--flag-approved);
 }
-.flag[data-flag="avvik"] {
-  --flag-color: var(--flag-avvik);
+.flag[data-flag="deviation"] {
+  --flag-color: var(--flag-deviation);
 }
-.flag[data-flag="brudd"] {
-  --flag-color: var(--flag-brudd);
+.flag[data-flag="violation"] {
+  --flag-color: var(--flag-violation);
 }
 .flag {
   border: 1px solid var(--flag-color);

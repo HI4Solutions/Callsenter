@@ -8,18 +8,18 @@ export const metadata: Metadata = {
 };
 
 const brandSwatches: { name: string; hex: string; use: string }[] = [
-  { name: "Stempel", hex: palette.stempel, use: "Merkefarge, lys modus" },
-  { name: "Stempel lys", hex: palette.stempelLys, use: "Merkefarge, mørk modus" },
-  { name: "Skrift", hex: palette.skrift, use: "Tekst, lys modus" },
-  { name: "Papir", hex: palette.papir, use: "Bakgrunn, lys modus" },
-  { name: "Natt", hex: palette.natt, use: "Bakgrunn, mørk modus" },
-  { name: "Tåke", hex: palette.take, use: "Tekst, mørk modus" },
+  { name: "Stempel", hex: palette.stamp, use: "Merkefarge, lys modus" },
+  { name: "Stempel lys", hex: palette.stampLight, use: "Merkefarge, mørk modus" },
+  { name: "Skrift", hex: palette.ink, use: "Tekst, lys modus" },
+  { name: "Papir", hex: palette.paper, use: "Bakgrunn, lys modus" },
+  { name: "Natt", hex: palette.night, use: "Bakgrunn, mørk modus" },
+  { name: "Tåke", hex: palette.mist, use: "Tekst, mørk modus" },
 ];
 
 const flagSwatches: { name: string; hex: string; use: string }[] = [
-  { name: "Godkjent", hex: palette.godkjent, use: "Bare grønt AI-flagg" },
-  { name: "Avvik", hex: palette.avvik, use: "Bare gult AI-flagg" },
-  { name: "Brudd", hex: palette.brudd, use: "Bare rødt AI-flagg" },
+  { name: "Godkjent", hex: palette.approved, use: "Bare grønt AI-flagg" },
+  { name: "Avvik", hex: palette.deviation, use: "Bare gult AI-flagg" },
+  { name: "Brudd", hex: palette.violation, use: "Bare rødt AI-flagg" },
 ];
 
 function Swatches({ items }: { items: typeof brandSwatches }) {
@@ -67,9 +67,9 @@ export default function DesignPage() {
           alltid som tekst i tillegg til fargen.
         </p>
         <div className="mb-4 flex flex-wrap gap-3">
-          <Flag level="godkjent" />
-          <Flag level="avvik" />
-          <Flag level="brudd" />
+          <Flag level="approved" />
+          <Flag level="deviation" />
+          <Flag level="violation" />
         </div>
         <Swatches items={flagSwatches} />
       </Section>
