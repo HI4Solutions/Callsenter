@@ -4,10 +4,12 @@
 //   GET  /auth/{vipps|bankid}/callback
 //   POST /auth/logout
 //   GET  /me                          the signed-in user, call centres and permissions
+//   GET  /announcements               live announcements for the signed-in user
 //   /admin/*                          superadmin portal (src/admin)
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import type pg from "pg";
 import { handleAdmin } from "./admin/index.ts";
+import { myAnnouncements } from "./admin/messages.ts";
 import { handleCallback, startLogin } from "./auth/flow.ts";
 import { resolveSession, revokeSession } from "./auth/session.ts";
 import { isProvider, SESSION_COOKIE, type AuthDeps } from "./auth/types.ts";
@@ -95,6 +97,12 @@ export function createHandler(deps: HandlerDeps) {
       const session = await resolveSession(auth, readCookie(event, SESSION_COOKIE));
       if (!session) return json(401, { error: "Ikke innlogget" }, cors);
       return json(200, await loadMe(auth.appDb, session), cors);
+    }
+
+    if (method === "GET" && path === "/announcements") {
+      const session = await resolveSession(auth, readCookie(event, SESSION_COOKIE));
+      if (!session) return json(401, { error: "Ikke innlogget" }, cors);
+      return json(200, await myAnnouncements(auth.appDb, session), cors);
     }
 
     if (path.startsWith("/admin/")) {

@@ -14,6 +14,15 @@ import {
   revokeInvitation,
   updateOrganization,
 } from "./organizations.ts";
+import {
+  addGrowthEvent,
+  createAnnouncement,
+  deleteAnnouncement,
+  deleteGrowthEvent,
+  growth,
+  listAnnouncements,
+  updateAnnouncement,
+} from "./messages.ts";
 import { accessLog, auditLog, blockIp, listBlockedIps, securityOverview, unblockIp } from "./security.ts";
 import { catalog, getUser, listUsers, removeIdentity, setPlatformAdmin, signOutEverywhere, updateUser } from "./users.ts";
 import { BadRequest, isUuid, parseBody } from "./validate.ts";
@@ -24,6 +33,8 @@ const INVITATION = /^\/admin\/organizations\/([^/]+)\/invitations\/([^/]+)$/;
 const USER = /^\/admin\/users\/([^/]+)$/;
 const USER_ACTION = /^\/admin\/users\/([^/]+)\/(logout|superadmin)$/;
 const BLOCKED_IP = /^\/admin\/security\/blocked-ips\/([^/]+)$/;
+const ANNOUNCEMENT = /^\/admin\/announcements\/([^/]+)$/;
+const GROWTH_EVENT = /^\/admin\/growth\/events\/([^/]+)$/;
 const USER_IDENTITY = /^\/admin\/users\/([^/]+)\/identities\/([a-z]+)$/;
 
 export async function handleAdmin(
@@ -98,6 +109,19 @@ export async function handleAdmin(
         return reply(201, await blockIp(deps.appDb, session, event.requestContext.http.sourceIp, body()));
       }
     }
+    if (path === "/admin/announcements") {
+      if (method === "GET") return reply(200, await listAnnouncements(deps.appDb, session));
+      if (method === "POST") return reply(201, await createAnnouncement(deps.appDb, session, body()));
+    }
+    match = ANNOUNCEMENT.exec(path);
+    if (match && isUuid(match[1])) {
+      if (method === "PATCH") return reply(200, await updateAnnouncement(deps.appDb, session, match[1], body()));
+      if (method === "DELETE") return reply(200, await deleteAnnouncement(deps.appDb, session, match[1]));
+    }
+    if (method === "GET" && path === "/admin/growth") return reply(200, await growth(deps.appDb, session, query.months));
+    if (method === "POST" && path === "/admin/growth/events") return reply(201, await addGrowthEvent(deps.appDb, session, body()));
+    match = GROWTH_EVENT.exec(path);
+    if (match && isUuid(match[1]) && method === "DELETE") return reply(200, await deleteGrowthEvent(deps.appDb, session, match[1]));
     match = BLOCKED_IP.exec(path);
     if (match && isUuid(match[1]) && method === "DELETE") return reply(200, await unblockIp(deps.appDb, session, match[1]));
     return reply(404, { error: "Fant ikke ressursen." });

@@ -31,6 +31,7 @@ Ferdig:
 - Fase 1, PR A (superadmin, Callsentre): `/admin` med faner og fanen Callsentre (opprette og endre callsentre, prøveperiode og suspensjon, moduler, brukere, invitasjonslenker), API under `/admin/*` i `apps/api/src/admin`, migrasjonen `0003_superadmin_portal.sql` og modulkatalogen i `packages/shared/src/modules.ts`.
 - Fase 1, PR B (superadmin, Brukere og Roller og moduler): søk på tvers av callsentre, brukerdetaljer (profil, deaktivering, superadmin av og på, callsentre, innloggingsmetoder, aktive økter, tvangsutlogging, siste innlogginger), CSV-eksport, og oversikt over moduler, standardroller og rettigheter. Migrasjonen `0004_superadmin_users.sql` (superadmin fra portalen med vern, og `app.admin_*`-funksjoner for oppslag og handlinger på tvers av callsentre).
 - Fase 1, PR C (superadmin, Sikkerhet): oversikt over innlogginger (mislykkede per IP og bruker), revisjonslogg med filter, detaljer og CSV, tilgangslogg, og IP-sperring som sjekkes på hvert API-kall (`apps/api/src/blocklist.ts`). Migrasjonen `0005_security.sql`.
+- Fase 1, PR D (superadmin, Meldinger og Vekst): kunngjøringer til alle eller valgte callsentre, vist som banner for innloggede brukere (`GET /announcements`), og Vekst med nøkkeltall, grafer (`apps/web/src/components/admin/charts.tsx`) og markedsføringshendelser. Migrasjonen `0006_messages_growth.sql`.
 
 Ikke gjort:
 - Vipps-knappen må byttes til Vipps' offisielle før produksjon.
@@ -39,7 +40,7 @@ Ikke gjort:
 - CloudTrail til egen kryptert bøtte (revisjonslogg lag 1 i `docs/plan.md`, seksjon 3) er ikke satt opp.
 - Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.
 
-**Neste steg:** Fase 1, superadmin-portalen (`docs/plan.md`, seksjon 10). PR A (Callsentre), PR B (Brukere, Roller og moduler) og PR C (Sikkerhet) er laget; neste er PR D (Meldinger og Vekst).
+**Neste steg:** Fase 1, superadmin-portalen (`docs/plan.md`, seksjon 10). PR A–D er laget (Callsentre, Brukere, Roller og moduler, Sikkerhet, Meldinger og Vekst). Fanene System og Økonomi kommer i fase 2 og 4. Neste er adminportalen for callsentrene (modul 13), med samtaletråder mellom superadmin og admin.
 
 ## Kommandoer
 

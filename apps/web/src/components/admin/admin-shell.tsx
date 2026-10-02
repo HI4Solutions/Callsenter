@@ -9,8 +9,8 @@ import { API_URL, type Me } from "@/lib/auth";
 const TABS: { label: string; href?: string; later?: string }[] = [
   { label: "Callsentre", href: "/admin/callsentre" },
   { label: "Brukere", href: "/admin/brukere" },
-  { label: "Meldinger", later: "Kommer" },
-  { label: "Vekst", later: "Kommer" },
+  { label: "Meldinger", href: "/admin/meldinger" },
+  { label: "Vekst", href: "/admin/vekst" },
   { label: "Roller og moduler", href: "/admin/roller" },
   { label: "Økonomi", later: "Fase 2 og 4" },
   { label: "System", later: "Fase 2" },
