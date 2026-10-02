@@ -127,12 +127,12 @@ create function app.dashboard(scope text, target uuid, from_ts timestamptz, to_t
       if not exists (select 1 from memberships m where m.organization_id = org and m.user_id = seller) then
         raise exception 'no access to this seller' using errcode = 'insufficient_privilege';
       end if;
-      if seller is distinct from me and not (
-        app.has_permission('dashboard.all')
-        or (app.has_permission('dashboard.team') and my_team is not null
-            and exists (select 1 from memberships m where m.organization_id = org and m.user_id = seller and m.team_id = my_team))
-      ) then
-        raise exception 'no access to this seller' using errcode = 'insufficient_privilege';
+      if seller is distinct from me and not app.has_permission('dashboard.all') then
+        -- A team leader sees a seller only as part of the team: what was done in the team.
+        if not app.has_permission('dashboard.team') or my_team is null then
+          raise exception 'no access to this seller' using errcode = 'insufficient_privilege';
+        end if;
+        team := my_team;
       end if;
     elsif scope = 'team' then
       team := target;
@@ -181,10 +181,21 @@ create function app.dashboard(scope text, target uuid, from_ts timestamptz, to_t
       union select seller_id from k where seller_id is not null
       union select m.user_id from memberships m where team is not null and m.organization_id = org and m.team_id = team and m.status = 'active'
     ),
+    -- Grouped by the template's required point, or by kind: never the AI's own words, which
+    -- describe what happened in a call.
     findings as (
-      select f->>'label' as label, f->>'level' as level
+      select case
+               when f->>'kind' = 'required_point' then coalesce(
+                 (select p->>'text' from product_template_versions tv, jsonb_array_elements(tv.required_points) p
+                  where tv.id = a.template_version_id and p->>'id' = f->>'pointId' limit 1),
+                 'Obligatorisk punkt')
+               when f->>'kind' = 'forbidden_phrase' then 'Forbudte formuleringer'
+               when f->>'kind' = 'price_terms' then 'Pris og vilkår som ikke stemmer'
+               else 'Andre forhold'
+             end as label,
+             f->>'level' as level
       from a, jsonb_array_elements(a.findings) f
-      where f->>'level' in ('yellow', 'red') and coalesce(f->>'label', '') <> ''
+      where f->>'level' in ('yellow', 'red')
     )
     select jsonb_build_object(
       'sales', (

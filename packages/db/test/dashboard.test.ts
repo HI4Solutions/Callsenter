@@ -9,8 +9,8 @@ async function setup() {
   const product = (await owner.query("insert into products (organization_id, name) values ($1, 'Strøm') returning id", [org])).rows[0].id;
   const version = (
     await owner.query(
-      `insert into product_template_versions (organization_id, product_id, version, status, published_at, price_monthly)
-       values ($1, $2, 1, 'published', now(), 399) returning id`,
+      `insert into product_template_versions (organization_id, product_id, version, status, published_at, price_monthly, required_points)
+       values ($1, $2, 1, 'published', now(), 399, '[{"id": "p1", "text": "Angrefrist nevnt"}]') returning id`,
       [org, product],
     )
   ).rows[0].id;
@@ -72,7 +72,7 @@ describe("dashboard", () => {
     const rejected = await s.sale(s.bo, "awaiting_confirmation");
     await owner.query("update sales set status = 'rejected' where id = $1", [rejected]);
     await s.sale(s.cato, "confirmed");
-    const missed = { kind: "required_point", label: "Angrefrist nevnt", level: "red" };
+    const missed = { kind: "required_point", pointId: "p1", label: "Selgeren sa ikke noe om angrefristen til Kari", level: "red" };
     await s.call(s.anna, "red", [missed]);
     await s.call(s.bo, "yellow", [{ ...missed, level: "yellow" }]);
     await s.call(s.cato, "green");
@@ -86,6 +86,7 @@ describe("dashboard", () => {
     expect(team.sales).toMatchObject({ total: 3, confirmed: 1, pending: 1, rejected: 1, revenueMonthly: 399 });
     expect(team.calls).toMatchObject({ total: 2, analyzed: 2, red: 1, yellow: 1, green: 0, unreviewed: 2 });
     expect(team.complaints).toEqual({ received: 1, open: 1 });
+    // The template's point, not the AI's description of the call.
     expect(team.findings).toEqual([{ label: "Angrefrist nevnt", red: 1, yellow: 1 }]);
     // Everyone in the team is listed, also the leader without activity; Cato (Sør) is not.
     expect(team.sellers.map((p: { userId: string }) => p.userId).sort()).toEqual([s.anna, s.bo, s.leader].sort());
@@ -95,6 +96,20 @@ describe("dashboard", () => {
     const mine = await dashboard({ userId: s.anna, orgId: s.org }, "me", null);
     expect(mine.sales.total).toBe(2);
     expect(mine.sellers).toEqual([]);
+  });
+
+  it("shows a team leader only what a seller did in the leader's team", async () => {
+    const s = await setup();
+    await s.sale(s.cato, "confirmed");
+    await s.call(s.cato, "red");
+    // Cato moves from Sør to Nord: the Sør work stays Sør's.
+    await owner.query("update memberships set team_id = $3 where organization_id = $1 and user_id = $2", [s.org, s.cato, s.nord]);
+    await s.sale(s.cato);
+    const cato = await dashboard({ userId: s.leader, orgId: s.org }, "seller", s.cato);
+    expect(cato.sales.total).toBe(1);
+    expect(cato.calls.total).toBe(0);
+    const compliance = await member(s.org, "compliance");
+    expect((await dashboard({ userId: compliance, orgId: s.org }, "seller", s.cato)).sales.total).toBe(2);
   });
 
   it("gives each user only what their permissions cover", async () => {
@@ -108,7 +123,6 @@ describe("dashboard", () => {
     });
     await as(api, { userId: s.leader, orgId: s.org }, async (db) => {
       await db.query(`select app.dashboard('seller', $1, ${PERIOD})`, [s.bo]);
-      await rejects(db, `select app.dashboard('seller', $1, ${PERIOD})`, [s.cato], forbidden);
       await rejects(db, `select app.dashboard('team', $1, ${PERIOD})`, [s.sor], forbidden);
       await rejects(db, `select app.dashboard('all', null, ${PERIOD})`, [], forbidden);
     });

@@ -42,6 +42,11 @@ export interface CoachingNote {
   readAt: string | null;
 }
 
+export interface CoachingList {
+  notes: CoachingNote[];
+  canCoach: boolean;
+}
+
 export const COACHING_KIND: Record<CoachingNote["kind"], string> = { praise: "Ros", improve: "Kan bli bedre" };
 
 export const PERIODS = [
@@ -53,7 +58,11 @@ export const PERIODS = [
 
 // The first day of a period of whole days ending today, in Norwegian time.
 export function periodStart(days: number, now = new Date()): string {
-  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo" }).format(new Date(now.getTime() - (days - 1) * 86_400_000));
+  // Today's date in Norway, then whole calendar days back (safe across daylight saving changes).
+  const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo" }).format(now);
+  const start = new Date(`${today}T12:00:00Z`);
+  start.setUTCDate(start.getUTCDate() - (days - 1));
+  return start.toISOString().slice(0, 10);
 }
 
 export function share(part: number, whole: number): string {

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { useWorkMe } from "@/components/work/work-shell";
-import { COACHING_KIND, type CoachingNote } from "@/lib/dashboard";
+import { COACHING_KIND, type CoachingList, type CoachingNote } from "@/lib/dashboard";
 import { formatDateTime } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 
@@ -25,31 +25,37 @@ export function Coaching({
 }) {
   const me = useWorkMe();
   const own = me?.user.id === sellerId;
-  const canGive = !own && (me?.permissions.includes("coaching.give") ?? false);
   const [notes, setNotes] = useState<CoachingNote[] | null>(null);
+  // From the database (app.can_coach): coaching.give, and the seller is in the leader's team.
+  const [canGive, setCanGive] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const query = `/coaching?sellerId=${sellerId}${callId ? `&callId=${callId}` : ""}`;
   const load = useCallback(
     () =>
-      orgFetch<CoachingNote[]>(query)
-        .then((rows) => {
-          setNotes(rows);
+      orgFetch<CoachingList>(query)
+        .then((r) => {
+          setNotes(r.notes);
+          setCanGive(r.canCoach && !own);
           setError(null);
         })
         .catch((e: Error) => setError(e.message)),
-    [query],
+    [query, own],
   );
 
   useEffect(() => {
     let cancelled = false;
-    orgFetch<CoachingNote[]>(query)
-      .then((rows) => !cancelled && setNotes(rows))
+    orgFetch<CoachingList>(query)
+      .then((r) => {
+        if (cancelled) return;
+        setNotes(r.notes);
+        setCanGive(r.canCoach && !own);
+      })
       .catch((e: Error) => !cancelled && setError(e.message));
     return () => {
       cancelled = true;
     };
-  }, [query]);
+  }, [query, own]);
 
   async function markRead(id: string) {
     setError(null);

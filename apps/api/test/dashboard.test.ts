@@ -69,6 +69,7 @@ describe("dashboard", () => {
     expect(team.body.sellers).toHaveLength(2);
 
     expect((await call(s.leader, "GET", "/org/dashboard", undefined, { from: "2026-09-07", to: "2026-09-01" })).status).toBe(400);
+    expect((await call(s.leader, "GET", "/org/dashboard", undefined, { from: "2024-01-01", to: "2026-09-01" })).status).toBe(400);
     await owner.query("update organization_modules set enabled = false where organization_id = $1", [s.org]);
     expect((await call(s.seller, "GET", "/org/dashboard")).body.code).toBe("modul_av");
   });
@@ -82,12 +83,13 @@ describe("coaching", () => {
     expect((await call(s.seller, "POST", "/org/coaching", { sellerId: s.sellerId, kind: "praise", body: "Meg" })).status).toBe(403);
 
     const notes = await call(s.seller, "GET", "/org/coaching");
-    expect(notes.body).toMatchObject([{ id: given.body.id, kind: "praise", body: "God avslutning", readAt: null }]);
-    expect((await call(s.leader, "GET", "/org/coaching", undefined, { sellerId: s.sellerId })).body).toHaveLength(1);
+    expect(notes.body).toMatchObject({ canCoach: false, notes: [{ id: given.body.id, kind: "praise", body: "God avslutning", readAt: null }] });
+    const leaderView = await call(s.leader, "GET", "/org/coaching", undefined, { sellerId: s.sellerId });
+    expect(leaderView.body).toMatchObject({ canCoach: true, notes: [{ id: given.body.id }] });
 
     expect((await call(s.leader, "POST", `/org/coaching/${given.body.id}/read`)).status).toBe(404);
     expect((await call(s.seller, "POST", `/org/coaching/${given.body.id}/read`)).status).toBe(200);
     expect((await call(s.seller, "POST", `/org/coaching/${given.body.id}/read`)).status).toBe(200);
-    expect((await call(s.seller, "GET", "/org/coaching")).body[0].readAt).not.toBeNull();
+    expect((await call(s.seller, "GET", "/org/coaching")).body.notes[0].readAt).not.toBeNull();
   });
 });

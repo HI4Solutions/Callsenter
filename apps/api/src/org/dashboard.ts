@@ -28,6 +28,7 @@ export async function getDashboard(db: pg.Pool, session: Session, query: Record<
   const to = day(query.to, today);
   const from = day(query.from, isoDay(new Date(Date.parse(`${to}T12:00:00Z`) - 29 * 86_400_000)));
   if (from > to) throw new BadRequest("Fra-datoen må være før til-datoen.");
+  if (Date.parse(to) - Date.parse(from) > 366 * 86_400_000) throw new BadRequest("Perioden kan være høyst ett år.");
   return withSession(db, session, async (c) => {
     const { rows } = await c.query<{ d: Record<string, unknown> }>(
       `select app.dashboard($1, $2, $3::date::timestamp at time zone 'Europe/Oslo',
@@ -57,7 +58,7 @@ export async function getDashboard(db: pg.Pool, session: Session, query: Record<
 const NOTE_COLUMNS = `n.id, n.seller_id as "sellerId", s.full_name as "sellerName", n.author_id as "authorId", a.full_name as "authorName",
   n.call_id as "callId", c.title as "callTitle", c.started_at as "callStartedAt", n.kind, n.body, n.created_at as "createdAt", n.read_at as "readAt"`;
 
-// Feedback to a seller (default: to oneself), newest first.
+// Feedback to a seller (default: to oneself), newest first, and whether the user may give more.
 export async function listCoaching(db: pg.Pool, session: Session, query: Record<string, string | undefined>) {
   const seller = query.sellerId && isUuid(query.sellerId) ? query.sellerId : session.userId;
   const callId = query.callId && isUuid(query.callId) ? query.callId : null;
@@ -73,7 +74,8 @@ export async function listCoaching(db: pg.Pool, session: Session, query: Record<
        limit 200`,
       [seller, callId],
     );
-    return rows;
+    const canCoach = (await c.query<{ ok: boolean }>("select app.can_coach($1) as ok", [seller])).rows[0]!.ok;
+    return { notes: rows, canCoach };
   });
 }
 
