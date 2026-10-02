@@ -330,3 +330,22 @@ Beslutninger 2. oktober (til godkjenning):
 Modulene Salgsverifisering, Dokumentasjon og Klagehåndtering slås på per callsenter og sjekkes i API-et. «Åpnet» på en lenke betyr at lenken er åpnet, ikke nødvendigvis av kunden (selgeren kan ha åpnet den selv).
 
 Må sjekkes før produksjon: at lenke med BankID- eller Vipps-aksept oppfyller kravet om skriftlig aksept (juridisk vurdering), hvilken tekst bekreftelsessiden skal ha om angreretten (angrerettskjema), og om Vipps Logg inn er godkjent brukt til aksept (Vipps sier selv at Login ikke er en elektronisk ID; BankID er sikrest).
+
+## 15. Dashboard og coaching
+
+Bygget 2. oktober 2026 (modul 11) som fase 4A, oppå fase 3. Claude tok beslutningene alene, og de venter på Nadeems godkjenning. Fakturamodulen (modul 15) kommer i en egen PR (fase 4B).
+
+Beslutninger 2. oktober (til godkjenning):
+
+- **Alle ser sine egne tall.** `/oversikt` viser salg, andel bekreftet, bekreftet verdi per måned, samtaler og timer opptak, AI-flagg (godkjent, avvik, brudd og ubehandlede), klager, utvikling per dag (per uke over 45 dager) og de ti hyppigste avvikene. `dashboard.team` gir teamets tall og en liste over selgerne i teamet, `dashboard.all` hele callsenteret og hvert team.
+- **Tallene er antall, ikke innhold.** De kommer fra én `security definer`-funksjon (`app.dashboard`) som sjekker rettighetene selv. En leder ser dermed teamets tall uten å kunne lese samtalene. For å åpne en samtale gjelder fortsatt `calls.read.*`. Salg og samtaler telles i teamet de ble gjort i, som for synlighet. Dager regnes i norsk tid, og perioden er høyst ett år.
+- **En teamleder ser en selger bare som del av teamet:** tallene for en selger viser det hen har gjort i lederens team, også etter et teambytte. «Hyppigste avvik» grupperes etter malens obligatoriske punkter og type funn, aldri etter AI-ens egen beskrivelse av samtalen.
+- **Tilbakemeldinger** (`coaching.give`) gis til en selger i lederens team, eller til alle med `dashboard.all`, valgfritt knyttet til en samtale (fra samtalesiden). Typen er «Ros» eller «Kan bli bedre». Tilbakemeldingene kan ikke endres eller slettes, men selgeren kan merke dem som lest. Lederen ser når de er lest. Tilbakemeldingen blir stående når samtalen slettes etter lagringstiden, men koblingen fjernes.
+- **Ingen AI-generert coaching ennå.** «Hyppigste avvik» bygger på funnene fra AI-kontrollen, og lederen skriver tilbakemeldingen selv. Forslag fra Claude basert på selgerens siste samtaler kan komme senere (krever Bedrock-tilgang for API-Lambdaen).
+- **Modulen «Dashboard og coaching»** slås på per callsenter.
+
+| Del | Innhold |
+|---|---|
+| Database | `0016_dashboard_coaching.sql`: `coaching_notes` med RLS, `app.can_coach` og `app.dashboard` |
+| API | `GET /org/dashboard` (`scope` = me, seller, team eller all, `target`, `from`, `to`), `GET`/`POST /org/coaching` og `POST /org/coaching/{id}/read` |
+| Web | `/oversikt` (Meg, team og hele callsenteret), `/oversikt/selgere/[id]` og tilbakemelding på samtalesiden |

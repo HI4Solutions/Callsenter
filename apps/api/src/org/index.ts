@@ -31,6 +31,7 @@ import {
 import { addComplaintNote, createComplaint, getComplaint, listComplaints, updateComplaint } from "./complaints.ts";
 import { createConfirmation, revokeConfirmation } from "./confirmations.ts";
 import { createCustomer, getCustomer, listCustomers, updateCustomer } from "./customers.ts";
+import { createCoaching, getDashboard, listCoaching, readCoaching } from "./dashboard.ts";
 import { getSaleDocumentation } from "./documentation.ts";
 import {
   createDraft,
@@ -66,6 +67,7 @@ const CUSTOMER = /^\/org\/customers\/([^/]+)$/;
 const SALE = /^\/org\/sales\/([^/]+)$/;
 const SALE_CONFIRMATIONS = /^\/org\/sales\/([^/]+)\/confirmations$/;
 const SALE_DOCUMENTATION = /^\/org\/sales\/([^/]+)\/documentation$/;
+const COACHING_READ = /^\/org\/coaching\/([^/]+)\/read$/;
 const COMPLAINT = /^\/org\/complaints\/([^/]+)$/;
 const COMPLAINT_NOTES = /^\/org\/complaints\/([^/]+)\/notes$/;
 const SALE_CONFIRMATION_REVOKE = /^\/org\/sales\/([^/]+)\/confirmations\/([^/]+)\/revoke$/;
@@ -319,6 +321,24 @@ export async function handleOrg(
       if (notes && isUuid(notes[1]) && method === "POST") return reply(201, await addComplaintNote(deps.appDb, session, notes[1], body()));
       return reply(404, { error: "Fant ikke ressursen." });
     }
+    // Everyone sees their own numbers and feedback; the database checks the rest.
+    if (path === "/org/dashboard" || path === "/org/coaching" || COACHING_READ.test(path)) {
+      await requireModule(deps.appDb, session, "dashboard");
+    }
+    if (method === "GET" && path === "/org/dashboard") {
+      return reply(200, await getDashboard(deps.appDb, session, event.queryStringParameters ?? {}));
+    }
+    if (path === "/org/coaching") {
+      if (method === "GET") return reply(200, await listCoaching(deps.appDb, session, event.queryStringParameters ?? {}));
+      if (method === "POST") {
+        await requirePermission(deps.appDb, session, "coaching.give");
+        return reply(201, await createCoaching(deps.appDb, session, body()));
+      }
+    }
+    const coachingRead = COACHING_READ.exec(path);
+    if (coachingRead && isUuid(coachingRead[1]) && method === "POST") {
+      return reply(200, await readCoaching(deps.appDb, session, coachingRead[1]));
+    }
     const documentation = SALE_DOCUMENTATION.exec(path);
     if (documentation && isUuid(documentation[1]) && method === "GET") {
       await requireModule(deps.appDb, session, "documentation");
@@ -432,7 +452,7 @@ export async function handleOrg(
     if (code === "42501" && path.startsWith("/org/roles")) {
       return reply(403, { error: "Du kan ikke gi en rolle rettigheter du ikke har selv." });
     }
-    if (code === "42501" && /^\/org\/(customers|products|sales|calls|report-templates|complaints)(\/|$)/.test(path)) {
+    if (code === "42501" && /^\/org\/(customers|products|sales|calls|report-templates|complaints|dashboard|coaching)(\/|$)/.test(path)) {
       return reply(403, { error: "Du har ikke tilgang til dette.", code: "ingen_tilgang" });
     }
     if (code === "42501") return reply(403, { error: "Du kan ikke gi en rolle med rettigheter du ikke har selv." });

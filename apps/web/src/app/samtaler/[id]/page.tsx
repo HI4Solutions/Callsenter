@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { Flag } from "@/components/flag";
+import { Coaching } from "@/components/work/coaching";
 import { CustomerPicker } from "@/components/work/customer-picker";
 import { useWorkMe } from "@/components/work/work-shell";
 import { CALL_STATUS, type CallDetail, FINDING_KIND, FLAG_LEVEL, formatDuration, SOURCE } from "@/lib/calls";
@@ -211,6 +212,9 @@ export default function CallPage() {
         </Card>
       ))}
 
+      {me?.modules?.includes("dashboard") && (
+        <Coaching sellerId={call.userId} sellerName={call.userName} callId={call.id} title="Tilbakemelding på samtalen" />
+      )}
       <Links call={call} canEdit={permissions.includes("calls.upload") && !call.analyses.length && !call.working} onChanged={load} />
     </section>
   );
