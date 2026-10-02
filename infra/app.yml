@@ -104,6 +104,8 @@ Resources:
           DB_NAME: veriqall
           DB_MASTER_SECRET_ARN: !ImportValue {"Fn::Sub": "veriqall-${Environment}-db-master-secret"}
           NODE_EXTRA_CA_CERTS: /var/runtime/ca-cert.pem
+          # For superadmin invitation links.
+          APP_ORIGIN: !Ref AppOrigin
       Tags:
         - Key: project
           Value: veriqall

@@ -26,12 +26,15 @@ Ferdig:
 - Staging-frontend: Amplify-appen `veriqall-staging` (Next.js SSR) er opprettet i `eu-north-1` med CloudFormation-stacken `veriqall-staging-web` fra `infra/amplify-web.yml`. Første bygg av PR-branchen gikk grønt (Node 22, Next 16). URL-en står i stackens output og i Amplify-konsollen. Amplify GitHub-appen er installert og GitHub-tokenet ligger i Secrets Manager (`callsenter/staging/github-token`). Staging og produksjon ligger i samme AWS-konto (planen anbefaler separate, se seksjon 8). Amplify-stacken kjøres fortsatt manuelt.
 - Fase 0, PR 1 (skjelett og design): monorepo med npm workspaces, Next.js 16 i `apps/web` med Tailwind 4, designtokens i lys og mørk modus (system, lys, mørk, huskes i nettleseren), Schibsted Grotesk via `@fontsource-variable` (selvhostet), `/design` med paletten og AI-flagg, og `ci.yml` (lint, typecheck, test og build på hver PR, ingen deploy). Tokens og kontrast er dekket av tester. De godkjente brandfilene, `docs/brand-preview.png` og `tools/brand/` er lagt inn (logoen er ikke formelt godkjent ennå).
 
+- Fase 0, PR 3 (innlogging): Vipps Logg inn og BankID via Idura i `apps/api/src/auth`, migrasjonen `0002_login.sql` (BankID kreves for administrative rettigheter og superadmin), `/logg-inn` i web-appen, og superadmin-invitasjon via migratoren (`infra/README.md`). Nøklene for Vipps (test), Idura (produksjonsmiljøet, ekte BankID) og Soniox ligger i `callsenter/staging/app`. `IDURA_DOMAIN` er satt på Environment `staging`.
+
 Ikke gjort:
-- Ingen innlogging. Produksjon er ikke opprettet, og skal ikke opprettes før lansering. Be om økt Lambda-kvote (nye kontoer har 10 samtidige kjøringer) før produksjon.
+- Amplify-stacken `veriqall-staging-web` må oppdateres manuelt med `infra/amplify-web.yml` (gir `NEXT_PUBLIC_API_URL`), og første superadmin må inviteres. Vipps-knappen må byttes til Vipps' offisielle før produksjon.
+- Produksjon er ikke opprettet, og skal ikke opprettes før lansering. Be om økt Lambda-kvote (nye kontoer har 10 samtidige kjøringer) før produksjon.
 - Egne domener: `staging.veriqall.no` virker (Amplify, CNAME hos one.com). `api.staging.veriqall.no` har godkjent sertifikat og GitHub-variablene `API_DOMAIN_NAME` og `API_CERTIFICATE_ARN` er satt; etter neste deploy mangler bare CNAME `api.staging` hos one.com (målet er stack-outputen `ApiDomainTarget`).
 - Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.
 
-**Neste steg:** CNAME `api.staging` hos one.com, deretter fase 0, PR 3 (innlogging, se `docs/auth.md`) og et skript for å opprette superadmin.
+**Neste steg:** Test innloggingen i staging (oppdater Amplify-stacken, inviter superadmin, logg inn med BankID og Vipps), deretter resten av fase 0 i `docs/plan.md`.
 
 ## Kommandoer
 
