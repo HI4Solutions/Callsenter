@@ -52,7 +52,7 @@ Gjelder fase 0, PR 3. Beslutninger som fortsatt er åpne står nederst.
 - Tabellen `sessions` har id-hash, user_id, provider, opprettet, sist sett, utløper, IP og user agent. Selve økt-ID-en er 32 tilfeldige byte, og bare SHA-256 av den lagres.
 - Cookien heter `vq_session` og settes med `HttpOnly; Secure; SameSite=Lax; Path=/`. Appen kaller API-et med credentials, og CORS tillater bare appens egen origin.
 - Bruk egne domener også i staging, for eksempel `staging.veriqall.no` og `api.staging.veriqall.no`. Med standarddomenene til Amplify og API Gateway blir app og API ulike nettsteder, og nettleseren blokkerer da cookien.
-- Forslag til tidsavbrudd: 30 minutter uten aktivitet og maks 12 timer totalt.
+- Tidsavbrudd (besluttet 2. oktober 2026): 60 minutter uten aktivitet og maks 14 timer totalt.
 - Utlogging sletter økten. Admin kan logge en bruker ut av alle økter.
 - API-et sjekker økten i hvert kall, i en Lambda-autoriserer eller felles mellomvare, og setter `app.current_user_id` og `app.current_org_id` for RLS.
 
@@ -72,10 +72,10 @@ Gjelder fase 0, PR 3. Beslutninger som fortsatt er åpne står nederst.
 
 Callback-Lambdaen må nå både internett (Idura og Vipps) og databasen. Det er det tydeligste eksempelet på det åpne valget mellom NAT Gateway og Aurora Serverless v2 med Data API (se `plan.md`, seksjon 8).
 
-## Åpne beslutninger
+## Beslutninger (2. oktober 2026)
 
-- Skal admin og compliance kreve BankID, siden Vipps ikke er en elektronisk ID, mens selgere også kan bruke Vipps?
-- Tidsavbrudd for økter.
+- **BankID kreves for administrativ tilgang.** Rettighetene `audit.read` (revisjons- og tilgangslogg), `users.manage` (brukere, ansatte og team), `roles.manage` (roller og rettigheter), `calls.read.all` (alle samtaler i callsenteret) og `billing.read` (fakturaer) gjelder bare i en økt startet med BankID. En økt startet med Vipps har de andre rettighetene i rollen, men ikke disse. Kravet er knyttet til rettigheter, ikke rollenavn, og listen ligger i `STRONG_AUTH_PERMISSIONS` i `packages/shared`.
+- **Tidsavbrudd:** 60 minutter uten aktivitet og maks 14 timer totalt.
 
 ## Tillegg fra gjennomgangen 2. oktober 2026
 
@@ -83,6 +83,6 @@ Callback-Lambdaen må nå både internett (Idura og Vipps) og databasen. Det er 
 - **Egen databaserolle for innloggingen:** før innlogging finnes verken bruker eller callsenter å sette for RLS. Innloggings-Lambdaen bruker derfor rollen `app_auth`, som bare når `auth_states`, `invitations`, `identities`, `sessions`, `login_events` og det den må lese i `users`. Resten av API-et bruker `app_user`, som er underlagt RLS.
 - **`state` lagres som hash**, på samme måte som økt-ID og invitasjonstoken. Nonce og PKCE-verifier må lagres slik de er, fordi de skal sendes videre.
 - **Automatisk Vipps-kobling** via mobilnummer krever også at invitasjonen ikke er utløpt eller trukket tilbake.
-- **`acr` lagres på økten.** Forslag til BankID-kravet: knytt det til rettigheter, ikke rollenavn. Rettighetene `audit.read`, `users.manage`, `roles.manage` og `calls.read.all` krever en økt startet med BankID.
+- **`acr` lagres på økten**, så API-et vet hvilket sikkerhetsnivå økten har og kan håndheve BankID-kravet over.
 - **Sist sett** oppdateres høyst én gang i minuttet, så hvert kall ikke gir en skriving.
 - **Rate limiting** på `/auth/*` i API Gateway, og sjekk av `Origin` på kall som endrer data, siden `SameSite=Lax` ikke dekker alt.

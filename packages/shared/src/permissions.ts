@@ -81,11 +81,16 @@ export const DEFAULT_ROLES = {
 
 export type DefaultRoleKey = keyof typeof DEFAULT_ROLES;
 
-// Permissions whose session must have been started with BankID (proposal in docs/auth.md;
-// enforced from PR 3).
+// Permissions that need a session started with BankID (decided 2 October 2026, see
+// docs/auth.md). A session started with Vipps simply does not hold them; enforced from PR 3.
 export const STRONG_AUTH_PERMISSIONS: readonly Permission[] = [
   "audit.read",
   "users.manage",
   "roles.manage",
   "calls.read.all",
+  "billing.read",
 ];
+
+// Session lifetime (decided 2 October 2026).
+export const SESSION_IDLE_TIMEOUT_MINUTES = 60;
+export const SESSION_MAX_HOURS = 14;

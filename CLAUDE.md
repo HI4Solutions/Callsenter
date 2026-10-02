@@ -29,7 +29,7 @@ Ikke gjort:
 - Egne domener (`staging.veriqall.no`, `api.staging.veriqall.no`) er ikke satt opp. De trengs før innloggingen kan testes i staging.
 - Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.
 
-**Neste steg:** fase 0, PR 3 (innlogging, se `docs/auth.md`) og PR 4 (infrastruktur for staging). PR 3 kan bygges og testes lokalt, men kan ikke prøves i staging før PR 4 og domenene er på plass. Åpne spørsmål for innloggingen (BankID-krav, tidsavbrudd) står i `docs/plan.md`, seksjon 8.
+**Neste steg:** fase 0, PR 3 (innlogging, se `docs/auth.md`) og PR 4 (infrastruktur for staging). PR 3 kan bygges og testes lokalt, men kan ikke prøves i staging før PR 4 og domenene er på plass. BankID-krav og tidsavbrudd er besluttet (se `docs/auth.md`). IaC-verktøy for PR 4 er ikke valgt (`docs/plan.md`, seksjon 8).
 
 ## Kommandoer
 

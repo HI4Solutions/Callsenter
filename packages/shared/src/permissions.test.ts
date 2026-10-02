@@ -20,3 +20,11 @@ describe("permission catalog", () => {
     for (const permission of STRONG_AUTH_PERMISSIONS) expect(isPermission(permission)).toBe(true);
   });
 });
+
+describe("strong authentication", () => {
+  it("covers every administrative permission", () => {
+    expect([...STRONG_AUTH_PERMISSIONS].sort()).toEqual(
+      ["audit.read", "billing.read", "calls.read.all", "roles.manage", "users.manage"],
+    );
+  });
+});
