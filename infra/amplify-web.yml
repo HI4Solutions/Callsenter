@@ -65,6 +65,8 @@ Resources:
               phases:
                 preBuild:
                   commands:
+                    # Skip nvm's default global packages (Amplify CLI, Cypress, ...); they add over a minute.
+                    - 'rm -f "${NVM_DIR:-/root/.nvm}/default-packages"'
                     - nvm install 22
                     - nvm use 22
                     - cd ../..
