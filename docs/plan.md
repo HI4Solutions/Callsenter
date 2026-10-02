@@ -375,3 +375,15 @@ Beslutninger 2. oktober (til godkjenning):
 | Web | Økonomi med Oversikt og forbruk, Fakturaer, Faste avtaler og Innstillinger. Fakturaen kan skrives ut. Administrasjon → Fakturaer for callsenteret |
 
 Må sjekkes før bruk: at fakturaen oppfyller kravene i bokføringsforskriften (blant annet at «Foretaksregisteret» står ved organisasjonsnummeret for aksjeselskap, som kan legges i bunnteksten), KID brukes ikke foreløpig (besluttet 2. oktober).
+
+## 17. E-post
+
+Besluttet 2. oktober 2026: **Amazon SES**, ikke Resend. SES koster rundt 0,10 USD per 1000 e-poster uten fast pris. Lambdaen sender via IAM-rollen (ingen API-nøkkel å lagre). E-postene behandles i AWS i EU, under samme avtale som resten.
+
+- **Eget avsenderdomene per miljø:** `noreply@staging.veriqall.no` i staging og `noreply@veriqall.no` i produksjon, så miljøene er adskilt og testing ikke skader omdømmet til produksjonsdomenet. API-et har bare lov til å sende fra `noreply@` på sitt eget domene.
+- **DKIM** (2048-bit, Easy DKIM), **SPF** via eget MAIL FROM-domene (`mail.<domene>`) og **DMARC** (`p=none` til å begynne med, strammes inn når alt er sett å virke).
+- **Hva som sendes:** invitasjonslenker (når personen har e-post; lenken vises fortsatt, så den også kan sendes på SMS) og fakturaer. Fakturaen sendes som hele fakturaen i e-posten (ingen innlogging trengs) til faktura-e-posten som ble frosset da fakturaen ble sendt. Hver utsending logges (`invoice_emails`).
+- **Uten `EMAIL_DOMAIN`** sendes ingenting, og alt virker som før (lenker kopieres, fakturaer skrives ut).
+- **DNS** ligger fortsatt hos one.com. Postene står i deploy-loggen og i `infra/README.md`. Å flytte DNS (ikke registreringen, `.no` kan ikke registreres i Route 53) til Route 53 vil gjøre slike poster automatiske. Det vurderes før produksjon.
+
+Rekkefølge første gang: oppdater bootstrap-stacken (SES-rettigheter) → sett `EMAIL_DOMAIN` på Environment `staging` → deploy → legg inn DNS-postene hos one.com → søk SES om produksjonstilgang.

@@ -97,6 +97,7 @@ Resources:
                   - rds:*
                   - s3:*
                   - secretsmanager:*
+                  - ses:*
                   - sns:*
                   - ssm:GetParameter
                   - ssm:GetParameters

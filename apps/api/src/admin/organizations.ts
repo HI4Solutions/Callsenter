@@ -5,6 +5,7 @@ import { isModuleKey, MODULE_KEYS } from "@veriqall/shared";
 import type pg from "pg";
 import { randomToken, sha256 } from "../auth/crypto.ts";
 import type { Session } from "../auth/session.ts";
+import { sendInvitation } from "../email.ts";
 import { withSession } from "../me.ts";
 import {
   BadRequest,
@@ -191,8 +192,8 @@ export async function inviteMember(db: pg.Pool, session: Session, orgId: string,
   const teamId = optionalText(body, "teamId", "Team", 64) ?? null;
   if (teamId && !isUuid(teamId)) throw new BadRequest("Ukjent team.");
 
-  return inOrganization(db, session, orgId, async (c) => {
-    const exists = await c.query("select 1 from organizations where id = $1", [orgId]);
+  const invited = await inOrganization(db, session, orgId, async (c) => {
+    const exists = await c.query<{ name: string }>("select name from organizations where id = $1", [orgId]);
     if (!exists.rowCount) throw new NotFound();
     const role = await c.query<{ id: string }>(
       "select id from roles where organization_id = $1 and key = $2 and archived_at is null",
@@ -239,8 +240,18 @@ export async function inviteMember(db: pg.Pool, session: Session, orgId: string,
     );
     const link = new URL("/logg-inn", appOrigin);
     link.searchParams.set("invitasjon", token);
-    return { id: invitation.rows[0]!.id, userId, link: link.toString(), expiresAt: invitation.rows[0]!.expires_at };
+    return {
+      id: invitation.rows[0]!.id,
+      userId,
+      link: link.toString(),
+      expiresAt: invitation.rows[0]!.expires_at,
+      organizationName: exists.rows[0]!.name,
+    };
   });
+  // Sent after the invitation is committed; the link is shown either way.
+  const { organizationName, ...result } = invited;
+  const emailed = email ? await sendInvitation(email, fullName, organizationName, result.link) : false;
+  return { ...result, emailed };
 }
 
 export async function revokeInvitation(db: pg.Pool, session: Session, orgId: string, invitationId: string) {

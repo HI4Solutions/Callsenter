@@ -34,6 +34,13 @@ Parameters:
   LogRetentionDays:
     Type: Number
     Default: 365
+  EmailDomain:
+    Type: String
+    Default: ""
+    Description: >-
+      Domain e-mail is sent from (noreply@), for example staging.veriqall.no. Creates the SES
+      identity; the DKIM and MAIL FROM records in the outputs go to the DNS provider. Empty turns
+      e-mail off (invitation links are then copied by hand).
   BedrockRegion:
     Type: String
     Default: eu-north-1
@@ -43,6 +50,7 @@ Parameters:
       AI control and reports off.
 
 Conditions:
+  HasEmail: !Not [!Equals [!Ref EmailDomain, ""]]
   HasCustomDomain: !And
     - !Not [!Equals [!Ref ApiDomainName, ""]]
     - !Not [!Equals [!Ref ApiCertificateArn, ""]]
@@ -179,6 +187,20 @@ Resources:
               - Effect: Allow
                 Action: lambda:InvokeFunction
                 Resource: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:veriqall-${Environment}-worker
+        # E-mail (invitations and invoices) from noreply@ on the environment's own domain only.
+        - !If
+          - HasEmail
+          - PolicyName: email
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action: ses:SendEmail
+                  Resource: !Sub arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${EmailDomain}
+                  Condition:
+                    StringEquals:
+                      ses:FromAddress: !Sub noreply@${EmailDomain}
+          - !Ref AWS::NoValue
 
   ApiLogGroup:
     Type: AWS::Logs::LogGroup
@@ -223,11 +245,27 @@ Resources:
           APP_SECRET_ARN: !ImportValue {"Fn::Sub": "veriqall-${Environment}-app-secret"}
           AUDIO_BUCKET: !ImportValue {"Fn::Sub": "veriqall-${Environment}-audio-bucket"}
           WORKER_FUNCTION: !Sub veriqall-${Environment}-worker
+          EMAIL_FROM: !If [HasEmail, !Sub "VeriQall <noreply@${EmailDomain}>", !Ref AWS::NoValue]
       Tags:
         - Key: project
           Value: veriqall
         - Key: environment
           Value: !Ref Environment
+
+  # --- E-mail -------------------------------------------------------------------------------
+
+  # The environment's sending domain in SES, signed with DKIM (Easy DKIM, 2048-bit keys), with
+  # bounces handled on mail.<domain> so SPF aligns with the From domain.
+  EmailIdentity:
+    Type: AWS::SES::EmailIdentity
+    Condition: HasEmail
+    Properties:
+      EmailIdentity: !Ref EmailDomain
+      DkimSigningAttributes:
+        NextSigningKeyLength: RSA_2048_BIT
+      MailFromAttributes:
+        MailFromDomain: !Sub mail.${EmailDomain}
+        BehaviorOnMxFailure: USE_DEFAULT_VALUE
 
   # --- Worker -------------------------------------------------------------------------------
   # Transcribes and analyses calls (src/worker.ts), started by the API for each finished recording.
@@ -424,6 +462,18 @@ Outputs:
     Description: CNAME target for ApiDomainName at the DNS provider (one.com).
     Condition: HasCustomDomain
     Value: !GetAtt ApiDomain.RegionalDomainName
+  EmailDnsRecords:
+    Description: >-
+      Records for the DNS provider (one.com), separated by " | ": three DKIM CNAMEs, and MX and
+      SPF for the MAIL FROM domain.
+    Condition: HasEmail
+    Value: !Join
+      - " | "
+      - - !Sub "${EmailIdentity.DkimDNSTokenName1} CNAME ${EmailIdentity.DkimDNSTokenValue1}"
+        - !Sub "${EmailIdentity.DkimDNSTokenName2} CNAME ${EmailIdentity.DkimDNSTokenValue2}"
+        - !Sub "${EmailIdentity.DkimDNSTokenName3} CNAME ${EmailIdentity.DkimDNSTokenValue3}"
+        - !Sub "mail.${EmailDomain} MX 10 feedback-smtp.${AWS::Region}.amazonses.com"
+        - !Sub "mail.${EmailDomain} TXT v=spf1 include:amazonses.com ~all"
   MigratorFunctionName:
     Value: !Ref MigratorFunction
   WorkerFunctionName:

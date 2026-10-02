@@ -36,6 +36,7 @@ En deploy kan også startes manuelt: **Actions → Deploy to staging → Run wor
 - `API_DOMAIN_NAME` og `API_CERTIFICATE_ARN`: eget domene for API-et, for eksempel `api.staging.veriqall.no`, med ACM-sertifikat validert via CNAME hos one.com. Stack-outputen `ApiDomainTarget` er CNAME-målet.
 - `IDURA_DOMAIN`: Idura-domenet for BankID, uten `https://`. Mangler den, er BankID-knappen «ikke satt opp».
 - `APP_ORIGIN`: adressen til web-appen. Standard er `https://staging.veriqall.no` og `https://app.veriqall.no`.
+- `EMAIL_DOMAIN`: domenet e-post sendes fra (`noreply@`), `staging.veriqall.no` i staging og `veriqall.no` i produksjon. Lager SES-identiteten. Krever at bootstrap-stacken er oppdatert med SES-rettigheter (kjør steg 1 på nytt med den nye malen). Deploy-loggen og stack-outputen `EmailDnsRecords` viser DNS-postene som skal inn hos one.com: tre DKIM-CNAME-er, og MX og SPF for `mail.<domene>`. Legg i tillegg inn DMARC (`_dmarc.<domene>` TXT `v=DMARC1; p=none;`). Til SES-kontoen er tatt ut av sandkassen (søkes om én gang per konto og region), kan det bare sendes til verifiserte adresser.
 
 Vipps-verten er `api.vipps.no` (produksjon) i begge miljøer. Staging bruker egne nøkler fra en salgsenhet i Vipps-produksjon, se `docs/auth.md`.
 

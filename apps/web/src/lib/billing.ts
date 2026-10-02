@@ -55,6 +55,8 @@ export interface InvoiceDetail extends InvoiceSummary {
   creditNote: { id: string; number: number } | null;
   lines: InvoiceLine[];
   payments: { id: string; amount: string; paidOn: string; method: "bank" | "stripe" | "other"; reference: string | null; createdAt: string }[];
+  // Superadmins only: when and to whom it was e-mailed.
+  emails: { sentTo: string; sentAt: string }[];
 }
 
 export interface BillingSettings {

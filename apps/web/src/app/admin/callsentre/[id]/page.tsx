@@ -283,7 +283,7 @@ function Members({ org }: { org: OrganizationDetail }) {
 function Invite({ org, onInvited }: { org: OrganizationDetail; onInvited: () => Promise<void> }) {
   const [form, setForm] = useState({ fullName: "", phone: "", email: "", roleKey: "admin" });
   const [error, setError] = useState<string | null>(null);
-  const [link, setLink] = useState<{ url: string; expiresAt: string } | null>(null);
+  const [link, setLink] = useState<{ url: string; expiresAt: string; emailedTo: string | null } | null>(null);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -294,11 +294,11 @@ function Invite({ org, onInvited }: { org: OrganizationDetail; onInvited: () => 
     setLink(null);
     setCopied(false);
     try {
-      const result = await adminFetch<{ link: string; expiresAt: string }>(`/organizations/${org.id}/invitations`, {
+      const result = await adminFetch<{ link: string; expiresAt: string; emailed: boolean }>(`/organizations/${org.id}/invitations`, {
         method: "POST",
         body: form,
       });
-      setLink({ url: result.link, expiresAt: result.expiresAt });
+      setLink({ url: result.link, expiresAt: result.expiresAt, emailedTo: result.emailed ? form.email.trim() : null });
       setForm({ fullName: "", phone: "", email: "", roleKey: "admin" });
       await onInvited();
     } catch (e) {
@@ -354,8 +354,13 @@ function Invite({ org, onInvited }: { org: OrganizationDetail; onInvited: () => 
       {link && (
         <div className="mt-6 rounded-lg border border-line p-4">
           <p className="font-semibold">Invitasjonslenke</p>
+          {link.emailedTo && (
+            <p className="mt-1" role="status">
+              Sendt på e-post til {link.emailedTo}.
+            </p>
+          )}
           <p className="mt-1 text-sm text-muted">
-            Send lenken til personen. Den kan brukes én gang og gjelder til {formatDateTime(link.expiresAt)}. Den vises bare nå.
+            {link.emailedTo ? "Du kan også sende lenken selv, for eksempel på SMS." : "Send lenken til personen."} Den kan brukes én gang og gjelder til {formatDateTime(link.expiresAt)}. Den vises bare nå.
           </p>
           <p className="mt-3 break-all rounded-lg bg-bg p-3 font-mono text-sm">{link.url}</p>
           <button type="button" className={`${secondaryButton} mt-3`} onClick={copy}>
