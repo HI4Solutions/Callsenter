@@ -17,6 +17,7 @@ export function iamPool(user: string): pg.Pool {
     ssl: { rejectUnauthorized: true },
     max: 2,
     idleTimeoutMillis: 60_000,
-    connectionTimeoutMillis: 5_000,
+    // The first IAM sign-in from a cold Lambda can take several seconds.
+    connectionTimeoutMillis: 10_000,
   });
 }

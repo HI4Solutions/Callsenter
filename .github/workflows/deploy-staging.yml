@@ -3,6 +3,8 @@ name: Deploy to staging
 on:
   push:
     branches: [staging]
+  # "Run workflow" in the Actions tab, for example after changing an Environment variable.
+  workflow_dispatch:
 
 permissions:
   id-token: write
