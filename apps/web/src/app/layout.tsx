@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-dvh antialiased">
-        <header className="border-b border-line bg-surface">
+        <header className="border-b border-line bg-surface print:hidden">
           <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
             <Link href="/" aria-label="VeriQall, til forsiden" className="flex items-center">
               <Logo height={32} />
@@ -38,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </header>
         <Announcements />
-        <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-16">{children}</main>
+        <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-16 print:max-w-none print:p-0">{children}</main>
       </body>
     </html>
   );

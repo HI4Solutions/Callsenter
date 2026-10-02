@@ -190,9 +190,9 @@ Logoen kan genereres på nytt med `tools/brand/`: last ned fonten til `tools/bra
 
 - **Hvordan kommer lydopptakene inn?** Opplasting etter samtalen, eller integrasjon med callsenterets telefonisystem? Dette avgjør fase 2.
 - **Kontooppsett:** egne AWS-kontoer for staging og produksjon (anbefalt) eller én konto med tagger. I dag ligger begge i samme konto.
-- **SMS-leverandør** for salgsverifisering (modul 8).
+- ~~SMS-leverandør~~: trengs ikke. Besluttet 2. oktober at bekreftelse og signering av salg ikke gjøres av VeriQall (seksjon 14).
 - **Bedrock:** hvilke Claude-modeller er tilgjengelige direkte i `eu-north-1`, og krever noen EU cross-region inference (behandling i andre EU-regioner)?
-- **Lovkrav:** sjekk hva angrerettloven krever av bekreftelse og skriftlig aksept ved telefonsalg. Modul 8 bør bygges rundt det.
+- **Lovkrav:** sjekk hva angrerettloven krever av bekreftelse og skriftlig aksept ved telefonsalg. Modul 8 er bygget som skriftlig aksept med BankID eller Vipps (seksjon 14), men trenger en juridisk vurdering.
 - **Lagringstid** for opptak og transkripsjoner, og sletting på forespørsel.
 - **Fakturamodul:** besluttet 2. oktober at callsentrene betaler med både faktura og Stripe (se seksjon 10).
 - **E-post for invitasjoner:** Amazon SES med `veriqall.no` (DNS-poster hos one.com). Til da kopierer superadmin lenken selv.
@@ -244,7 +244,7 @@ Besluttet 2. oktober 2026, etter mønster fra adminportalen i MedSide. Forskjell
 | Vekst | Nøkkeltall, brukere totalt, nye callsentre og innlogginger per måned, med markedsføringshendelser som markører. Samtaler fra fase 2 | Fase 1, PR D (laget) |
 | Roller og moduler | Modulkatalogen, standardrollene nye callsentre får, og rettighetskatalogen (lesbar) | Fase 1, PR B (laget) |
 | System | Innloggingsmetoder av og på, AI-modell og prompt per funksjon, Soniox-ordliste, kvoter for Bedrock og Soniox | Fase 2 |
-| Økonomi | Forbruk per callsenter (lydminutter, AI-tokens, BankID-innlogginger), Stripe, faktura og regnskap (MRR, kostnader, netto) | Forbruk i fase 2, resten i fase 4 |
+| Økonomi | Forbruk per callsenter (lydminutter, AI-tokens), fakturaer, faste avtaler, innstillinger og nøkkeltall (MRR, fakturert, utestående). Stripe og kostnader/netto kommer senere | Forbruk i fase 2, fakturering i fase 4B (seksjon 16) |
 
 Fra MedSide tas ikke med: passord og 2FA (vi har bare BankID og Vipps), legespesialiteter og PreVisit-nivåer, og globale roller (roller er per callsenter her).
 
@@ -302,3 +302,76 @@ Beslutninger 2. oktober:
 | Web | `/samtaler` (søk i samtalene, flagg, status), `/samtaler/opptak`, `/samtaler/[id]` (avspilling fra hvert tidspunkt, funn, rapport, koblinger), `/samtaler/rapportmaler`, samtaler på kunde- og salgssidene, og superadmin System og Økonomi (forbruk per callsenter) |
 
 Før det virker i staging: Soniox-nøkkelen i `callsenter/staging/app` må komme fra et Soniox-prosjekt i EU-regionen (EU-endepunktene avviser nøkler fra andre regioner; EU bestilles hos Soniox). Claude-modellene som skal kunne velges, må være slått på i Bedrock (Model access) i `eu-north-1`. Modulene Transkribering, AI-kontroll og Rapporter slås på per callsenter under Callsentre.
+
+## 14. Salgsverifisering, dokumentasjon og klager
+
+Bygget 2. oktober 2026 (modul 8, 9 og 10), i én PR. Claude tok beslutningene under alene, og de venter på Nadeems godkjenning.
+
+Beslutninger 2. oktober (til godkjenning):
+
+- **Skriftlig aksept via lenke.** Ved telefonsalg er forbrukeren bare bundet når hen godtar tilbudet skriftlig etter samtalen (angrerettloven § 10). Selgeren lager en lenke på salgssiden (`sales.manage`). Kunden åpner den uten å logge inn, ser tilbudet med pris, binding, angrefrist og vilkår fra malversjonen salget peker på, og **godtar med BankID eller Vipps**, eller avslår (uten identifisering). Salget går til «bekreftet» eller «avvist» av seg selv.
+- **Lenken gjelder i 7 dager** og vises bare når den lages (bare hashen lagres). En ny lenke trekker tilbake den forrige. Lenken kan trekkes tilbake fra salgssiden, og trekkes tilbake av seg selv hvis salget kanselleres eller settes til bekreftet for hånd mens det venter.
+- **Hemmeligheten står i fragmentet** (`/bekreft#…`), som nettleseren aldri sender til en server. API-et får den som parameter eller i body, så den havner ikke i tilgangsloggen til API Gateway eller Amplify.
+- **Godkjenningen er bundet til nettleseren** som åpnet tilbudet: en kortlevd cookie settes når identifiseringen starter og kreves når kunden kommer tilbake. Slik kan ingen sende BankID- eller Vipps-lenken videre til en kunde som ikke har sett tilbudet.
+- **Etter at lenken er besvart, trukket tilbake eller utløpt, vises bare status**, ikke selve tilbudet med kundens opplysninger.
+- **SMS kommer senere.** Til leverandøren er valgt (seksjon 8), kopierer selgeren lenken og sender den selv på SMS eller e-post. `sent_via` står klar for SMS.
+- **Bevis:** dokumentet kunden så, lagres som kanonisk JSON med SHA-256 (dokument-ID), sammen med malversjonen, metode, navn fra BankID eller Vipps, verifisert mobilnummer (Vipps), en hash av innloggings-ID-en (ikke selve ID-en), sikkerhetsnivå, tidspunkt, IP og nettleser. En avgjort bekreftelse kan aldri endres (trigger).
+- **Samsvar med kunden:** stemmer Vipps-nummeret med kundens mobilnummer, eller navnet fra BankID eller Vipps med kundens navn, merkes det. Ellers får selgeren beskjed om å sjekke at riktig person har godtatt. Aksepten stoppes ikke, siden en bedrift kan godta ved en annen person enn kontaktpersonen.
+- **Identifiseringen gir ingen innlogging.** Den bruker samme OIDC-flyt som innloggingen, men tilstanden er knyttet til bekreftelsen, og ingen økt opprettes. De offentlige sidene går gjennom den smale rollen `app_auth` og to `security definer`-funksjoner.
+- **Dokumentasjon per salg** (modul 9) på `/salg/[id]/dokumentasjon`: salget, tilbudet og vilkårene, kundens aksept, samtalene med transkripsjon, AI-kontroll og rapport, og historikken. Kan skrives ut eller lagres som PDF fra nettleseren. Hver visning logges i `access_log`, og hver samtale som vises, logges i tillegg på samtalen.
+- **Klager** (modul 10) på `/klager` med `complaints.manage`: kunde, valgfritt salg, kanal, dato, beskrivelse, saksbehandler, status (ny, under behandling, løst, avvist) og utfall, som må fylles ut før saken lukkes. Historikk og notater er append-only. Gjelder klagen et salg, vises salgets dokumentasjon i saken og logges som `complaint_documentation`. Er salget ikke synlig for saksbehandleren (andres salg krever tilgang til alle samtaler og sterk innlogging), vises en melding i stedet.
+
+| Del | Innhold |
+|---|---|
+| Database | `0014_sale_confirmations.sql` (`sale_confirmations`, `auth_states.confirmation_id`, `app.confirmation_view` og `app.confirmation_decide`) og `0015_complaints.sql` (`complaints`, `complaint_events`) |
+| API | `/confirm/*` (offentlig), `/org/sales/{id}/confirmations`, `/org/sales/{id}/documentation` og `/org/complaints` |
+| Web | `/bekreft/[token]` og `/bekreft/ferdig` (for kunden), kortet Kundens bekreftelse på salgssiden, `/salg/[id]/dokumentasjon`, `/klager`, `/klager/[id]` og klager på kundesiden |
+
+Modulene Salgsverifisering, Dokumentasjon og Klagehåndtering slås på per callsenter og sjekkes i API-et. «Åpnet» på en lenke betyr at lenken er åpnet, ikke nødvendigvis av kunden (selgeren kan ha åpnet den selv).
+
+**Besluttet 2. oktober (Nadeem):** bekreftelse og signering av salg gjøres ikke av VeriQall foreløpig. Modulen Salgsverifisering står av, koden blir liggende, og salg settes til «bekreftet» for hånd. Ingen SMS.
+
+Må sjekkes hvis modulen tas i bruk: at lenke med BankID- eller Vipps-aksept oppfyller kravet om skriftlig aksept (juridisk vurdering), hvilken tekst bekreftelsessiden skal ha om angreretten (angrerettskjema), og om Vipps Logg inn er godkjent brukt til aksept (Vipps sier selv at Login ikke er en elektronisk ID; BankID er sikrest).
+
+## 15. Dashboard og coaching
+
+Bygget 2. oktober 2026 (modul 11) som fase 4A, oppå fase 3. Claude tok beslutningene alene, og de venter på Nadeems godkjenning. Fakturamodulen (modul 15) kommer i en egen PR (fase 4B).
+
+Beslutninger 2. oktober (til godkjenning):
+
+- **Alle ser sine egne tall.** `/oversikt` viser salg, andel bekreftet, bekreftet verdi per måned, samtaler og timer opptak, AI-flagg (godkjent, avvik, brudd og ubehandlede), klager, utvikling per dag (per uke over 45 dager) og de ti hyppigste avvikene. `dashboard.team` gir teamets tall og en liste over selgerne i teamet, `dashboard.all` hele callsenteret og hvert team.
+- **Tallene er antall, ikke innhold.** De kommer fra én `security definer`-funksjon (`app.dashboard`) som sjekker rettighetene selv. En leder ser dermed teamets tall uten å kunne lese samtalene. For å åpne en samtale gjelder fortsatt `calls.read.*`. Salg og samtaler telles i teamet de ble gjort i, som for synlighet. Dager regnes i norsk tid, og perioden er høyst ett år.
+- **En teamleder ser en selger bare som del av teamet:** tallene for en selger viser det hen har gjort i lederens team, også etter et teambytte. «Hyppigste avvik» grupperes etter malens obligatoriske punkter og type funn, aldri etter AI-ens egen beskrivelse av samtalen.
+- **Tilbakemeldinger** (`coaching.give`) gis til en selger i lederens team, eller til alle med `dashboard.all`, valgfritt knyttet til en samtale (fra samtalesiden). Typen er «Ros» eller «Kan bli bedre». Tilbakemeldingene kan ikke endres eller slettes, men selgeren kan merke dem som lest. Lederen ser når de er lest. Tilbakemeldingen blir stående når samtalen slettes etter lagringstiden, men koblingen fjernes.
+- **Ingen AI-generert coaching ennå.** «Hyppigste avvik» bygger på funnene fra AI-kontrollen, og lederen skriver tilbakemeldingen selv. Forslag fra Claude basert på selgerens siste samtaler kan komme senere (krever Bedrock-tilgang for API-Lambdaen).
+- **Modulen «Dashboard og coaching»** slås på per callsenter.
+
+| Del | Innhold |
+|---|---|
+| Database | `0016_dashboard_coaching.sql`: `coaching_notes` med RLS, `app.can_coach` og `app.dashboard` |
+| API | `GET /org/dashboard` (`scope` = me, seller, team eller all, `target`, `from`, `to`), `GET`/`POST /org/coaching` og `POST /org/coaching/{id}/read` |
+| Web | `/oversikt` (Meg, team og hele callsenteret), `/oversikt/selgere/[id]` og tilbakemelding på samtalesiden |
+
+## 16. Fakturering
+
+Bygget 2. oktober 2026 (modul 15) som fase 4B, oppå fase 4A. Claude tok beslutningene alene, og de venter på Nadeems godkjenning.
+
+Beslutninger 2. oktober (til godkjenning):
+
+- **MedInnova fakturerer callsentrene.** Callsentrene fakturerer ikke sine egne kunder i VeriQall. Superadmin fakturerer under Økonomi, og admin i callsenteret (`billing.read`, krever BankID eller passkey) ser sine sendte fakturaer under Administrasjon → Fakturaer.
+- **Utkast, sending og frys.** En faktura lages som utkast, for hånd, fra en fast avtale eller med forbruk, og kan endres og slettes fritt. Ved sending får den neste nummer i én ubrutt nummerserie (kreditnotaer inkludert). Avsender, mottaker, linjer, beløp, fakturadato og forfall fryses da i databasen. Feil rettes med kreditnota for hele fakturaen, aldri ved å endre eller slette. Kreditnotaen speiler originalen (avsender, mottaker og mva), og en faktura kan bare bli «kreditert» gjennom en kreditnota. Datoer følger norsk tid. Nummeret kan bare settes høyere enn det siste brukte.
+- **Mva** settes per linje (25, 15, 12 eller 0 %). Hele fakturaen er uten mva hvis avsenderen ikke er mva-registrert.
+- **Betaling** registreres for hånd (beløp, dato, bank, Stripe eller annet, og referanse). Fakturaen blir betalt når betalingene dekker den, og en sendt faktura etter forfall vises som forfalt. Betalinger kan ikke endres eller slettes.
+- **Faste avtaler** (månedlig, kvartalsvis, halvårlig eller årlig) telles fra startdatoen, så en avtale fra den 31. ikke glir til den 28. De blir utkast per periode når superadmin trykker «Lag utkast som forfaller». Det skjer ikke automatisk, så ingenting sendes uten at noen har sett på det.
+- **Forbruk** (timer lyd og antall AI-kontroller for en måned) kan legges til et utkast til prisene under Innstillinger. Hver samtale faktureres én gang, også om den ble behandlet på nytt etter en feil.
+- **Ingen e-post og ingen Stripe ennå.** Fakturaen skrives ut eller lagres som PDF og sendes av superadmin. Stripe-nøkler kommer fra Nadeem senere og legges i Secrets Manager. Nadeem lager en egen beskrivelse av fakturamodulen, så denne seksjonen kan endres. Betalingsmåten «Stripe» finnes allerede for manuell registrering.
+- **Nøkkeltall** under Økonomi: faste inntekter per måned (MRR, eks. mva), fakturert denne måneden og i år, utestående og forfalt.
+- **Oppbevaring:** fakturaer kan ikke slettes, heller ikke når callsenteret slettes (bokføringsloven krever fem år). Fremmednøkkelen hindrer at et callsenter med fakturaer slettes.
+
+| Del | Innhold |
+|---|---|
+| Database | `0017_invoicing.sql`: `billing_settings`, `invoices`, `invoice_lines`, `invoice_payments`, `recurring_invoices`, regler i triggere, `app.credit_invoice` og `app.generate_recurring_invoices` |
+| API | `/admin/billing/overview` og `/admin/billing/settings`, `/admin/invoices` (opprette, endre utkast, slette utkast, `send`, `payments`, `credit`, `usage`), `/admin/recurring-invoices` (og `generate`), og `/org/invoices` |
+| Web | Økonomi med Oversikt og forbruk, Fakturaer, Faste avtaler og Innstillinger. Fakturaen kan skrives ut. Administrasjon → Fakturaer for callsenteret |
+
+Må sjekkes før bruk: at fakturaen oppfyller kravene i bokføringsforskriften (blant annet at «Foretaksregisteret» står ved organisasjonsnummeret for aksjeselskap, som kan legges i bunnteksten), KID brukes ikke foreløpig (besluttet 2. oktober).

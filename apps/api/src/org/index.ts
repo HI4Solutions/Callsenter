@@ -2,9 +2,10 @@
 // session is in. Everything runs as app_user under RLS with the session's user and call centre,
 // so the database decides what is visible and refuses grants of permissions the caller lacks.
 // The checks here only give clearer answers.
-import { type Permission, STRONG_AUTH_PERMISSIONS } from "@veriqall/shared";
+import { type ModuleKey, MODULES, type Permission, STRONG_AUTH_PERMISSIONS } from "@veriqall/shared";
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import type pg from "pg";
+import { invoiceDetail } from "../admin/billing.ts";
 import { inviteMember, NotFound, revokeInvitation } from "../admin/organizations.ts";
 import { BadRequest, type Body, isUuid, optionalText, parseBody, requiredText } from "../admin/validate.ts";
 import type { Session } from "../auth/session.ts";
@@ -28,7 +29,12 @@ import {
   updateCall,
   updateReportTemplate,
 } from "./calls.ts";
+import { addComplaintNote, createComplaint, getComplaint, listComplaints, updateComplaint } from "./complaints.ts";
+import { createConfirmation, revokeConfirmation } from "./confirmations.ts";
 import { createCustomer, getCustomer, listCustomers, updateCustomer } from "./customers.ts";
+import { createCoaching, getDashboard, listCoaching, readCoaching } from "./dashboard.ts";
+import { getSaleDocumentation } from "./documentation.ts";
+import { listOrgInvoices } from "./invoices.ts";
 import {
   createDraft,
   createProduct,
@@ -61,6 +67,13 @@ const THREAD = /^\/org\/threads\/([^/]+)$/;
 const THREAD_MESSAGES = /^\/org\/threads\/([^/]+)\/messages$/;
 const CUSTOMER = /^\/org\/customers\/([^/]+)$/;
 const SALE = /^\/org\/sales\/([^/]+)$/;
+const SALE_CONFIRMATIONS = /^\/org\/sales\/([^/]+)\/confirmations$/;
+const SALE_DOCUMENTATION = /^\/org\/sales\/([^/]+)\/documentation$/;
+const INVOICE = /^\/org\/invoices\/([^/]+)$/;
+const COACHING_READ = /^\/org\/coaching\/([^/]+)\/read$/;
+const COMPLAINT = /^\/org\/complaints\/([^/]+)$/;
+const COMPLAINT_NOTES = /^\/org\/complaints\/([^/]+)\/notes$/;
+const SALE_CONFIRMATION_REVOKE = /^\/org\/sales\/([^/]+)\/confirmations\/([^/]+)\/revoke$/;
 const CALL = /^\/org\/calls\/([^/]+)$/;
 const CALL_ACTION = /^\/org\/calls\/([^/]+)\/(chunks|complete|retry|realtime-key|audio)$/;
 const CALL_ANALYSIS = /^\/org\/calls\/([^/]+)\/analyses\/([^/]+)$/;
@@ -76,6 +89,20 @@ async function requirePermission(db: pg.Pool, session: Session, permission: Perm
     return rows[0]?.ok === true;
   });
   if (!ok) throw new Forbidden(permission, session);
+}
+
+class ModuleDisabled extends Error {}
+
+// A module the superadmin has switched off for the call centre is closed in the API too.
+async function requireModule(db: pg.Pool, session: Session, module: ModuleKey) {
+  const on = await withSession(db, session, async (c) => {
+    const { rows } = await c.query<{ enabled: boolean }>(
+      "select enabled from organization_modules where organization_id = app.current_org_id() and module = $1",
+      [module],
+    );
+    return rows[0]?.enabled === true;
+  });
+  if (!on) throw new ModuleDisabled(module);
 }
 
 export async function overview(db: pg.Pool, session: Session) {
@@ -280,6 +307,68 @@ export async function handleOrg(
       }
       return reply(404, { error: "Fant ikke ressursen." });
     }
+    if (path === "/org/complaints" || path.startsWith("/org/complaints/")) {
+      await requireModule(deps.appDb, session, "complaints");
+      await requirePermission(deps.appDb, session, "complaints.manage");
+      const meta = { ip: event.requestContext.http.sourceIp, userAgent: event.requestContext.http.userAgent };
+      if (method === "GET" && path === "/org/complaints") {
+        return reply(200, await listComplaints(deps.appDb, session, event.queryStringParameters ?? {}));
+      }
+      if (method === "POST" && path === "/org/complaints") return reply(201, await createComplaint(deps.appDb, session, body()));
+      const one = COMPLAINT.exec(path);
+      if (one && isUuid(one[1])) {
+        if (method === "GET") return reply(200, await getComplaint(deps.appDb, session, one[1], meta));
+        if (method === "PATCH") return reply(200, await updateComplaint(deps.appDb, session, one[1], body()));
+      }
+      const notes = COMPLAINT_NOTES.exec(path);
+      if (notes && isUuid(notes[1]) && method === "POST") return reply(201, await addComplaintNote(deps.appDb, session, notes[1], body()));
+      return reply(404, { error: "Fant ikke ressursen." });
+    }
+    // The call centre's own invoices from VeriQall (billing.read, which needs BankID or a passkey).
+    if (method === "GET" && (path === "/org/invoices" || INVOICE.test(path))) {
+      await requirePermission(deps.appDb, session, "billing.read");
+      const one = INVOICE.exec(path);
+      if (one) {
+        if (!isUuid(one[1])) return reply(404, { error: "Fant ikke ressursen." });
+        return reply(200, await withSession(deps.appDb, session, (c) => invoiceDetail(c, one[1]!)));
+      }
+      return reply(200, await listOrgInvoices(deps.appDb, session));
+    }
+    // Everyone sees their own numbers and feedback; the database checks the rest.
+    if (path === "/org/dashboard" || path === "/org/coaching" || COACHING_READ.test(path)) {
+      await requireModule(deps.appDb, session, "dashboard");
+    }
+    if (method === "GET" && path === "/org/dashboard") {
+      return reply(200, await getDashboard(deps.appDb, session, event.queryStringParameters ?? {}));
+    }
+    if (path === "/org/coaching") {
+      if (method === "GET") return reply(200, await listCoaching(deps.appDb, session, event.queryStringParameters ?? {}));
+      if (method === "POST") {
+        await requirePermission(deps.appDb, session, "coaching.give");
+        return reply(201, await createCoaching(deps.appDb, session, body()));
+      }
+    }
+    const coachingRead = COACHING_READ.exec(path);
+    if (coachingRead && isUuid(coachingRead[1]) && method === "POST") {
+      return reply(200, await readCoaching(deps.appDb, session, coachingRead[1]));
+    }
+    const documentation = SALE_DOCUMENTATION.exec(path);
+    if (documentation && isUuid(documentation[1]) && method === "GET") {
+      await requireModule(deps.appDb, session, "documentation");
+      const meta = { ip: event.requestContext.http.sourceIp, userAgent: event.requestContext.http.userAgent };
+      return reply(200, await getSaleDocumentation(deps.appDb, session, documentation[1], meta));
+    }
+    const confirmations = SALE_CONFIRMATIONS.exec(path);
+    if (confirmations && isUuid(confirmations[1]) && method === "POST") {
+      await requireModule(deps.appDb, session, "sale_verification");
+      await requirePermission(deps.appDb, session, "sales.manage");
+      return reply(201, await createConfirmation(deps.appDb, session, deps.config.appOrigin, confirmations[1]));
+    }
+    const revoke = SALE_CONFIRMATION_REVOKE.exec(path);
+    if (revoke && isUuid(revoke[1]) && isUuid(revoke[2]) && method === "POST") {
+      await requirePermission(deps.appDb, session, "sales.manage");
+      return reply(200, await revokeConfirmation(deps.appDb, session, revoke[1], revoke[2]));
+    }
     if (path === "/org/sales" || SALE.test(path)) {
       // Who sees which sales is decided by RLS (own, team or all); sales.manage changes them.
       if (method !== "GET") await requirePermission(deps.appDb, session, "sales.manage");
@@ -367,12 +456,16 @@ export async function handleOrg(
     if (error instanceof BadRequest) return reply(400, { error: error.message });
     if (error instanceof Unavailable) return reply(503, { error: "Sanntidstekst er ikke tilgjengelig nå. Opptaket fortsetter." });
     if (error instanceof NotFound) return reply(404, { error: "Fant ikke ressursen." });
+    if (error instanceof ModuleDisabled) {
+      const name = MODULES[error.message as ModuleKey]?.name ?? error.message;
+      return reply(403, { error: `${name} er ikke slått på for callsenteret.`, code: "modul_av" });
+    }
     const code = (error as { code?: string }).code;
     const constraint = (error as { constraint?: string }).constraint ?? "";
     if (code === "42501" && path.startsWith("/org/roles")) {
       return reply(403, { error: "Du kan ikke gi en rolle rettigheter du ikke har selv." });
     }
-    if (code === "42501" && /^\/org\/(customers|products|sales|calls|report-templates)(\/|$)/.test(path)) {
+    if (code === "42501" && /^\/org\/(customers|products|sales|calls|report-templates|complaints|dashboard|coaching)(\/|$)/.test(path)) {
       return reply(403, { error: "Du har ikke tilgang til dette.", code: "ingen_tilgang" });
     }
     if (code === "42501") return reply(403, { error: "Du kan ikke gi en rolle med rettigheter du ikke har selv." });
@@ -394,6 +487,9 @@ export async function handleOrg(
     if (code === "22007" || code === "22008") return reply(400, { error: "Ugyldig dato." });
     if (code === "23505" && constraint.includes("phone")) return reply(409, { error: "Mobilnummeret er allerede i bruk." });
     if (code === "23505" && constraint.includes("email")) return reply(409, { error: "E-postadressen er allerede i bruk." });
+    if (code === "23505" && constraint === "sale_confirmations_pending") {
+      return reply(409, { error: "Noen andre sendte en ny lenke samtidig. Last siden på nytt." });
+    }
     if (code === "23503") return reply(400, { error: "Ukjent rolle eller team." });
     throw error;
   }

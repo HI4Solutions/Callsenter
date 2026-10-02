@@ -35,6 +35,25 @@ import {
   signOutEverywhere,
   updateUser,
 } from "./users.ts";
+import {
+  addPayment,
+  addUsageLines,
+  billingOverview,
+  createInvoice,
+  createRecurring,
+  creditInvoice,
+  deleteInvoice,
+  deleteRecurring,
+  generateRecurring,
+  getBillingSettings,
+  getInvoice,
+  listInvoices,
+  listRecurring,
+  sendInvoice,
+  updateBillingSettings,
+  updateInvoice,
+  updateRecurring,
+} from "./billing.ts";
 import { getSystem, updateSystem, usage } from "./system.ts";
 import { BadRequest, isUuid, parseBody } from "./validate.ts";
 
@@ -49,6 +68,9 @@ const THREAD_MESSAGES = /^\/admin\/threads\/([^/]+)\/messages$/;
 const ANNOUNCEMENT = /^\/admin\/announcements\/([^/]+)$/;
 const GROWTH_EVENT = /^\/admin\/growth\/events\/([^/]+)$/;
 const USER_PASSKEY = /^\/admin\/users\/([^/]+)\/passkeys\/([^/]+)$/;
+const INVOICE = /^\/admin\/invoices\/([^/]+)$/;
+const INVOICE_ACTION = /^\/admin\/invoices\/([^/]+)\/(send|payments|credit|usage)$/;
+const RECURRING = /^\/admin\/recurring-invoices\/([^/]+)$/;
 const USER_IDENTITY = /^\/admin\/users\/([^/]+)\/identities\/([a-z]+)$/;
 
 export async function handleAdmin(
@@ -154,6 +176,38 @@ export async function handleAdmin(
       if (method === "PATCH") return reply(200, await updateSystem(deps.appDb, session, body()));
     }
     if (method === "GET" && path === "/admin/usage") return reply(200, await usage(deps.appDb, session, query.months));
+    if (method === "GET" && path === "/admin/billing/overview") return reply(200, await billingOverview(deps.appDb, session));
+    if (path === "/admin/billing/settings") {
+      if (method === "GET") return reply(200, await getBillingSettings(deps.appDb, session));
+      if (method === "PATCH") return reply(200, await updateBillingSettings(deps.appDb, session, body()));
+    }
+    if (path === "/admin/invoices") {
+      if (method === "GET") return reply(200, await listInvoices(deps.appDb, session, query));
+      if (method === "POST") return reply(201, await createInvoice(deps.appDb, session, body()));
+    }
+    match = INVOICE.exec(path);
+    if (match && isUuid(match[1])) {
+      if (method === "GET") return reply(200, await getInvoice(deps.appDb, session, match[1]));
+      if (method === "PATCH") return reply(200, await updateInvoice(deps.appDb, session, match[1], body()));
+      if (method === "DELETE") return reply(200, await deleteInvoice(deps.appDb, session, match[1]));
+    }
+    match = INVOICE_ACTION.exec(path);
+    if (match && isUuid(match[1]) && method === "POST") {
+      if (match[2] === "send") return reply(200, await sendInvoice(deps.appDb, session, match[1]));
+      if (match[2] === "payments") return reply(201, await addPayment(deps.appDb, session, match[1], body()));
+      if (match[2] === "credit") return reply(201, await creditInvoice(deps.appDb, session, match[1], body()));
+      if (match[2] === "usage") return reply(200, await addUsageLines(deps.appDb, session, match[1], body()));
+    }
+    if (path === "/admin/recurring-invoices") {
+      if (method === "GET") return reply(200, await listRecurring(deps.appDb, session));
+      if (method === "POST") return reply(201, await createRecurring(deps.appDb, session, body()));
+    }
+    if (method === "POST" && path === "/admin/recurring-invoices/generate") return reply(200, await generateRecurring(deps.appDb, session));
+    match = RECURRING.exec(path);
+    if (match && isUuid(match[1])) {
+      if (method === "PATCH") return reply(200, await updateRecurring(deps.appDb, session, match[1], body()));
+      if (method === "DELETE") return reply(200, await deleteRecurring(deps.appDb, session, match[1]));
+    }
     if (method === "GET" && path === "/admin/growth") return reply(200, await growth(deps.appDb, session, query.months));
     if (method === "POST" && path === "/admin/growth/events") return reply(201, await addGrowthEvent(deps.appDb, session, body()));
     match = GROWTH_EVENT.exec(path);

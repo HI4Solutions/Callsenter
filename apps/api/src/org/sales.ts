@@ -7,6 +7,7 @@ import { NotFound } from "../admin/organizations.ts";
 import { BadRequest, type Body, isUuid, optionalText } from "../admin/validate.ts";
 import type { Session } from "../auth/session.ts";
 import { withSession } from "../me.ts";
+import { listConfirmations } from "./confirmations.ts";
 
 const SUMMARY = `s.id, s.status, s.sold_at as "soldAt", s.status_changed_at as "statusChangedAt",
   s.price_once::text as "priceOnce", s.price_monthly::text as "priceMonthly", s.binding_months as "bindingMonths",
@@ -94,7 +95,7 @@ export async function getSale(db: pg.Pool, session: Session, id: string) {
        where e.sale_id = $1 order by e.id`,
       [id],
     );
-    return { ...sale.rows[0], events: events.rows };
+    return { ...sale.rows[0], events: events.rows, confirmations: await listConfirmations(c, id) };
   });
 }
 

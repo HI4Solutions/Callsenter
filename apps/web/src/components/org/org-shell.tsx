@@ -11,6 +11,7 @@ const TABS: (Omit<Tab, "active" | "href"> & { href: string; permission?: string 
   { label: "Team", icon: "team", href: "/administrasjon/team" },
   { label: "Roller", icon: "roles", href: "/administrasjon/roller", permission: "roles.manage" },
   { label: "Meldinger", icon: "message", href: "/administrasjon/meldinger" },
+  { label: "Fakturaer", icon: "wallet", href: "/administrasjon/fakturaer", permission: "billing.read" },
 ];
 
 const MeContext = createContext<Me | null>(null);

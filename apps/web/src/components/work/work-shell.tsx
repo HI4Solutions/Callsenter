@@ -6,13 +6,16 @@ import { type Tab, TabNav } from "@/components/tab-nav";
 import { API_URL, fetchMe, loginPathFor, type Me } from "@/lib/auth";
 import { usePageTitle } from "@/lib/use-page-title";
 import { canSeeCalls } from "@/lib/calls";
+import { canSeeDashboard } from "@/lib/dashboard";
 import { canSeeSales } from "@/lib/work";
 
 // The daily work in a call centre (docs/plan.md, section 12).
 const TABS: (Omit<Tab, "active" | "href"> & { href: string; show?: (me: Me) => boolean })[] = [
+  { label: "Oversikt", icon: "growth", href: "/oversikt", show: canSeeDashboard },
   { label: "Samtaler", icon: "phone", href: "/samtaler", show: canSeeCalls },
   { label: "Salg", icon: "receipt", href: "/salg", show: (me) => canSeeSales(me.permissions) },
   { label: "Kunder", icon: "contacts", href: "/kunder", show: (me) => me.permissions.includes("customers.read") },
+  { label: "Klager", icon: "inbox", href: "/klager", show: (me) => me.permissions.includes("complaints.manage") && (me.modules ?? []).includes("complaints") },
   { label: "Produkter", icon: "box", href: "/produkter" },
 ];
 
@@ -64,7 +67,7 @@ export function WorkShell({ children }: { children: React.ReactNode }) {
 
   return (
     <MeContext.Provider value={access.me}>
-      <p className="text-sm font-medium uppercase tracking-wide text-muted">{orgName}</p>
+      <p className="text-sm font-medium uppercase tracking-wide text-muted print:hidden">{orgName}</p>
       <TabNav
         label="Callsenter"
         labelsFrom="sm"
