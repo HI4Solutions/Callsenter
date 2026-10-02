@@ -1,9 +1,10 @@
 import { randomBytes } from "node:crypto";
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import { afterEach, describe, expect, it } from "vitest";
-import { api, auth, createOrg, createUser, makePlatformAdmin, member, owner } from "../../../packages/db/test/helpers.ts";
+import { api, auth, createOrg, createUser, makePlatformAdmin, member, owner, worker } from "../../../packages/db/test/helpers.ts";
 import { createHandler } from "../src/api.ts";
 import { type Email, setMailer } from "../src/email.ts";
+import { billingDaily } from "../src/worker.ts";
 import { sha256 } from "../src/auth/crypto.ts";
 import type { AuthDeps, Provider } from "../src/auth/types.ts";
 
@@ -86,7 +87,7 @@ describe("invoicing", () => {
     expect(sent.body).toMatchObject({ status: "sent", total: "4037.50", recipient: { email: "faktura@example.test" } });
     expect(sent.body.number).toBeGreaterThan(0);
     expect((await call(admin.cookie, "PATCH", `/admin/invoices/${id}`, { note: "x" })).body.error).toMatch(/kreditnota/);
-    expect((await call(admin.cookie, "DELETE", `/admin/invoices/${id}`)).body.error).toBe("Bare utkast kan slettes.");
+    expect((await call(admin.cookie, "DELETE", `/admin/invoices/${id}`)).body.error).toBe("Bare utkast og planlagte fakturaer kan slettes.");
 
     const paid = await call(admin.cookie, "POST", `/admin/invoices/${id}/payments`, { amount: "4037,50", paidOn: "2026-10-01", reference: "Bank" });
     expect(paid.body).toMatchObject({ status: "paid", paid: "4037.50" });
@@ -103,9 +104,10 @@ describe("invoicing", () => {
     expect((await call(admin.cookie, "GET", "/admin/billing/overview")).status).toBe(200);
   });
 
-  it("makes drafts from fixed agreements", async () => {
+  it("sends fixed agreements that are due when the run starts, and only once", async () => {
     const admin = await superadmin();
     const org = await createOrg();
+    await call(admin.cookie, "PATCH", "/admin/billing/settings", { companyName: "Leverandør AS", orgNumber: "999999999", accountNumber: "12345678903" });
     const made = await call(admin.cookie, "POST", "/admin/recurring-invoices", {
       organizationId: org,
       name: "Abonnement",
@@ -115,10 +117,17 @@ describe("invoicing", () => {
     });
     expect(made.status).toBe(201);
     expect((await call(admin.cookie, "POST", "/admin/recurring-invoices", { organizationId: org, name: "X", lines: [], intervalMonths: 2, nextDate: "2026-01-01" })).status).toBe(400);
-    const generated = await call(admin.cookie, "POST", "/admin/recurring-invoices/generate");
-    expect(generated.body.created).toBeGreaterThanOrEqual(4);
+    const run = await call(admin.cookie, "POST", "/admin/billing/run");
+    expect(run.status).toBe(200);
+    const invoices = await call(admin.cookie, "GET", `/admin/invoices?organizationId=${org}`);
+    // Overdue periods are not caught up: one invoice, and the agreement moves past today.
+    expect(invoices.body).toHaveLength(1);
+    expect(invoices.body[0]).toMatchObject({ status: "sent", grantAccess: true, recurringId: made.body.id });
+    await call(admin.cookie, "POST", "/admin/billing/run");
+    expect((await call(admin.cookie, "GET", `/admin/invoices?organizationId=${org}`)).body).toHaveLength(1);
     const agreements = await call(admin.cookie, "GET", "/admin/recurring-invoices");
-    expect(agreements.body.find((r: { id: string }) => r.id === made.body.id).nextDate > "2026-10-01").toBe(true);
+    const agreement = agreements.body.find((r: { id: string }) => r.id === made.body.id);
+    expect(agreement.sendDate > new Date().toISOString().slice(0, 10)).toBe(true);
     await call(admin.cookie, "PATCH", `/admin/recurring-invoices/${made.body.id}`, { active: false });
     expect((await call(admin.cookie, "DELETE", `/admin/recurring-invoices/${made.body.id}`)).status).toBe(200);
   });
@@ -160,14 +169,21 @@ describe("e-mail", () => {
     await call(admin.cookie, "PATCH", "/admin/billing/settings", { companyName: "Leverandør AS", orgNumber: "999999999", accountNumber: "12345678903" });
     const id = (await call(admin.cookie, "POST", "/admin/invoices", { organizationId: org, lines: [{ description: "Lisens <b>", unitPrice: 100 }] })).body.id;
     expect((await call(admin.cookie, "POST", `/admin/invoices/${id}/email`)).body.error).toMatch(/Send fakturaen/);
-    const number = (await call(admin.cookie, "POST", `/admin/invoices/${id}/send`)).body.number;
+    await call(admin.cookie, "PATCH", "/admin/billing/settings", { copyEmail: "regnskap@example.test" });
+    const sending = await call(admin.cookie, "POST", `/admin/invoices/${id}/send`);
+    const number = sending.body.number;
+    // Sending e-mails it at once, with the PDF and a blind copy.
+    expect(sending.body).toMatchObject({ status: "sent", emailed: true, emails: [{ sentTo: "faktura@example.test" }] });
+    expect(sent[0]!.bcc).toEqual(["regnskap@example.test"]);
+    expect(sent[0]!.attachments?.[0]).toMatchObject({ filename: `faktura-${number}.pdf`, contentType: "application/pdf" });
+    expect(Buffer.from(sent[0]!.attachments![0]!.content).subarray(0, 5).toString()).toBe("%PDF-");
     // Later changes to the call centre do not change where this invoice goes.
     await owner.query("update organizations set invoice_email = 'ny@example.test' where id = $1", [org]);
 
     const emailed = await call(admin.cookie, "POST", `/admin/invoices/${id}/email`);
     expect(emailed.status).toBe(200);
-    expect(emailed.body.emails).toMatchObject([{ sentTo: "faktura@example.test" }]);
-    expect(sent).toHaveLength(1);
+    expect(emailed.body.emails).toHaveLength(2);
+    expect(sent).toHaveLength(2);
     expect(sent[0]).toMatchObject({ to: "faktura@example.test", subject: `Faktura ${number} fra Leverandør AS` });
     expect(sent[0]!.text).toContain("1234 56 78903");
     expect(sent[0]!.html).toContain("Lisens &lt;b&gt;");
@@ -208,3 +224,88 @@ describe("e-mail", () => {
     expect(second.body.link).toMatch(/invitasjon=/);
   });
 });
+
+describe("invoicing v2", () => {
+  it("manages packages, schedules invoices, makes PDFs and closes on missed payment", async () => {
+    const admin = await superadmin();
+    const org = await createOrg();
+    await call(admin.cookie, "PATCH", "/admin/billing/settings", { companyName: "Leverandør AS", orgNumber: "999999999", accountNumber: "12345678903" });
+    expect((await call(admin.cookie, "POST", "/admin/billing/packages", { name: "Pro", unitPrice: "2990", modules: ["nope"] })).status).toBe(400);
+    const pkg = await call(admin.cookie, "POST", "/admin/billing/packages", { name: "Pro", unitPrice: "2990", modules: ["transcription", "ai_control"] });
+    expect(pkg.status).toBe(201);
+    expect(pkg.body).toMatchObject({ name: "Pro", unitPrice: "2990.00", modules: ["transcription", "ai_control"], active: true });
+
+    // Scheduled: an invoice date in the future.
+    const future = new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
+    const draft = await call(admin.cookie, "POST", "/admin/invoices", {
+      organizationId: org,
+      issueDate: future,
+      grantAccess: true,
+      lines: [{ kind: "package", packageId: pkg.body.id, description: "Pro", unitPrice: "2990" }],
+    });
+    const scheduled = await call(admin.cookie, "POST", `/admin/invoices/${draft.body.id}/send`);
+    expect(scheduled.body).toMatchObject({ status: "scheduled", number: null, emailed: false });
+    const preview = await handlerRaw(admin.cookie, `/admin/invoices/${draft.body.id}/pdf`);
+    expect(preview.headers["content-type"]).toBe("application/pdf");
+    expect(Buffer.from(preview.body, "base64").subarray(0, 5).toString()).toBe("%PDF-");
+    expect((await call(admin.cookie, "POST", `/admin/invoices/${draft.body.id}/unschedule`)).body.status).toBe("draft");
+
+    // Sent now: access and modules follow, and the call centre can download its PDF.
+    await call(admin.cookie, "PATCH", `/admin/invoices/${draft.body.id}`, { issueDate: null });
+    const sent = await call(admin.cookie, "POST", `/admin/invoices/${draft.body.id}/send`);
+    expect(sent.body).toMatchObject({ status: "sent", grantAccess: true });
+    expect(sent.body.periodEnd >= sent.body.periodStart).toBe(true);
+    const customers = await call(admin.cookie, "GET", "/admin/billing/customers");
+    const customer = customers.body.find((c: { id: string }) => c.id === org);
+    expect(customer).toMatchObject({ open: true, invoices: 1, outstanding: "3737.50" });
+    expect(customer.customerNumber).toBeGreaterThanOrEqual(10001);
+    const strong = await sessionFor(await member(org, "admin"), "bankid", org);
+    const own = await handlerRaw(strong, `/org/invoices/${draft.body.id}/pdf`);
+    expect(Buffer.from(own.body, "base64").subarray(0, 5).toString()).toBe("%PDF-");
+
+    // Payment missed by hand: closed at once.
+    const missed = await call(admin.cookie, "POST", `/admin/invoices/${draft.body.id}/missed`);
+    expect(missed.body.status).toBe("payment_missed");
+    expect((await call(admin.cookie, "GET", "/admin/billing/customers")).body.find((c: { id: string }) => c.id === org).open).toBe(false);
+    expect((await call(strong, "GET", "/org/invoices")).status).toBe(403);
+  });
+});
+
+describe("morning run", () => {
+  afterEach(() => setMailer(undefined));
+
+  it("sends due agreements as the worker and e-mails them with the PDF", async () => {
+    const sent: Email[] = [];
+    setMailer(async (email) => {
+      sent.push(email);
+      return "msg";
+    });
+    const admin = await superadmin();
+    const org = await createOrg();
+    await owner.query("update organizations set invoice_email = 'kunde@example.test' where id = $1", [org]);
+    await call(admin.cookie, "PATCH", "/admin/billing/settings", { companyName: "Leverandør AS", orgNumber: "999999999", accountNumber: "12345678903" });
+    const today = new Date().toISOString().slice(0, 10);
+    await call(admin.cookie, "POST", "/admin/recurring-invoices", {
+      organizationId: org,
+      name: "Abonnement",
+      lines: [{ description: "VeriQall", unitPrice: 1000 }],
+      nextDate: today,
+    });
+    const result = await billingDaily(worker);
+    expect(result.sent).toBeGreaterThanOrEqual(1);
+    expect(sent.some((e) => e.to === "kunde@example.test" && e.attachments?.[0]?.contentType === "application/pdf")).toBe(true);
+    const invoices = await call(admin.cookie, "GET", `/admin/invoices?organizationId=${org}`);
+    const detail = await call(admin.cookie, "GET", `/admin/invoices/${invoices.body[0].id}`);
+    expect(detail.body.emails).toMatchObject([{ sentTo: "kunde@example.test" }]);
+  });
+});
+
+async function handlerRaw(cookie: string, rawPath: string) {
+  const response = await handler({
+    rawPath,
+    requestContext: { http: { method: "GET", sourceIp: "127.0.0.1", userAgent: "vitest" } },
+    headers: { origin: ORIGIN },
+    cookies: [cookie],
+  } as unknown as APIGatewayProxyEventV2);
+  return { status: response.statusCode, headers: (response.headers ?? {}) as Record<string, string>, body: String(response.body) };
+}

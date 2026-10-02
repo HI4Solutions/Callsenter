@@ -91,6 +91,7 @@ Resources:
                   - autoscaling:*
                   - cloudwatch:*
                   - ec2:*
+                  - events:*
                   - kms:*
                   - lambda:*
                   - logs:*

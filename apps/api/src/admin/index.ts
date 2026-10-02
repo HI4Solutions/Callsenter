@@ -3,7 +3,7 @@
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import type { Session } from "../auth/session.ts";
 import type { AuthDeps } from "../auth/types.ts";
-import { json, type Result } from "../http.ts";
+import { binary, json, type Result } from "../http.ts";
 import { withSession } from "../me.ts";
 import {
   createOrganization,
@@ -40,19 +40,30 @@ import {
   addUsageLines,
   billingOverview,
   createInvoice,
+  createPackage,
   createRecurring,
   creditInvoice,
   deleteInvoice,
+  deleteLogo,
   deleteRecurring,
   emailInvoice,
-  generateRecurring,
   getBillingSettings,
   getInvoice,
+  getInvoicePdf,
+  getLogo,
+  listCustomers,
   listInvoices,
+  listPackages,
   listRecurring,
+  markPaymentMissed,
+  runBilling,
   sendInvoice,
+  setCustomerAccess,
+  setLogo,
+  unscheduleInvoice,
   updateBillingSettings,
   updateInvoice,
+  updatePackage,
   updateRecurring,
 } from "./billing.ts";
 import { getSystem, updateSystem, usage } from "./system.ts";
@@ -70,7 +81,10 @@ const ANNOUNCEMENT = /^\/admin\/announcements\/([^/]+)$/;
 const GROWTH_EVENT = /^\/admin\/growth\/events\/([^/]+)$/;
 const USER_PASSKEY = /^\/admin\/users\/([^/]+)\/passkeys\/([^/]+)$/;
 const INVOICE = /^\/admin\/invoices\/([^/]+)$/;
-const INVOICE_ACTION = /^\/admin\/invoices\/([^/]+)\/(send|payments|credit|usage|email)$/;
+const INVOICE_ACTION = /^\/admin\/invoices\/([^/]+)\/(send|payments|credit|usage|email|unschedule|missed)$/;
+const INVOICE_PDF = /^\/admin\/invoices\/([^/]+)\/pdf$/;
+const CUSTOMER_ACCESS = /^\/admin\/billing\/customers\/([^/]+)\/access$/;
+const PACKAGE = /^\/admin\/billing\/packages\/([^/]+)$/;
 const RECURRING = /^\/admin\/recurring-invoices\/([^/]+)$/;
 const USER_IDENTITY = /^\/admin\/users\/([^/]+)\/identities\/([a-z]+)$/;
 
@@ -182,6 +196,29 @@ export async function handleAdmin(
       if (method === "GET") return reply(200, await getBillingSettings(deps.appDb, session));
       if (method === "PATCH") return reply(200, await updateBillingSettings(deps.appDb, session, body()));
     }
+    if (path === "/admin/billing/logo") {
+      if (method === "GET") {
+        const logo = await getLogo(deps.appDb, session);
+        return logo ? binary(logo.bytes, logo.type, cors) : reply(404, { error: "Ingen logo." });
+      }
+      if (method === "PUT") return reply(200, await setLogo(deps.appDb, session, body()));
+      if (method === "DELETE") return reply(200, await deleteLogo(deps.appDb, session));
+    }
+    if (path === "/admin/billing/packages") {
+      if (method === "GET") return reply(200, await listPackages(deps.appDb, session));
+      if (method === "POST") return reply(201, await createPackage(deps.appDb, session, body()));
+    }
+    match = PACKAGE.exec(path);
+    if (match && isUuid(match[1]) && method === "PATCH") return reply(200, await updatePackage(deps.appDb, session, match[1], body()));
+    if (method === "GET" && path === "/admin/billing/customers") return reply(200, await listCustomers(deps.appDb, session));
+    match = CUSTOMER_ACCESS.exec(path);
+    if (match && isUuid(match[1]) && method === "PUT") return reply(200, await setCustomerAccess(deps.appDb, session, match[1], body()));
+    if (method === "POST" && path === "/admin/billing/run") return reply(200, await runBilling(deps.appDb, session));
+    match = INVOICE_PDF.exec(path);
+    if (match && isUuid(match[1]) && method === "GET") {
+      const { pdf, filename } = await getInvoicePdf(deps.appDb, session, match[1]);
+      return binary(pdf, "application/pdf", cors, filename);
+    }
     if (path === "/admin/invoices") {
       if (method === "GET") return reply(200, await listInvoices(deps.appDb, session, query));
       if (method === "POST") return reply(201, await createInvoice(deps.appDb, session, body()));
@@ -199,12 +236,13 @@ export async function handleAdmin(
       if (match[2] === "credit") return reply(201, await creditInvoice(deps.appDb, session, match[1], body()));
       if (match[2] === "usage") return reply(200, await addUsageLines(deps.appDb, session, match[1], body()));
       if (match[2] === "email") return reply(200, await emailInvoice(deps.appDb, session, match[1]));
+      if (match[2] === "unschedule") return reply(200, await unscheduleInvoice(deps.appDb, session, match[1]));
+      if (match[2] === "missed") return reply(200, await markPaymentMissed(deps.appDb, session, match[1]));
     }
     if (path === "/admin/recurring-invoices") {
       if (method === "GET") return reply(200, await listRecurring(deps.appDb, session));
       if (method === "POST") return reply(201, await createRecurring(deps.appDb, session, body()));
     }
-    if (method === "POST" && path === "/admin/recurring-invoices/generate") return reply(200, await generateRecurring(deps.appDb, session));
     match = RECURRING.exec(path);
     if (match && isUuid(match[1])) {
       if (method === "PATCH") return reply(200, await updateRecurring(deps.appDb, session, match[1], body()));

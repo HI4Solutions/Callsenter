@@ -50,7 +50,7 @@ export function invoiceEmail(i: InvoiceForEmail): { subject: string; text: strin
     `Til: ${recipient.name ?? ""}${recipient.orgNumber ? `, org.nr. ${orgNo(recipient.orgNumber)}` : ""}`,
     ...(i.note ? ["", i.note] : []),
     "",
-    ...i.lines.map((l) => `${l.description}: ${Number(l.quantity).toLocaleString("nb-NO")} × ${kr(l.unitPrice)} = ${kr(l.amount)} (mva ${Math.round(l.vatRate * 100)} %)`),
+    ...i.lines.map((l) => `${l.description}: ${Number(l.quantity).toLocaleString("nb-NO").replace("\u2212", "-")} × ${kr(l.unitPrice)} = ${kr(l.amount)} (mva ${Math.round(l.vatRate * 100)} %)`),
     "",
     `Sum eks. mva: ${kr(i.subtotal)}`,
     `Mva: ${kr(i.vat)}`,
@@ -67,7 +67,7 @@ export function invoiceEmail(i: InvoiceForEmail): { subject: string; text: strin
   const cell = "padding:8px;border-bottom:1px solid #e5e5e5";
   const rows = i.lines
     .map(
-      (l) => `<tr><td style="${cell}">${escapeHtml(l.description)}</td><td style="${cell};text-align:right">${escapeHtml(Number(l.quantity).toLocaleString("nb-NO"))}</td>
+      (l) => `<tr><td style="${cell}">${escapeHtml(l.description)}</td><td style="${cell};text-align:right">${escapeHtml(Number(l.quantity).toLocaleString("nb-NO").replace("\u2212", "-"))}</td>
 <td style="${cell};text-align:right">${kr(l.unitPrice)}</td><td style="${cell};text-align:right">${Math.round(l.vatRate * 100)} %</td><td style="${cell};text-align:right">${kr(l.amount)}</td></tr>`,
     )
     .join("");

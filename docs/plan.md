@@ -352,29 +352,93 @@ Beslutninger 2. oktober (til godkjenning):
 | API | `GET /org/dashboard` (`scope` = me, seller, team eller all, `target`, `from`, `to`), `GET`/`POST /org/coaching` og `POST /org/coaching/{id}/read` |
 | Web | `/oversikt` (Meg, team og hele callsenteret), `/oversikt/selgere/[id]` og tilbakemelding på samtalesiden |
 
-## 16. Fakturering
+## 16. Økonomi og fakturering
 
-Bygget 2. oktober 2026 (modul 15) som fase 4B, oppå fase 4A. Claude tok beslutningene alene, og de venter på Nadeems godkjenning.
+Første versjon ble bygget 2. oktober 2026 (modul 15). Samme dag ble den lagt om etter Nadeems beskrivelse av Økonomi-fanen i MedSide, tilpasset VeriQall: **kunden er callsenteret**, ikke en enkeltbruker.
 
-Beslutninger 2. oktober (til godkjenning):
+**Økonomi** i superadminportalen har fire underfaner. Den siste du brukte, huskes til neste besøk:
 
-- **MedInnova fakturerer callsentrene.** Callsentrene fakturerer ikke sine egne kunder i VeriQall. Superadmin fakturerer under Økonomi, og admin i callsenteret (`billing.read`, krever BankID eller passkey) ser sine sendte fakturaer under Administrasjon → Fakturaer.
-- **Utkast, sending og frys.** En faktura lages som utkast, for hånd, fra en fast avtale eller med forbruk, og kan endres og slettes fritt. Ved sending får den neste nummer i én ubrutt nummerserie (kreditnotaer inkludert). Avsender, mottaker, linjer, beløp, fakturadato og forfall fryses da i databasen. Feil rettes med kreditnota for hele fakturaen, aldri ved å endre eller slette. Kreditnotaen speiler originalen (avsender, mottaker og mva), og en faktura kan bare bli «kreditert» gjennom en kreditnota. Datoer følger norsk tid. Nummeret kan bare settes høyere enn det siste brukte.
-- **Mva** settes per linje (25, 15, 12 eller 0 %). Hele fakturaen er uten mva hvis avsenderen ikke er mva-registrert.
-- **Betaling** registreres for hånd (beløp, dato, bank, Stripe eller annet, og referanse). Fakturaen blir betalt når betalingene dekker den, og en sendt faktura etter forfall vises som forfalt. Betalinger kan ikke endres eller slettes.
-- **Faste avtaler** (månedlig, kvartalsvis, halvårlig eller årlig) telles fra startdatoen, så en avtale fra den 31. ikke glir til den 28. De blir utkast per periode når superadmin trykker «Lag utkast som forfaller». Det skjer ikke automatisk, så ingenting sendes uten at noen har sett på det.
-- **Forbruk** (timer lyd og antall AI-kontroller for en måned) kan legges til et utkast til prisene under Innstillinger. Hver samtale faktureres én gang, også om den ble behandlet på nytt etter en feil.
-- **Ingen e-post og ingen Stripe ennå.** Fakturaen skrives ut eller lagres som PDF og sendes av superadmin. Stripe-nøkler kommer fra Nadeem senere og legges i Secrets Manager. Nadeem lager en egen beskrivelse av fakturamodulen, så denne seksjonen kan endres. Betalingsmåten «Stripe» finnes allerede for manuell registrering.
-- **Nøkkeltall** under Økonomi: faste inntekter per måned (MRR, eks. mva), fakturert denne måneden og i år, utestående og forfalt.
-- **Oppbevaring:** fakturaer kan ikke slettes, heller ikke når callsenteret slettes (bokføringsloven krever fem år). Fremmednøkkelen hindrer at et callsenter med fakturaer slettes.
+| Underfane | Innhold | Status |
+|---|---|---|
+| Forbruk | Forbruk per callsenter (samtaler, lydminutter, AI-tokens). Kostnader, valutakurs og eID kommer | Delvis (PR 2 kommer) |
+| Stripe | Kortabonnement, priser og MRR fra Stripe | Venter på Stripe-konto og nøkler |
+| Faktura | Fakturaer, Kunder, Gjentakende, Pakker og Innstillinger | Bygget |
+| Regnskap | Nøkkeltall fra fakturaene (MRR, ARR, fakturert, utestående). Kostnader, nettoresultat og omsetningsrapport kommer | Delvis (PR 3 kommer) |
+
+### Faktura
+
+Besluttet 2. oktober (Nadeem):
+- Faktura og betaling styrer tilgangen. Callsenteret stenges 5 dager etter uteblitt betaling.
+- Pakkene styres i superadminportalen.
+- Avsender og logo legges inn manuelt.
+
+- **Kunder** er callsentrene, med fast kundenummer fra 10001. Faktura-e-post og -adresse endres under Callsentre.
+- **Pakker** lages og endres under Faktura → Pakker:
+  - navn, pris per måned eks. mva og mva;
+  - hvilke **moduler** pakken gir.
+  - Pakker kobles til Stripe-priser når Stripe kommer.
+- **Ny faktura** har kunde, fakturadato, forfall og linjer:
+  - linjetyper: pakker, fritekst og fakturagebyr;
+  - **Aktiver tilgang:** callsenteret er åpent ut perioden og får pakkenes moduler. Perioden starter på fakturadatoen og varer like mange dager som måneden har (31, 30, 29 eller 28), til den endres for hånd. Tilgangen gjelder til og med siste dag kl. 23:59 norsk tid.
+  - Fakturaer uten tilgang påvirker ikke callsenteret.
+- **Statuser:** utkast, planlagt, sendt, forfalt, betalt, kreditert og betaling uteblitt.
+- **Planlagt sending:** en fakturadato fram i tid gjør at fakturaen sendes automatisk den morgenen. Utkast og planlagte fakturaer kan endres og slettes, og PDF kan forhåndsvises (merket FAKTURAUTKAST, uten nummer).
+- **Sending:**
+  - Fakturanummeret tildeles nå, fortløpende fra 1000001 uten hull. Kreditnotaer følger samme serie.
+  - Avsender, mottaker, linjer og beløp fryses i databasen. Fakturadatoen blir sendedagen.
+  - PDF med logo sendes på e-post fra `noreply@` med blindkopi til kopiadressen.
+  - Tilgang og moduler oppdateres.
+  - Uten e-post lastes PDF-en ned og sendes for hånd.
+- **Betaling** registreres for hånd, helt eller delvis. Fakturaen blir betalt når betalingene dekker den.
+- **Betaling uteblitt:**
+  - Morgenkjøringen setter denne statusen på fakturaer med tilgang som ikke er betalt **5 dager etter forfall**. Superadmin kan også gjøre det for hånd, og da stenges callsenteret med en gang.
+  - Callsenteret stenges, og de gjentakende fakturaene settes på pause.
+  - Når betalingen registreres, åpnes callsenteret igjen ut den betalte perioden. De gjentakende fakturaene fortsetter fra neste forfall, uten fakturaer for månedene som ble hoppet over.
+  - Et stengt callsenter ser heller ikke sine egne fakturaer før det åpnes igjen. Fakturaen er sendt på e-post.
+  - Gjenåpningen skjer bare når ingen andre fakturaer har «betaling uteblitt». En faktura med uteblitt betaling kan også krediteres. Da fortsetter avtalene, men kreditnotaen åpner ikke callsenteret i seg selv.
+  - Superadmin kan endre tilgangen for hånd under Kunder (dato, eller la fakturaene slutte å styre den), og gjenoppta en avtale under Gjentakende.
+  - Under Callsentre vises et slikt callsenter som «Stengt (ubetalt faktura)».
+- **Kreditnota** for hele fakturaen speiler originalen (avsender, mottaker og mva) og sendes på e-post.
+- **Gjentakende:**
+  - forfall samme dag hver måned (eller hvert kvartal, halvår eller år);
+  - sendes et fast antall dager før forfall (standard 14, kan endres per avtale og under Innstillinger);
+  - perioden på fakturaen er avtalens (fra forfall til dagen før neste), så en kvartalsavtale gir tilgang hele kvartalet;
+  - linjer fra pakker eller fritekst, og om fakturaen gir tilgang.
+- **Feil stopper ikke morgenkjøringen:** en faktura eller avtale som ikke kan sendes (ingen linjer, ufullstendige innstillinger), hoppes over med en advarsel i loggen og prøves igjen neste morgen. En periode som allerede er over (etterfakturering), endrer ikke tilgangen.
+- **Morgenkjøringen** kjører kl. 04:00 UTC (EventBridge til workeren) og kan startes med «Kjør nå». Den gjør tre ting:
+  1. sender planlagte fakturaer;
+  2. sender gjentakende fakturaer som skal ut;
+  3. setter «betaling uteblitt» på fakturaer som ikke er betalt.
+- **Innstillinger:**
+  - Avsender: firmanavn, org.nr., mva-registrering, adresse, e-post, kontonummer og bunntekst.
+  - Logo (PNG eller JPEG, lastes opp; uten logo vises firmanavnet).
+  - Standard forfall, fakturagebyr og dager før forfall for gjentakende fakturaer.
+  - Kopiadresse.
+  - Neste fakturanummer (kan bare økes).
+  - Priser for forbruk.
+- **Callsenteret** (admin med `billing.read`, BankID eller passkey) ser sine sendte fakturaer og laster ned PDF under Administrasjon → Fakturaer.
+
+**Regler som databasen håndhever** (`0017_invoicing.sql` og `0019_billing_v2.sql`):
+- fortløpende nummer uten hull;
+- en sendt faktura kan ikke endres eller slettes, bare krediteres;
+- kundenummeret er fast;
+- «kreditert» bare gjennom en kreditnota;
+- tilgang, moduler, pause og gjenopptak skjer i triggere, så de alltid følger fakturaen.
+
+**Ikke med ennå:**
+- KID (ikke foreløpig, besluttet 2. oktober).
+- Stripe-fanen (venter på nøkler).
+- Forbruk med kostnader og valutakurs (PR 2).
+- Regnskap med kostnader, inntekter, nettoresultat og omsetningsrapport (PR 3).
 
 | Del | Innhold |
 |---|---|
-| Database | `0017_invoicing.sql`: `billing_settings`, `invoices`, `invoice_lines`, `invoice_payments`, `recurring_invoices`, regler i triggere, `app.credit_invoice` og `app.generate_recurring_invoices` |
-| API | `/admin/billing/overview` og `/admin/billing/settings`, `/admin/invoices` (opprette, endre utkast, slette utkast, `send`, `payments`, `credit`, `usage`), `/admin/recurring-invoices` (og `generate`), og `/org/invoices` |
-| Web | Økonomi med Oversikt og forbruk, Fakturaer, Faste avtaler og Innstillinger. Fakturaen kan skrives ut. Administrasjon → Fakturaer for callsenteret |
+| Database | `0017_invoicing.sql`, `0018_invoice_emails.sql`, `0019_billing_v2.sql` (kundenummer, `access_until`, `billing_packages`, statusene `scheduled` og `payment_missed`, periode, `app.billing_daily`) |
+| API | `/admin/billing/*` (oversikt, innstillinger, logo, pakker, kunder, `run`), `/admin/invoices` (utkast, `send`, `unschedule`, `missed`, `payments`, `credit`, `email`, `usage`, `pdf`), `/admin/recurring-invoices`, `/org/invoices` og PDF |
+| Worker | `{task: "daily"}` fra EventBridge: `app.billing_daily()` og e-post med PDF |
+| Web | `/admin/okonomi/{forbruk,stripe,faktura,regnskap}`, med `faktura/{kunder,gjentakende,pakker,innstillinger}` og `faktura/[id]`, og Administrasjon → Fakturaer |
 
-Må sjekkes før bruk: at fakturaen oppfyller kravene i bokføringsforskriften (blant annet at «Foretaksregisteret» står ved organisasjonsnummeret for aksjeselskap, som kan legges i bunnteksten), KID brukes ikke foreløpig (besluttet 2. oktober).
+Må sjekkes før bruk: at fakturaen oppfyller bokføringsforskriften, for eksempel at «Foretaksregisteret» står i bunnteksten for aksjeselskap.
 
 ## 17. E-post
 
@@ -384,6 +448,7 @@ Besluttet 2. oktober 2026: **Amazon SES**, ikke Resend. SES koster rundt 0,10 US
 - **DKIM** (2048-bit, Easy DKIM), **SPF** via eget MAIL FROM-domene (`mail.<domene>`) og **DMARC** (`p=none` til å begynne med, strammes inn når alt er sett å virke).
 - **Hva som sendes:** invitasjonslenker (når personen har e-post; lenken vises fortsatt, så den også kan sendes på SMS) og fakturaer. Fakturaen sendes som hele fakturaen i e-posten (ingen innlogging trengs) til faktura-e-posten som ble frosset da fakturaen ble sendt. Hver utsending logges (`invoice_emails`).
 - **Uten `EMAIL_DOMAIN`** sendes ingenting, og alt virker som før (lenker kopieres, fakturaer skrives ut).
+- **Morgenkjøringen** (EventBridge) kommer sammen med `EMAIL_DOMAIN`, siden begge trenger den oppdaterte bootstrap-stacken (SES og EventBridge).
 - **DNS** ligger fortsatt hos one.com. Postene står i deploy-loggen og i `infra/README.md`. Å flytte DNS (ikke registreringen, `.no` kan ikke registreres i Route 53) til Route 53 vil gjøre slike poster automatiske. Det vurderes før produksjon.
 
 Rekkefølge første gang: oppdater bootstrap-stacken (SES-rettigheter) → sett `EMAIL_DOMAIN` på Environment `staging` → deploy → legg inn DNS-postene hos one.com → søk SES om produksjonstilgang.

@@ -78,48 +78,50 @@ describe("invoicing", () => {
     });
   });
 
-  it("makes drafts from fixed agreements, one per period", async () => {
-    const s = await setup();
-    await as(api, { userId: s.admin }, async (db) => {
-      await db.query(
-        `insert into recurring_invoices (organization_id, name, lines, interval_months, start_date, next_date)
-         values ($1, 'Abonnement', '[{"description": "VeriQall", "quantity": 1, "unitPrice": 2990}]', 1, app.oslo_today() - 40, app.oslo_today() - 40)`,
-        [s.org],
-      );
-      expect((await db.query("select app.generate_recurring_invoices(app.oslo_today()) as n")).rows[0].n).toBe(2);
-      expect((await db.query("select app.generate_recurring_invoices(app.oslo_today()) as n")).rows[0].n).toBe(0);
-      const drafts = await db.query(
-        "select i.status, l.description, l.unit_price::text, l.vat_rate::text from invoices i join invoice_lines l on l.invoice_id = i.id where i.organization_id = $1",
-        [s.org],
-      );
-      expect(drafts.rows).toEqual([
-        { status: "draft", description: "VeriQall", unit_price: "2990.00", vat_rate: "0.250" },
-        { status: "draft", description: "VeriQall", unit_price: "2990.00", vat_rate: "0.250" },
-      ]);
-    });
-  });
-
-  it("keeps the billing day for agreements from the 31st, and keeps sent invoices when an agreement is deleted", async () => {
+  it("sends fixed agreements a set number of days before they fall due, one at a time", async () => {
     const s = await setup();
     await as(api, { userId: s.admin }, async (db) => {
       const r = (
         await db.query(
           `insert into recurring_invoices (organization_id, name, lines, interval_months, start_date, next_date)
-           values ($1, 'Abonnement', '[{"description": "VeriQall", "quantity": 1, "unitPrice": 100}]', 1, '2026-01-31', '2026-01-31') returning id`,
+           values ($1, 'Abonnement', '[{"description": "VeriQall", "quantity": 1, "unitPrice": 2990}]', 1, app.oslo_today() + 10, app.oslo_today() + 10)
+           returning id`,
           [s.org],
         )
       ).rows[0].id;
-      expect((await db.query("select app.generate_recurring_invoices('2026-04-30') as n")).rows[0].n).toBe(4);
-      const notes = await db.query("select note from invoices where recurring_id = $1 order by created_at, note", [r]);
-      expect(notes.rows.map((n) => n.note).sort()).toEqual(
-        ["31.01.2026–27.02.2026", "28.02.2026–30.03.2026", "31.03.2026–29.04.2026", "30.04.2026–30.05.2026"].map((p) => `Abonnement, ${p}`).sort(),
-      );
-      expect((await db.query("select next_date::text from recurring_invoices where id = $1", [r])).rows[0].next_date).toBe("2026-05-31");
+      const sent = (await db.query("select app.billing_daily() as id")).rows.map((x) => x.id);
+      expect(sent).toHaveLength(1);
+      const inv = (
+        await db.query(
+          `select status, note, grant_access, due_date = app.oslo_today() + 10 as due, period_start = app.oslo_today() + 10 as starts,
+                  total::text from invoices where id = $1`,
+          [sent[0]],
+        )
+      ).rows[0];
+      expect(inv).toEqual({ status: "sent", note: "Abonnement", grant_access: true, due: true, starts: true, total: "3737.50" });
+      expect((await db.query("select app.billing_daily() as id")).rowCount).toBe(0);
+      const next = (await db.query("select next_date = ((app.oslo_today() + 10) + interval '1 month')::date as ok from recurring_invoices where id = $1", [r]))
+        .rows[0].ok;
+      expect(next).toBe(true);
+    });
+  });
 
-      const one = (await db.query("select id from invoices where recurring_id = $1 limit 1", [r])).rows[0].id;
-      await db.query("update invoices set status = 'sent' where id = $1", [one]);
+  it("does not catch up skipped periods, and keeps sent invoices when an agreement is deleted", async () => {
+    const s = await setup();
+    await as(api, { userId: s.admin }, async (db) => {
+      const r = (
+        await db.query(
+          `insert into recurring_invoices (organization_id, name, lines, interval_months, start_date, next_date)
+           values ($1, 'Abonnement', '[{"description": "VeriQall", "quantity": 1, "unitPrice": 100}]', 1, app.oslo_today() - 70, app.oslo_today() - 70)
+           returning id`,
+          [s.org],
+        )
+      ).rows[0].id;
+      const sent = (await db.query("select app.billing_daily() as id")).rows.map((x) => x.id);
+      expect(sent).toHaveLength(1);
+      expect((await db.query("select next_date - 14 > app.oslo_today() as ok from recurring_invoices where id = $1", [r])).rows[0].ok).toBe(true);
       await db.query("delete from recurring_invoices where id = $1", [r]);
-      expect((await db.query("select status, recurring_id from invoices where id = $1", [one])).rows[0]).toEqual({ status: "sent", recurring_id: null });
+      expect((await db.query("select status, recurring_id from invoices where id = $1", [sent[0]])).rows[0]).toEqual({ status: "sent", recurring_id: null });
     });
   });
 
