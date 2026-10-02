@@ -66,8 +66,10 @@ class FakeSoniox extends Soniox {
 const soniox = new FakeSoniox();
 
 const prompts: string[] = [];
+const models: string[] = [];
 const ai: Ai = {
-  async structured<T>(_system: string, prompt: string) {
+  async structured<T>(model: string, _system: string, prompt: string) {
+    models.push(model);
     prompts.push(prompt);
     const pointId = /\[([a-z0-9]+)\] Opplys om angreretten/.exec(prompt)?.[1] ?? "";
     return {
@@ -83,7 +85,8 @@ const ai: Ai = {
       outputTokens: 200,
     };
   },
-  async text(_system, prompt) {
+  async text(model, _system, prompt) {
+    models.push(model);
     prompts.push(prompt);
     return { data: "Sammendrag: Kari ringte om fastpris.", model: "test-model", inputTokens: 900, outputTokens: 100 };
   },
@@ -264,7 +267,12 @@ describe("calls: settings, retention and housekeeping", () => {
     expect((await call(cookie, "PATCH", "/admin/system", { transcriptionMode: "chunked", transcriptionTerms: ["VeriQall", " Strøm AS "] })).status).toBe(
       200,
     );
-    expect((await call(cookie, "GET", "/admin/system")).body).toMatchObject({ transcriptionMode: "chunked", transcriptionTerms: ["VeriQall", "Strøm AS"] });
+    expect((await call(cookie, "GET", "/admin/system")).body).toMatchObject({
+      transcriptionMode: "chunked",
+      transcriptionTerms: ["VeriQall", "Strøm AS"],
+      aiModel: "sonnet-4-6",
+    });
+    expect((await call(cookie, "PATCH", "/admin/system", { aiModel: "gpt-5" })).body.error).toBe("Ukjent AI-modell.");
     expect((await call(cookie, "PATCH", `/admin/organizations/${s.org}`, { recordingRetentionMonths: 5 })).status).toBe(400);
     expect((await call(cookie, "PATCH", `/admin/organizations/${s.org}`, { recordingRetentionMonths: 6 })).status).toBe(200);
 
@@ -302,8 +310,14 @@ describe("calls: settings, retention and housekeeping", () => {
     const seller = await sessionFor(await member(s.org, "seller"), s.org);
     expect((await call(seller, "POST", "/org/report-templates", { name: "Nei", instructions: "Nei" })).status).toBe(403);
     const { id } = await record(seller, {});
+    const superadmin = await createUser();
+    await makePlatformAdmin(superadmin);
+    const cookie = await sessionFor(superadmin, null);
+    expect((await call(cookie, "PATCH", "/admin/system", { aiModel: "haiku-4-5" })).status).toBe(200);
     await processCall(workerDeps, id);
+    await call(cookie, "PATCH", "/admin/system", { aiModel: "sonnet-4-6" });
     expect(prompts.at(-1)).toContain("Tre setninger.");
+    expect(models.at(-1)).toBe("eu.anthropic.claude-haiku-4-5-20251001-v1:0");
     const detail = await call(seller, "GET", `/org/calls/${id}`);
     expect(detail.body.reports[0].templateName).toBe("Kort");
   });

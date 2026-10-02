@@ -14,8 +14,7 @@ export async function loadSoniox(): Promise<Soniox | null> {
 
 export function loadAi(): Ai | null {
   const region = process.env.BEDROCK_REGION;
-  const model = process.env.BEDROCK_MODEL;
-  return region && model ? bedrockAi(region, model) : null;
+  return region ? bedrockAi(region) : null;
 }
 
 export async function loadCallServices(): Promise<CallServices | undefined> {

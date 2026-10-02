@@ -1,6 +1,7 @@
 // The worker's job for one call (docs/plan.md, section 13): join the uploaded chunks into one
 // recording, transcribe it with Soniox (and delete it there at once), check it against the
 // product template with Claude, and write the report. Runs as app_worker, outside any session.
+import { AI_MODELS, DEFAULT_AI_MODEL, isAiModelKey } from "@veriqall/shared";
 import type pg from "pg";
 import type { Ai } from "./ai.ts";
 import { type Segment, type Soniox, toSegments } from "./soniox.ts";
@@ -332,6 +333,9 @@ async function analyse(deps: WorkerDeps, call: CallRow, enabled: Set<string>) {
   if (!control && !report) return;
   const transcript = await transcriptForAi(deps.db, call.id);
   if (!transcript.trim()) return;
+  // The model chosen by superadmins under System.
+  const chosen = (await deps.db.query<{ value: unknown }>("select value from platform_settings where key = 'ai_model'")).rows[0]?.value;
+  const model = AI_MODELS[isAiModelKey(chosen) ? chosen : DEFAULT_AI_MODEL].bedrockId;
 
   let templateText = "";
   if (call.template_version_id) {
@@ -346,6 +350,7 @@ async function analyse(deps: WorkerDeps, call: CallRow, enabled: Set<string>) {
 
   if (control && ai && templateText) {
     const result = await ai.structured<{ summary: string; findings: Finding[] }>(
+      model,
       CONTROL_SYSTEM,
       `<template>\n${templateText}\n</template>\n\n<transcript>\n${transcript}\n</transcript>`,
       FINDINGS_SCHEMA,
@@ -379,6 +384,7 @@ async function analyse(deps: WorkerDeps, call: CallRow, enabled: Set<string>) {
     ).rows[0];
     const chosen = template ?? { id: null, ...DEFAULT_REPORT };
     const result = await ai.text(
+      model,
       REPORT_SYSTEM,
       `<report_instructions>\n${chosen.instructions}\n</report_instructions>\n\n${
         templateText ? `<template>\n${templateText}\n</template>\n\n` : ""

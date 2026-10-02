@@ -19,7 +19,7 @@ grant usage on schema public to app_worker;
 
 -- Platform-wide settings, changed by superadmins under System.
 create table platform_settings (
-  key text primary key check (key in ('transcription_mode', 'transcription_terms')),
+  key text primary key check (key in ('transcription_mode', 'transcription_terms', 'ai_model')),
   value jsonb not null,
   updated_by uuid references users (id),
   updated_at timestamptz not null default now()
@@ -28,7 +28,9 @@ insert into platform_settings (key, value) values
   -- realtime: live text while recording, falling back to chunked on any error. chunked: upload only.
   ('transcription_mode', '"realtime"'),
   -- Words and names Soniox should recognise (product and company names).
-  ('transcription_terms', '[]');
+  ('transcription_terms', '[]'),
+  -- The Claude model for AI control and reports (AI_MODELS in packages/shared/src/ai-models.ts).
+  ('ai_model', '"sonnet-4-6"');
 
 create trigger platform_settings_touch before update on platform_settings
   for each row execute function app.touch_updated_at();

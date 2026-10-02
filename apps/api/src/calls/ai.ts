@@ -1,6 +1,7 @@
-// Claude through Amazon Bedrock (docs/plan.md: AI). Structured output for the AI control, plain
-// text for reports.
-import { AnthropicBedrockMantle } from "@anthropic-ai/bedrock-sdk";
+// Claude on Amazon Bedrock (docs/plan.md, section 13) through the Converse API and EU
+// cross-region inference profiles, so prompts and transcripts are processed in the EU only.
+// Superadmins choose the model under System (AI_MODELS in packages/shared).
+import { BedrockRuntimeClient, ConverseCommand, type ConverseCommandOutput } from "@aws-sdk/client-bedrock-runtime";
 
 export interface AiResult<T> {
   data: T;
@@ -10,34 +11,50 @@ export interface AiResult<T> {
 }
 
 export interface Ai {
-  structured<T>(system: string, prompt: string, schema: Record<string, unknown>): Promise<AiResult<T>>;
-  text(system: string, prompt: string): Promise<AiResult<string>>;
+  structured<T>(model: string, system: string, prompt: string, schema: Record<string, unknown>): Promise<AiResult<T>>;
+  text(model: string, system: string, prompt: string): Promise<AiResult<string>>;
 }
 
-export class AiRefusal extends Error {}
+export class AiError extends Error {}
 
-export function bedrockAi(region: string, model: string): Ai {
-  const client = new AnthropicBedrockMantle({ awsRegion: region, maxRetries: 3, timeout: 5 * 60_000 });
-  async function create(system: string, prompt: string, schema?: Record<string, unknown>) {
-    const response = await client.messages.create({
-      model,
-      max_tokens: 16000,
-      system,
-      messages: [{ role: "user", content: prompt }],
-      output_config: { effort: "medium", ...(schema ? { format: { type: "json_schema", schema } } : {}) },
-    });
-    if (response.stop_reason === "refusal") throw new AiRefusal("the model declined");
-    const text = response.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
-    return { text, model: response.model, inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens };
+const TOOL = "record_result";
+
+export function bedrockAi(region: string, client = new BedrockRuntimeClient({ region, maxAttempts: 4 })): Ai {
+  function usage(model: string, out: ConverseCommandOutput) {
+    return { model, inputTokens: out.usage?.inputTokens ?? 0, outputTokens: out.usage?.outputTokens ?? 0 };
   }
   return {
-    async structured<T>(system: string, prompt: string, schema: Record<string, unknown>) {
-      const r = await create(system, prompt, schema);
-      return { data: JSON.parse(r.text) as T, model: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens };
+    // Structured output through a forced tool call: the model must answer with input that
+    // matches the schema.
+    async structured<T>(model: string, system: string, prompt: string, schema: Record<string, unknown>) {
+      const out = await client.send(
+        new ConverseCommand({
+          modelId: model,
+          system: [{ text: system }],
+          messages: [{ role: "user", content: [{ text: prompt }] }],
+          inferenceConfig: { maxTokens: 8000, temperature: 0 },
+          toolConfig: {
+            tools: [{ toolSpec: { name: TOOL, description: "Record the result of the check.", inputSchema: { json: schema as never } } }],
+            toolChoice: { tool: { name: TOOL } },
+          },
+        }),
+      );
+      const call = out.output?.message?.content?.find((c) => c.toolUse?.name === TOOL)?.toolUse;
+      if (!call?.input) throw new AiError(`no structured result (stop reason ${out.stopReason})`);
+      return { data: call.input as T, ...usage(model, out) };
     },
-    async text(system, prompt) {
-      const r = await create(system, prompt);
-      return { data: r.text, model: r.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens };
+    async text(model: string, system: string, prompt: string) {
+      const out = await client.send(
+        new ConverseCommand({
+          modelId: model,
+          system: [{ text: system }],
+          messages: [{ role: "user", content: [{ text: prompt }] }],
+          inferenceConfig: { maxTokens: 4000, temperature: 0.2 },
+        }),
+      );
+      const text = (out.output?.message?.content ?? []).map((c) => c.text ?? "").join("");
+      if (!text.trim()) throw new AiError(`empty report (stop reason ${out.stopReason})`);
+      return { data: text, ...usage(model, out) };
     },
   };
 }

@@ -37,14 +37,12 @@ Parameters:
   BedrockRegion:
     Type: String
     Default: eu-north-1
-    Description: Region of the Bedrock endpoint for Claude (AI control and reports).
-  BedrockModel:
-    Type: String
-    Default: anthropic.claude-opus-5-5
-    Description: Claude model on Bedrock. Empty turns AI control and reports off.
+    Description: >-
+      Region the worker calls Bedrock in. The model is chosen by superadmins (System) among EU
+      inference profiles (eu.anthropic.*), which keep processing within EU regions. Empty turns
+      AI control and reports off.
 
 Conditions:
-  HasBedrock: !Not [!Equals [!Ref BedrockModel, ""]]
   HasCustomDomain: !And
     - !Not [!Equals [!Ref ApiDomainName, ""]]
     - !Not [!Equals [!Ref ApiCertificateArn, ""]]
@@ -278,13 +276,13 @@ Resources:
                 Resource: !Sub
                   - arn:${AWS::Partition}:s3:::${Bucket}
                   - Bucket: !ImportValue {"Fn::Sub": "veriqall-${Environment}-audio-bucket"}
-              # Claude on Bedrock: the Messages API endpoint (bedrock-mantle) and the models behind it.
+              # Claude through EU inference profiles: the profile in this region, and the models in
+              # the EU regions it routes to.
               - Effect: Allow
-                Action:
-                  - bedrock-mantle:*
-                  - bedrock:InvokeModel
-                  - bedrock:InvokeModelWithResponseStream
-                Resource: "*"
+                Action: bedrock:InvokeModel
+                Resource:
+                  - !Sub arn:${AWS::Partition}:bedrock:${BedrockRegion}:${AWS::AccountId}:inference-profile/eu.anthropic.*
+                  - !Sub arn:${AWS::Partition}:bedrock:*::foundation-model/anthropic.*
 
   WorkerLogGroup:
     Type: AWS::Logs::LogGroup
@@ -321,7 +319,6 @@ Resources:
           APP_SECRET_ARN: !ImportValue {"Fn::Sub": "veriqall-${Environment}-app-secret"}
           AUDIO_BUCKET: !ImportValue {"Fn::Sub": "veriqall-${Environment}-audio-bucket"}
           BEDROCK_REGION: !Ref BedrockRegion
-          BEDROCK_MODEL: !If [HasBedrock, !Ref BedrockModel, ""]
       Tags:
         - Key: project
           Value: veriqall

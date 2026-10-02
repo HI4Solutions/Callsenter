@@ -9,12 +9,15 @@ import { lines } from "@/lib/work";
 interface SystemSettings {
   transcriptionMode: "realtime" | "chunked";
   transcriptionTerms: string[];
+  aiModel: string;
+  aiModels: { key: string; name: string; description: string }[];
 }
 
 export default function SystemPage() {
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [mode, setMode] = useState<SystemSettings["transcriptionMode"]>("realtime");
   const [terms, setTerms] = useState("");
+  const [aiModel, setAiModel] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -26,6 +29,7 @@ export default function SystemPage() {
         setSettings(s);
         setMode(s.transcriptionMode);
         setTerms(s.transcriptionTerms.join("\n"));
+        setAiModel(s.aiModel);
       })
       .catch((e: Error) => !cancelled && setError(e.message));
     return () => {
@@ -38,7 +42,7 @@ export default function SystemPage() {
     setError(null);
     setSaved(false);
     try {
-      await adminFetch("/system", { method: "PATCH", body: { transcriptionMode: mode, transcriptionTerms: lines(terms) } });
+      await adminFetch("/system", { method: "PATCH", body: { transcriptionMode: mode, transcriptionTerms: lines(terms), aiModel } });
       setSaved(true);
     } catch (e) {
       setError((e as Error).message);
@@ -52,7 +56,7 @@ export default function SystemPage() {
         <h1 className="text-3xl font-extrabold tracking-tight">System</h1>
         <p className="mt-2 text-muted">Innstillinger som gjelder alle callsentre.</p>
       </div>
-      <Card title="Transkripsjon">
+      <Card title="Transkripsjon og AI">
         <form onSubmit={save} className="flex flex-col gap-5">
           <fieldset className="flex min-w-0 flex-col gap-3">
             <legend className="mb-1 text-sm font-semibold">Transkripsjonsmodus</legend>
@@ -81,6 +85,22 @@ export default function SystemPage() {
           <Field label="Ordliste" hint="Ett ord eller navn per linje, for eksempel produkt- og selskapsnavn. Sendes til Soniox som kontekst.">
             <textarea rows={6} className={`${inputClass} py-2`} value={terms} onChange={(e) => setTerms(e.target.value)} />
           </Field>
+          <fieldset className="flex min-w-0 flex-col gap-3">
+            <legend className="mb-1 text-sm font-semibold">AI-modell for AI-kontroll og rapporter</legend>
+            {settings.aiModels.map((m) => (
+              <label key={m.key} className="flex items-start gap-3">
+                <input type="radio" name="ai-model" className="mt-1" checked={aiModel === m.key} onChange={() => setAiModel(m.key)} />
+                <span>
+                  <span className="font-semibold">{m.name}</span>
+                  <span className="block text-sm text-muted">{m.description}</span>
+                </span>
+              </label>
+            ))}
+            <p className="text-sm text-muted">
+              Claude via Amazon Bedrock med EU-endepunkt: behandles bare i EU-regioner. Gjelder samtaler som behandles etter at du har lagret.
+              Modellen må være slått på i Bedrock (Model access) i eu-north-1.
+            </p>
+          </fieldset>
           <ErrorMessage message={error} />
           {saved && <p role="status">Lagret.</p>}
           <div>

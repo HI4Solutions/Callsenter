@@ -1,5 +1,6 @@
 // Superadmin System (docs/plan.md, section 10): how calls are transcribed, the word list sent to
 // Soniox, and usage per call centre (audio minutes and AI tokens) for Økonomi.
+import { AI_MODEL_KEYS, AI_MODELS, DEFAULT_AI_MODEL, isAiModelKey } from "@veriqall/shared";
 import type pg from "pg";
 import type { Session } from "../auth/session.ts";
 import { withSession } from "../me.ts";
@@ -14,6 +15,8 @@ export async function getSystem(db: pg.Pool, session: Session) {
     return {
       transcriptionMode: settings.get("transcription_mode")?.value === "chunked" ? "chunked" : "realtime",
       transcriptionTerms: (settings.get("transcription_terms")?.value as string[] | undefined) ?? [],
+      aiModel: isAiModelKey(settings.get("ai_model")?.value) ? settings.get("ai_model")!.value : DEFAULT_AI_MODEL,
+      aiModels: AI_MODEL_KEYS.map((key) => ({ key, name: AI_MODELS[key].name, description: AI_MODELS[key].description })),
       updatedAt: rows.reduce<Date | null>((latest, r) => (!latest || r.updated_at > latest ? r.updated_at : latest), null),
     };
   });
@@ -22,6 +25,8 @@ export async function getSystem(db: pg.Pool, session: Session) {
 export async function updateSystem(db: pg.Pool, session: Session, body: Body) {
   const mode = body.transcriptionMode;
   if (mode !== undefined && mode !== "realtime" && mode !== "chunked") throw new BadRequest("Ugyldig transkripsjonsmodus.");
+  const aiModel = body.aiModel;
+  if (aiModel !== undefined && !isAiModelKey(aiModel)) throw new BadRequest("Ukjent AI-modell.");
   const termsInput = body.transcriptionTerms;
   let terms: string[] | undefined;
   if (termsInput !== undefined) {
@@ -39,6 +44,7 @@ export async function updateSystem(db: pg.Pool, session: Session, body: Body) {
     };
     if (mode !== undefined) await set("transcription_mode", mode);
     if (terms !== undefined) await set("transcription_terms", terms);
+    if (aiModel !== undefined) await set("ai_model", aiModel);
     return { ok: true };
   });
 }
