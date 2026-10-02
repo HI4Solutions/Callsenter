@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "@fontsource-variable/schibsted-grotesk";
 import "./globals.css";
+import { AccountMenu } from "@/components/account-menu";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { THEME_COLORS, themeInitScript } from "@/lib/theme";
@@ -27,7 +28,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" aria-label="VeriQall, til forsiden" className="flex items-center">
               <Logo height={32} />
             </Link>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <AccountMenu />
+              <ThemeToggle />
+            </div>
           </div>
         </header>
         <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-16">{children}</main>

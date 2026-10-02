@@ -66,6 +66,7 @@ Gjelder fase 0, PR 3. Beslutninger som fortsatt er åpne står nederst.
 - Secrets Manager: `IDURA_CLIENT_ID`, `IDURA_CLIENT_SECRET`, `VIPPS_CLIENT_ID`, `VIPPS_CLIENT_SECRET`, `VIPPS_SUBSCRIPTION_KEY`, `VIPPS_MSN`.
 - Konfigurasjon (ikke hemmelig): `IDURA_DOMAIN`, `VIPPS_HOST`, `APP_ORIGIN` og `AUTH_CALLBACK_BASE`.
 - Staging har egen Idura-applikasjon og Vipps' testmiljø med egen salgsenhet, egne testbrukere og egne redirect-URI-er.
+- Redirect-URI-ene i staging er `https://api.staging.veriqall.no/auth/vipps/callback` og `https://api.staging.veriqall.no/auth/bankid/callback`.
 - Hos Vipps må salgsenheten være satt opp for innlogging i portal.vippsmobilepay.com. Det er ikke på som standard.
 
 ## Nettverk
@@ -76,6 +77,15 @@ Callback-Lambdaen må nå både internett (Idura og Vipps) og databasen. Det er 
 
 - **BankID kreves for administrativ tilgang.** Rettighetene `audit.read` (revisjons- og tilgangslogg), `users.manage` (brukere, ansatte og team), `roles.manage` (roller og rettigheter), `calls.read.all` (alle samtaler i callsenteret) og `billing.read` (fakturaer) gjelder bare i en økt startet med BankID. En økt startet med Vipps har de andre rettighetene i rollen, men ikke disse. Kravet er knyttet til rettigheter, ikke rollenavn, og listen ligger i `STRONG_AUTH_PERMISSIONS` i `packages/shared`.
 - **Tidsavbrudd:** 60 minutter uten aktivitet og maks 14 timer totalt.
+- **Ekte BankID i staging:** staging-applikasjonen ligger i Iduras produksjonsmiljø, så vi kan teste med egen BankID i stedet for testbrukere. Staging lagrer da ekte navn på interne testere (ikke fødselsnummer, som aldri hentes). Hver innlogging koster etter Iduras pris. Vipps bruker fortsatt testmiljøet.
+- **Superadmins** opprettes bare via migrator-Lambdaen (`invite-platform-admin`, se `infra/README.md`), aldri fra API-et. Invitasjonen har ikke noe callsenter, og superadmin-rettighetene gjelder bare i økter startet med BankID.
+
+## Slik er det bygget (PR 3)
+
+- `packages/db/migrations/0002_login.sql`: BankID-kravet håndheves i databasen. API-et setter `app.session_strong` for BankID-økter, og `app.current_permissions()` og `app.is_platform_admin()` filtrerer på den, så alle RLS-policyer og vern følger kravet.
+- `apps/api/src/auth/`: OIDC-flyten (PKCE, state, nonce, verifisering av `id_token` mot leverandørens nøkler), kobling til bruker og økter. Testet mot en falsk OIDC-leverandør i `apps/api/test/fake-idp.ts`.
+- Rutene: `GET /auth/{vipps|bankid}/start`, `GET /auth/{vipps|bankid}/callback`, `POST /auth/logout` og `GET /me`.
+- `apps/web`: `/logg-inn` med feilmeldinger på norsk, og innloggingsstatus i toppen. Før produksjon må Vipps-knappen byttes til Vipps' offisielle knapp.
 
 ## Tillegg fra gjennomgangen 2. oktober 2026
 

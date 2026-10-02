@@ -34,11 +34,25 @@ En deploy kan også startes manuelt: **Actions → Deploy to staging → Run wor
 
 - `ALERT_EMAIL`: e-post når NAT-instansen er nede (staging).
 - `API_DOMAIN_NAME` og `API_CERTIFICATE_ARN`: eget domene for API-et, for eksempel `api.staging.veriqall.no`, med ACM-sertifikat validert via CNAME hos one.com. Stack-outputen `ApiDomainTarget` er CNAME-målet.
+- `IDURA_DOMAIN`: Idura-domenet for BankID, uten `https://`. Mangler den, er BankID-knappen «ikke satt opp».
+- `APP_ORIGIN`: adressen til web-appen. Standard er `https://staging.veriqall.no` og `https://app.veriqall.no`.
+
+Vipps-verten følger miljøet: `apitest.vipps.no` i staging og `api.vipps.no` i produksjon.
 
 ## Etter første deploy
 
 - Fyll inn verdiene i hemmeligheten `callsenter/<miljø>/app` (Vipps, Idura, Soniox) i Secrets Manager. CloudFormation lager den tom og overskriver den aldri.
 - Hovedbrukeren i RDS (`veriqall_owner`) har et passord som AWS lager og roterer selv. Lambdaene for API og innlogging logger inn med IAM, uten passord.
+
+## Opprette en superadmin
+
+Superadmins opprettes bare via migrator-Lambdaen, aldri fra API-et. I AWS-konsollen: Lambda → `veriqall-<miljø>-migrator` → **Test**, med denne hendelsen:
+
+```json
+{ "action": "invite-platform-admin", "fullName": "Fornavn Etternavn", "phone": "+47XXXXXXXX" }
+```
+
+Svaret inneholder en invitasjonslenke som varer i 72 timer og bare kan brukes én gang. Lenken skrives ikke til loggen. Åpne den og logg inn med BankID (eller Vipps med samme mobilnummer). Superadmin-rettighetene gjelder bare i økter startet med BankID. Kjøres hendelsen på nytt for samme nummer, lages en ny lenke til samme bruker.
 
 ## Hvis en stack feiler første gang
 

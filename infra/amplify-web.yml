@@ -56,6 +56,9 @@ Resources:
           Value: apps/web
         - Name: NEXT_TELEMETRY_DISABLED
           Value: "1"
+        # The API (login, /me). Built into the browser bundle, not a secret.
+        - Name: NEXT_PUBLIC_API_URL
+          Value: !If [IsProduction, https://api.veriqall.no, https://api.staging.veriqall.no]
       # Monorepo (npm workspaces): install from the repo root, build from apps/web.
       BuildSpec: |
         version: 1

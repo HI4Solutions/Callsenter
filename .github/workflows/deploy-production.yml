@@ -28,6 +28,8 @@ jobs:
       ALERT_EMAIL: ${{ vars.ALERT_EMAIL }}
       API_DOMAIN_NAME: ${{ vars.API_DOMAIN_NAME }}
       API_CERTIFICATE_ARN: ${{ vars.API_CERTIFICATE_ARN }}
+      APP_ORIGIN: ${{ vars.APP_ORIGIN }}
+      IDURA_DOMAIN: ${{ vars.IDURA_DOMAIN }}
     steps:
       - uses: actions/checkout@v4
 
