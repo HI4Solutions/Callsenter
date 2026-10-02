@@ -87,7 +87,8 @@ export interface ComplaintSummary {
   summary: string;
   closedAt: string | null;
   customerId: string;
-  customerName: string;
+  // null without access to customers.
+  customerName: string | null;
   saleId: string | null;
   productName: string | null;
   assignedName: string | null;

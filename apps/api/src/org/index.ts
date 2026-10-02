@@ -2,7 +2,7 @@
 // session is in. Everything runs as app_user under RLS with the session's user and call centre,
 // so the database decides what is visible and refuses grants of permissions the caller lacks.
 // The checks here only give clearer answers.
-import { type Permission, STRONG_AUTH_PERMISSIONS } from "@veriqall/shared";
+import { type ModuleKey, MODULES, type Permission, STRONG_AUTH_PERMISSIONS } from "@veriqall/shared";
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import type pg from "pg";
 import { inviteMember, NotFound, revokeInvitation } from "../admin/organizations.ts";
@@ -84,6 +84,20 @@ async function requirePermission(db: pg.Pool, session: Session, permission: Perm
     return rows[0]?.ok === true;
   });
   if (!ok) throw new Forbidden(permission, session);
+}
+
+class ModuleDisabled extends Error {}
+
+// A module the superadmin has switched off for the call centre is closed in the API too.
+async function requireModule(db: pg.Pool, session: Session, module: ModuleKey) {
+  const on = await withSession(db, session, async (c) => {
+    const { rows } = await c.query<{ enabled: boolean }>(
+      "select enabled from organization_modules where organization_id = app.current_org_id() and module = $1",
+      [module],
+    );
+    return rows[0]?.enabled === true;
+  });
+  if (!on) throw new ModuleDisabled(module);
 }
 
 export async function overview(db: pg.Pool, session: Session) {
@@ -289,6 +303,7 @@ export async function handleOrg(
       return reply(404, { error: "Fant ikke ressursen." });
     }
     if (path === "/org/complaints" || path.startsWith("/org/complaints/")) {
+      await requireModule(deps.appDb, session, "complaints");
       await requirePermission(deps.appDb, session, "complaints.manage");
       const meta = { ip: event.requestContext.http.sourceIp, userAgent: event.requestContext.http.userAgent };
       if (method === "GET" && path === "/org/complaints") {
@@ -306,11 +321,13 @@ export async function handleOrg(
     }
     const documentation = SALE_DOCUMENTATION.exec(path);
     if (documentation && isUuid(documentation[1]) && method === "GET") {
+      await requireModule(deps.appDb, session, "documentation");
       const meta = { ip: event.requestContext.http.sourceIp, userAgent: event.requestContext.http.userAgent };
       return reply(200, await getSaleDocumentation(deps.appDb, session, documentation[1], meta));
     }
     const confirmations = SALE_CONFIRMATIONS.exec(path);
     if (confirmations && isUuid(confirmations[1]) && method === "POST") {
+      await requireModule(deps.appDb, session, "sale_verification");
       await requirePermission(deps.appDb, session, "sales.manage");
       return reply(201, await createConfirmation(deps.appDb, session, deps.config.appOrigin, confirmations[1]));
     }
@@ -406,6 +423,10 @@ export async function handleOrg(
     if (error instanceof BadRequest) return reply(400, { error: error.message });
     if (error instanceof Unavailable) return reply(503, { error: "Sanntidstekst er ikke tilgjengelig nå. Opptaket fortsetter." });
     if (error instanceof NotFound) return reply(404, { error: "Fant ikke ressursen." });
+    if (error instanceof ModuleDisabled) {
+      const name = MODULES[error.message as ModuleKey]?.name ?? error.message;
+      return reply(403, { error: `${name} er ikke slått på for callsenteret.`, code: "modul_av" });
+    }
     const code = (error as { code?: string }).code;
     const constraint = (error as { constraint?: string }).constraint ?? "";
     if (code === "42501" && path.startsWith("/org/roles")) {
@@ -433,6 +454,9 @@ export async function handleOrg(
     if (code === "22007" || code === "22008") return reply(400, { error: "Ugyldig dato." });
     if (code === "23505" && constraint.includes("phone")) return reply(409, { error: "Mobilnummeret er allerede i bruk." });
     if (code === "23505" && constraint.includes("email")) return reply(409, { error: "E-postadressen er allerede i bruk." });
+    if (code === "23505" && constraint === "sale_confirmations_pending") {
+      return reply(409, { error: "Noen andre sendte en ny lenke samtidig. Last siden på nytt." });
+    }
     if (code === "23503") return reply(400, { error: "Ukjent rolle eller team." });
     throw error;
   }

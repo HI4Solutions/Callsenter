@@ -66,10 +66,13 @@ alter table sale_confirmations enable row level security;
 -- Visible with the sale; created and revoked with sales.manage.
 create policy sale_confirmations_select on sale_confirmations for select to app_user
   using (organization_id = (select app.current_org_id()) and exists (select 1 from sales s where s.id = sale_id));
+-- A new confirmation is always pending and carries no evidence: only the customer decides.
 create policy sale_confirmations_insert on sale_confirmations for insert to app_user
   with check (
     organization_id = (select app.current_org_id()) and (select app.has_permission('sales.manage'))
     and exists (select 1 from sales s where s.id = sale_id)
+    and status = 'pending' and viewed_at is null and decided_at is null and method is null and identity_name is null
+    and identity_phone is null and identity_ref is null and acr is null and identity_match is null and ip is null and user_agent is null
   );
 create policy sale_confirmations_update on sale_confirmations for update to app_user
   using (organization_id = (select app.current_org_id()) and (select app.has_permission('sales.manage'))
@@ -79,12 +82,16 @@ grant select, insert on sale_confirmations to app_user;
 grant update (status) on sale_confirmations to app_user;
 
 -- An identification started from a confirmation link goes through the normal OIDC callback; the
--- state says which confirmation it belongs to, and no session is created.
+-- state says which confirmation it belongs to, and no session is created. browser_hash binds the
+-- identification to the browser that opened the offer (a cookie set when it started), so a link
+-- to BankID or Vipps cannot be passed on to someone who never saw the offer.
 alter table auth_states add column confirmation_id uuid references sale_confirmations (id) on delete cascade;
+alter table auth_states add column browser_hash bytea check (length(browser_hash) = 32);
 
 -- --- Public functions for the customer (app_auth) ---------------------------------------------
 
--- The offer behind a link, for the confirmation page. Marks it viewed the first time.
+-- The offer behind a link, for the confirmation page. Marks it viewed the first time. Once the
+-- link is decided, revoked or expired, only its status is shown: the document holds personal data.
 create function app.confirmation_view(token bytea) returns jsonb
   language plpgsql security definer set search_path = pg_catalog, public
   as $$
@@ -101,7 +108,7 @@ create function app.confirmation_view(token bytea) returns jsonb
     return jsonb_build_object(
       'id', c.id,
       'status', case when c.status = 'pending' and c.expires_at <= now() then 'expired' else c.status end,
-      'document', c.document,
+      'document', case when c.status = 'pending' and c.expires_at > now() then c.document end,
       'documentHash', c.document_hash,
       'expiresAt', c.expires_at,
       'decidedAt', c.decided_at,
@@ -136,6 +143,12 @@ create function app.confirmation_decide(
     if c.expires_at <= now() then
       return 'expired';
     end if;
+    -- The sale must still be waiting for this answer (it may have been cancelled meanwhile).
+    perform 1 from sales where id = c.sale_id and status = 'awaiting_confirmation' for update;
+    if not found then
+      update sale_confirmations set status = 'revoked' where id = c.id;
+      return 'not_pending';
+    end if;
 
     if decision = 'accepted' then
       select cu.name, cu.phone into customer
@@ -166,6 +179,20 @@ create function app.confirmation_decide(
     return decision;
   end
   $$;
+
+-- When a sale stops waiting for confirmation by other means (cancelled, or confirmed by hand), its
+-- open link is revoked, so the customer cannot answer an offer that no longer stands.
+create function app.revoke_open_confirmations() returns trigger
+  language plpgsql security definer set search_path = pg_catalog, public
+  as $$
+  begin
+    update sale_confirmations set status = 'revoked' where sale_id = new.id and status = 'pending';
+    return null;
+  end
+  $$;
+create trigger sales_revoke_confirmations after update of status on sales
+  for each row when (old.status = 'awaiting_confirmation' and new.status <> 'awaiting_confirmation')
+  execute function app.revoke_open_confirmations();
 
 revoke all on function app.confirmation_view(bytea), app.confirmation_decide(uuid, text, text, text, text, text, text, inet, text) from public;
 grant execute on function app.confirmation_view(bytea), app.confirmation_decide(uuid, text, text, text, text, text, text, inet, text) to app_auth;

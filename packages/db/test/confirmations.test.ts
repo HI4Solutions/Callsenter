@@ -83,6 +83,17 @@ describe("sale confirmations", () => {
     await expect(decide((await confirmation(await setup())).id, "accepted", "none")).rejects.toThrow(/verified identity/);
   });
 
+  it("cannot be answered when the sale no longer waits for it", async () => {
+    const s = await setup();
+    const c = await confirmation(s);
+    await owner.query("update sales set status = 'cancelled' where id = $1", [s.sale]);
+    // Revoked by the trigger when the sale was cancelled.
+    expect((await owner.query("select status from sale_confirmations where id = $1", [c.id])).rows[0].status).toBe("revoked");
+    expect((await decide(c.id, "accepted")).rows[0].r).toBe("not_pending");
+    expect((await auth.query("select app.confirmation_view($1) as v", [c.hash])).rows[0].v).toMatchObject({ status: "revoked", document: null });
+    expect((await owner.query("select status from sales where id = $1", [s.sale])).rows[0].status).toBe("cancelled");
+  });
+
   it("is visible with the sale, written with sales.manage, and closed to other call centres", async () => {
     const s = await setup();
     const c = await confirmation(s);
@@ -98,6 +109,16 @@ describe("sale confirmations", () => {
     const stranger = await member(await createOrg(), "admin");
     await as(api, { userId: stranger, orgId: s.org }, async (db) => {
       expect((await db.query("select id from sale_confirmations")).rowCount).toBe(0);
+    });
+    // Evidence cannot be written by the call centre: a new confirmation is pending and empty.
+    await as(api, { userId: s.seller, orgId: s.org }, async (db) => {
+      await rejects(
+        db,
+        `insert into sale_confirmations (organization_id, sale_id, token_hash, document, document_hash, template_version_id, expires_at, status, decided_at, method, identity_ref)
+         values ($1, $2, $3, '{}', $4, $5, now() + interval '1 day', 'accepted', now(), 'bankid', $6)`,
+        [s.org, s.sale, randomBytes(32), "a".repeat(64), s.version, "c".repeat(64)],
+        /row-level security/,
+      );
     });
     // The login role reaches confirmations only through the functions.
     await expect(auth.query("select * from sale_confirmations")).rejects.toThrow(/permission denied/);

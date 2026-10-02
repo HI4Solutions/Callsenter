@@ -30,27 +30,41 @@ export function resultPage(deps: AuthDeps, result: string): string {
   return new URL(`/bekreft/ferdig?resultat=${encodeURIComponent(result)}`, deps.config.appOrigin).toString();
 }
 
-// Starts identification for accepting: a redirect to BankID or Vipps.
-export async function startConfirmation(deps: AuthDeps, token: string, provider: Provider): Promise<string> {
+// The cookie that ties the identification to the browser that opened the offer.
+export const CONFIRM_COOKIE = "vq_confirm";
+
+function closedResult(status: ConfirmationView["status"]): string {
+  return status === "expired" ? "utlopt" : status === "revoked" ? "trukket" : "avgjort";
+}
+
+// Starts identification for accepting: a redirect to BankID or Vipps, and a cookie (binding) that
+// the callback requires, so the redirect cannot be passed on to someone who never saw the offer.
+export async function startConfirmation(
+  deps: AuthDeps,
+  token: string,
+  provider: Provider,
+): Promise<{ location: string; binding?: string }> {
   const settings = deps.config.providers[provider];
-  if (!settings) return resultPage(deps, "ikke_satt_opp");
+  if (!settings) return { location: resultPage(deps, "ikke_satt_opp") };
   const view = await viewConfirmation(deps.authDb, token);
-  if (!view) return resultPage(deps, "ukjent");
-  if (view.status !== "pending") return resultPage(deps, view.status === "expired" ? "utlopt" : "avgjort");
+  if (!view) return { location: resultPage(deps, "ukjent") };
+  if (view.status !== "pending") return { location: resultPage(deps, closedResult(view.status)) };
   const state = randomToken();
   const nonce = randomToken();
   const verifier = randomToken();
+  const binding = randomToken();
   await deps.authDb.query(
-    `insert into auth_states (state_hash, provider, nonce, code_verifier, confirmation_id, created_at)
-     values ($1, $2, $3, $4, $5, $6)`,
-    [sha256(state), provider, nonce, verifier, view.id, deps.now()],
+    `insert into auth_states (state_hash, provider, nonce, code_verifier, confirmation_id, browser_hash, created_at)
+     values ($1, $2, $3, $4, $5, $6, $7)`,
+    [sha256(state), provider, nonce, verifier, view.id, sha256(binding), deps.now()],
   );
-  return authorizationUrl(deps.fetch, settings, {
+  const location = await authorizationUrl(deps.fetch, settings, {
     redirectUri: callbackUri(deps, provider),
     state,
     nonce,
     codeChallenge: pkceChallenge(verifier),
   });
+  return { location, binding };
 }
 
 // Called from the login callback when the state belongs to a confirmation.
@@ -70,5 +84,5 @@ export async function rejectConfirmation(authDb: pg.Pool, token: string, meta: R
     "select app.confirmation_decide($1, 'rejected', 'none', null, null, null, null, $2, $3) as r",
     [view.id, meta.ip ?? null, meta.userAgent ?? null],
   );
-  return rows[0]?.r === "rejected" ? "avslatt" : rows[0]?.r === "expired" ? "utlopt" : "avgjort";
+  return rows[0]?.r === "rejected" ? "avslatt" : rows[0]?.r === "expired" ? "utlopt" : view.status === "revoked" ? "trukket" : "avgjort";
 }

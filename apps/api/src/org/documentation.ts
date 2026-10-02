@@ -74,6 +74,15 @@ export async function saleDocumentation(
      values (app.current_org_id(), app.current_user_id(), $1, $2, 'view', $3, $4)`,
     [resourceType, saleId, meta.ip ?? null, meta.userAgent?.slice(0, 500) ?? null],
   );
+  // Each call shown (transcript, AI control and report) is also a view of that call, so the
+  // call's own access log shows it.
+  if (calls.rows.length) {
+    await c.query(
+      `insert into access_log (organization_id, user_id, resource_type, resource_id, action, ip, user_agent)
+       select app.current_org_id(), app.current_user_id(), 'call', id::text, 'view', $2, $3 from unnest($1::uuid[]) id`,
+      [calls.rows.map((r) => r.id), meta.ip ?? null, meta.userAgent?.slice(0, 500) ?? null],
+    );
+  }
   return {
     sale: sale.rows[0],
     acceptedDocument: accepted.rows[0]?.document ?? null,

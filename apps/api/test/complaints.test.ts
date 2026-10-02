@@ -45,6 +45,10 @@ async function as(org: string, role: string) {
 
 async function setup() {
   const org = await createOrg();
+  await owner.query(
+    "insert into organization_modules (organization_id, module) values ($1, 'sale_verification'), ($1, 'documentation'), ($1, 'complaints')",
+    [org],
+  );
   const admin = await as(org, "admin");
   const product = await call(admin, "POST", "/org/products", { name: "Strøm" });
   const draft = (await call(admin, "GET", `/org/products/${product.body.id}`)).body.versions[0].id;
@@ -72,7 +76,9 @@ describe("sale documentation", () => {
     expect(doc.body.calls).toEqual([]);
     const log = await owner.query("select 1 from access_log where resource_type = 'sale_documentation' and resource_id = $1", [s.saleId]);
     expect(log.rowCount).toBe(1);
-    const stranger = await as(await createOrg(), "admin");
+    const otherOrg = await createOrg();
+    await owner.query("insert into organization_modules (organization_id, module) values ($1, 'documentation')", [otherOrg]);
+    const stranger = await as(otherOrg, "admin");
     expect((await call(stranger, "GET", `/org/sales/${s.saleId}/documentation`)).status).toBe(404);
   });
 });

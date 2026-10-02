@@ -79,9 +79,11 @@ export default function SalePage() {
           <SaleStatusBadge status={sale.status} />
         </div>
         <p className="mt-2 text-muted">{sale.customerName}</p>
-        <Link href={`/salg/${sale.id}/dokumentasjon`} className="mt-3 inline-flex font-semibold text-brand">
-          Dokumentasjon (tilbud, aksept og samtaler) →
-        </Link>
+        {me?.modules?.includes("documentation") && (
+          <Link href={`/salg/${sale.id}/dokumentasjon`} className="mt-3 inline-flex font-semibold text-brand">
+            Dokumentasjon (tilbud, aksept og samtaler) →
+          </Link>
+        )}
       </div>
       <ErrorMessage message={error} />
       {canManage && SALE_TRANSITIONS[sale.status].length > 0 && (
@@ -98,7 +100,7 @@ export default function SalePage() {
         </dl>
         {sale.note && <p className="mt-4 whitespace-pre-wrap [overflow-wrap:anywhere] rounded-lg bg-bg p-3">{sale.note}</p>}
       </Card>
-      <Confirmations sale={sale} canManage={canManage} onChanged={load} />
+      <Confirmations sale={sale} canManage={canManage && (me?.modules?.includes("sale_verification") ?? false)} onChanged={load} />
       <LinkedCalls query={`saleId=${sale.id}`} />
       <Card title="Historikk">
         <ol className="flex flex-col gap-4">
@@ -250,7 +252,9 @@ function Confirmations({ sale, canManage, onChanged }: { sale: SaleDetail; canMa
           {sale.confirmations.map((c) => (
             <li key={c.id} className="flex flex-col gap-2 py-3">
               <div className="flex flex-wrap items-center gap-2">
-                {c.status === "accepted" ? (
+                {c.status === "pending" && new Date(c.expiresAt) <= new Date() ? (
+                  <span className="inline-flex items-center rounded-full border border-line px-3 py-1 text-sm font-medium">Utløpt</span>
+                ) : c.status === "accepted" ? (
                   <StatusBadge tone="ok">{CONFIRMATION_STATUS[c.status]}</StatusBadge>
                 ) : c.status === "rejected" ? (
                   <StatusBadge tone="danger">{CONFIRMATION_STATUS[c.status]}</StatusBadge>
@@ -278,7 +282,7 @@ function Confirmations({ sale, canManage, onChanged }: { sale: SaleDetail; canMa
                 <p className="text-sm font-semibold">Navnet eller mobilnummeret stemmer ikke med kunden. Sjekk at riktig person har godtatt.</p>
               )}
               <p className="font-mono text-xs text-muted [overflow-wrap:anywhere]">Dokument-ID: {c.documentHash}</p>
-              {c.status === "pending" && canManage && (
+              {c.status === "pending" && canManage && new Date(c.expiresAt) > new Date() && (
                 <div>
                   <button type="button" className={secondaryButton} onClick={() => revoke(c.id)}>
                     Trekk tilbake

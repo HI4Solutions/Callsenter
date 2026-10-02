@@ -1,4 +1,5 @@
 // The login flow from docs/auth.md: start -> provider -> callback -> session.
+import { timingSafeEqual } from "node:crypto";
 import type pg from "pg";
 import { acceptConfirmation, resultPage } from "../confirm/index.ts";
 import { safeAppPath, SESSION_MAX_HOURS } from "@veriqall/shared";
@@ -12,6 +13,8 @@ const STATE_LIFETIME_MINUTES = 10;
 export interface RequestMeta {
   ip?: string;
   userAgent?: string;
+  // The cookie set when accepting a sale started (confirm/index.ts).
+  confirmBinding?: string;
 }
 
 export interface LoginRedirect {
@@ -113,6 +116,7 @@ interface StoredState {
   invitation_id: string | null;
   link_user_id: string | null;
   confirmation_id: string | null;
+  browser_hash: Buffer | null;
 }
 
 // Finds or links the user for an identity, inside the login transaction.
@@ -244,7 +248,7 @@ export async function handleCallback(
     `update auth_states set used_at = $3
      where state_hash = $1 and provider = $2 and used_at is null
        and created_at > $3::timestamptz - make_interval(mins => $4)
-     returning nonce, code_verifier, return_to, invitation_id, link_user_id, confirmation_id`,
+     returning nonce, code_verifier, return_to, invitation_id, link_user_id, confirmation_id, browser_hash`,
     [sha256(query.state), provider, now, STATE_LIFETIME_MINUTES],
   );
   const state = rows[0];
@@ -254,7 +258,11 @@ export async function handleCallback(
   }
 
   if (state.confirmation_id) {
-    // A customer accepting a sale: identify, record the acceptance, no session.
+    // A customer accepting a sale: identify, record the acceptance, no session. Only in the
+    // browser that opened the offer and started the identification.
+    if (!state.browser_hash || !meta.confirmBinding || !timingSafeEqual(sha256(meta.confirmBinding), state.browser_hash)) {
+      return { location: resultPage(deps, "annen_nettleser") };
+    }
     try {
       const identity = await completeLogin(deps.fetch, provider, settings, {
         code: query.code,

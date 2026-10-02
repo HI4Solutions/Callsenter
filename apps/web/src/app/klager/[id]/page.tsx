@@ -73,7 +73,7 @@ export default function ComplaintPage() {
           {k.customerName}
         </Link>
       ) : (
-        k.customerName
+        (k.customerName ?? "Skjult (krever tilgang til kunder)")
       ),
     ],
     ...(k.customerPhone ? ([["Mobilnummer", formatPhone(k.customerPhone)]] as [string, string][]) : []),
@@ -116,7 +116,7 @@ export default function ComplaintPage() {
             <h1 className="text-3xl font-extrabold tracking-tight [overflow-wrap:anywhere]">{k.summary}</h1>
             <ComplaintStatusBadge status={k.status} />
           </div>
-          <p className="mt-2 text-muted">Klage fra {k.customerName}</p>
+          {k.customerName && <p className="mt-2 text-muted">Klage fra {k.customerName}</p>}
         </div>
         <button type="button" className={`${secondaryButton} print:hidden`} onClick={() => window.print()}>
           Skriv ut eller lagre som PDF

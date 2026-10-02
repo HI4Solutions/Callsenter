@@ -46,7 +46,7 @@ export async function listComplaints(db: pg.Pool, session: Session, query: Recor
               k.customer_id as "customerId", cu.name as "customerName", k.sale_id as "saleId", p.name as "productName",
               a.full_name as "assignedName", k.updated_at as "updatedAt"
        from complaints k
-       join customers cu on cu.id = k.customer_id
+       left join customers cu on cu.id = k.customer_id
        left join sales s on s.id = k.sale_id
        left join products p on p.id = s.product_id
        left join users a on a.id = k.assigned_to
@@ -93,7 +93,7 @@ export async function getComplaint(db: pg.Pool, session: Session, id: string, me
               cu.phone as "customerPhone", cu.email as "customerEmail", k.sale_id as "saleId",
               k.assigned_to as "assignedTo", a.full_name as "assignedName", cr.full_name as "createdByName"
        from complaints k
-       join customers cu on cu.id = k.customer_id
+       left join customers cu on cu.id = k.customer_id
        left join users a on a.id = k.assigned_to
        left join users cr on cr.id = k.created_by
        where k.id = $1`,

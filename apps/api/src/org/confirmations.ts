@@ -25,7 +25,7 @@ interface SaleForDocument {
   template_version_id: string;
   product: string;
   kind: string;
-  customer: string;
+  customer: string | null;
   org_number: string | null;
   birth_date: string | null;
   phone: string | null;
@@ -49,7 +49,7 @@ export async function createConfirmation(db: pg.Pool, session: Session, appOrigi
        from sales s
        join product_template_versions tv on tv.id = s.template_version_id
        join products p on p.id = s.product_id
-       join customers cu on cu.id = s.customer_id
+       left join customers cu on cu.id = s.customer_id
        join organizations o on o.id = s.organization_id
        left join users u on u.id = s.seller_id
        where s.id = $1`,
@@ -57,6 +57,8 @@ export async function createConfirmation(db: pg.Pool, session: Session, appOrigi
     );
     const s = rows[0];
     if (!s) throw new NotFound();
+    // The offer names the customer, so it needs access to customers.
+    if (s.customer === null) throw new BadRequest("Du trenger tilgang til kunder for å sende tilbudet til kunden.");
     if (s.status !== "registered" && s.status !== "awaiting_confirmation") {
       throw new BadRequest("Salget kan ikke sendes til bekreftelse nå.");
     }
@@ -101,7 +103,8 @@ export async function createConfirmation(db: pg.Pool, session: Session, appOrigi
     return {
       id: created.rows[0]!.id,
       // Shown once; only the hash is stored.
-      url: new URL(`/bekreft/${token}`, appOrigin).toString(),
+      // The token is in the fragment, which browsers never send to a server.
+      url: new URL(`/bekreft#${token}`, appOrigin).toString(),
       expiresAt: created.rows[0]!.expires_at,
     };
   });

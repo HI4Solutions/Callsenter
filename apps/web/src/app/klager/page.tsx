@@ -82,7 +82,7 @@ export default function ComplaintsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold [overflow-wrap:anywhere]">{k.summary}</p>
                   <p className="text-sm text-muted">
-                    {k.customerName}
+                    {k.customerName ?? "Kunde"}
                     {k.productName && ` · ${k.productName}`} · {CHANNEL[k.channel]}, mottatt {formatDate(k.receivedOn)}
                     {k.assignedName && ` · ${k.assignedName}`}
                   </p>
