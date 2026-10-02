@@ -32,6 +32,7 @@ Ferdig:
 - Fase 1, PR B (superadmin, Brukere og Roller og moduler): søk på tvers av callsentre, brukerdetaljer (profil, deaktivering, superadmin av og på, callsentre, innloggingsmetoder, aktive økter, tvangsutlogging, siste innlogginger), CSV-eksport, og oversikt over moduler, standardroller og rettigheter. Migrasjonen `0004_superadmin_users.sql` (superadmin fra portalen med vern, og `app.admin_*`-funksjoner for oppslag og handlinger på tvers av callsentre).
 - Fase 1, PR C (superadmin, Sikkerhet): oversikt over innlogginger (mislykkede per IP og bruker), revisjonslogg med filter, detaljer og CSV, tilgangslogg, og IP-sperring som sjekkes på hvert API-kall (`apps/api/src/blocklist.ts`). Migrasjonen `0005_security.sql`.
 - Fase 1, PR D (superadmin, Meldinger og Vekst): kunngjøringer til alle eller valgte callsentre, vist som banner for innloggede brukere (`GET /announcements`), og Vekst med nøkkeltall, grafer (`apps/web/src/components/admin/charts.tsx`) og markedsføringshendelser. Migrasjonen `0006_messages_growth.sql`.
+- Fase 1, adminportalen for callsentrene, PR E1 (`docs/plan.md`, seksjon 11): `/administrasjon` med Brukere og Team, API under `/org/*` i `apps/api/src/org`, bytte av aktivt callsenter (`POST /me/organization`) og migrasjonen `0008_org_admin.sql`.
 - Passkeys: innlogging med passkey (WebAuthn, `apps/api/src/auth/passkey.ts`), som teller som sterk innlogging som BankID. Legges til under `/konto` i en BankID-økt. Migrasjonen `0007_passkeys.sql`. Se `docs/auth.md`.
 
 Ikke gjort:
@@ -41,7 +42,7 @@ Ikke gjort:
 - CloudTrail til egen kryptert bøtte (revisjonslogg lag 1 i `docs/plan.md`, seksjon 3) er ikke satt opp.
 - Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.
 
-**Neste steg:** Fase 1, superadmin-portalen (`docs/plan.md`, seksjon 10). PR A–D er laget (Callsentre, Brukere, Roller og moduler, Sikkerhet, Meldinger og Vekst). Fanene System og Økonomi kommer i fase 2 og 4. Neste er adminportalen for callsentrene (modul 13), med samtaletråder mellom superadmin og admin.
+**Neste steg:** Fase 1, superadmin-portalen (`docs/plan.md`, seksjon 10). PR A–D er laget (Callsentre, Brukere, Roller og moduler, Sikkerhet, Meldinger og Vekst). Fanene System og Økonomi kommer i fase 2 og 4. Adminportalen for callsentrene er påbegynt (seksjon 11): neste er PR E2 (Roller og samtaletråder), deretter grunndataene i fase 1 (kunder, selgere, produkter, produktmaler og salg).
 
 ## Kommandoer
 

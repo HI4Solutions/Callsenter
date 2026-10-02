@@ -7,13 +7,17 @@
 //   POST /auth/passkey/register/options|verify   add a passkey (BankID session)
 //   GET  /me                          the signed-in user, call centres and permissions
 //   GET  /me/passkeys, DELETE /me/passkeys/{id}
+//   POST /me/organization             switch the session's call centre
+//   /org/*                            the call centre's admin portal (src/org)
 //   GET  /announcements               live announcements for the signed-in user
 //   /admin/*                          superadmin portal (src/admin)
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import type pg from "pg";
 import { handleAdmin } from "./admin/index.ts";
+import { canEnterOrganization, handleOrg } from "./org/index.ts";
 import { BadRequest, isUuid, parseBody } from "./admin/validate.ts";
 import { myAnnouncements } from "./admin/messages.ts";
+import { sha256 } from "./auth/crypto.ts";
 import { handleCallback, startLogin } from "./auth/flow.ts";
 import {
   authenticationOptions,
@@ -120,6 +124,31 @@ export function createHandler(deps: HandlerDeps) {
       const session = await resolveSession(auth, readCookie(event, SESSION_COOKIE));
       if (!session) return json(401, { error: "Ikke innlogget" }, cors);
       return json(200, await myAnnouncements(auth.appDb, session), cors);
+    }
+
+    if (method === "POST" && path === "/me/organization") {
+      const token = readCookie(event, SESSION_COOKIE);
+      const session = await resolveSession(auth, token);
+      if (!session || !token) return json(401, { error: "Ikke innlogget" }, cors);
+      if (event.headers?.origin !== auth.config.appOrigin) return json(403, { error: "Ikke tillatt." }, cors);
+      let orgId: unknown;
+      try {
+        orgId = parseBody(event.body, event.isBase64Encoded).organizationId;
+      } catch {
+        return json(400, { error: "Ugyldig forespørsel." }, cors);
+      }
+      if (typeof orgId !== "string" || !isUuid(orgId)) return json(400, { error: "Ukjent callsenter." }, cors);
+      if (!(await canEnterOrganization(auth.appDb, session, orgId))) {
+        return json(403, { error: "Du har ikke tilgang til dette callsenteret." }, cors);
+      }
+      await auth.authDb.query("update sessions set active_organization_id = $2 where id_hash = $1", [sha256(token), orgId]);
+      return json(200, { activeOrganizationId: orgId }, cors);
+    }
+
+    if (path.startsWith("/org/")) {
+      const session = await resolveSession(auth, readCookie(event, SESSION_COOKIE));
+      if (!session) return json(401, { error: "Ikke innlogget" }, cors);
+      return handleOrg(auth, event, session, cors);
     }
 
     if (path.startsWith("/admin/")) {
