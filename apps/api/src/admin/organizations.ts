@@ -9,6 +9,7 @@ import { withSession } from "../me.ts";
 import {
   BadRequest,
   type Body,
+  isUuid,
   optionalDate,
   optionalEmail,
   optionalOrgNumber,
@@ -177,6 +178,8 @@ export async function inviteMember(db: pg.Pool, session: Session, orgId: string,
   const email = optionalEmail(body, "email", "E-post") ?? null;
   if (!phone && !email) throw new BadRequest("Fyll ut mobilnummer eller e-post.");
   const roleKey = optionalText(body, "roleKey", "Rolle", 64) ?? "admin";
+  const teamId = optionalText(body, "teamId", "Team", 64) ?? null;
+  if (teamId && !isUuid(teamId)) throw new BadRequest("Ukjent team.");
 
   return inOrganization(db, session, orgId, async (c) => {
     const exists = await c.query("select 1 from organizations where id = $1", [orgId]);
@@ -187,14 +190,13 @@ export async function inviteMember(db: pg.Pool, session: Session, orgId: string,
     );
     if (!role.rows[0]) throw new BadRequest("Ukjent rolle.");
 
-    const existing = await c.query<{ id: string; status: string }>(
-      `select id, status from users
-       where ($1::text is not null and phone = $1) or ($2::text is not null and lower(email) = lower($2))
-       order by created_at limit 1`,
-      [phone, email],
-    );
-    let userId = existing.rows[0]?.id;
-    if (existing.rows[0]?.status === "disabled") throw new BadRequest("Brukeren er deaktivert.");
+    // The person may already be a user elsewhere; the lookup works across call centres.
+    const existing = await c.query<{ id: string | null }>("select app.user_id_for_invitation($1, $2) as id", [phone, email]);
+    let userId = existing.rows[0]?.id ?? undefined;
+    if (userId) {
+      const status = await c.query<{ status: string }>("select status from users where id = $1", [userId]);
+      if (status.rows[0]?.status === "disabled") throw new BadRequest("Brukeren er deaktivert.");
+    }
     if (!userId) {
       // The new user is not visible until the membership exists, so the id is made here.
       const created = await c.query<{ id: string }>("select gen_random_uuid() as id");
@@ -206,10 +208,18 @@ export async function inviteMember(db: pg.Pool, session: Session, orgId: string,
         email,
       ]);
     }
+    if (teamId) {
+      const team = await c.query("select 1 from teams where id = $1 and organization_id = $2 and archived_at is null", [
+        teamId,
+        orgId,
+      ]);
+      if (!team.rowCount) throw new BadRequest("Ukjent team.");
+    }
     await c.query(
-      `insert into memberships (organization_id, user_id, role_id) values ($1, $2, $3)
-       on conflict (organization_id, user_id) do update set role_id = excluded.role_id, status = 'active'`,
-      [orgId, userId, role.rows[0].id],
+      `insert into memberships (organization_id, user_id, role_id, team_id) values ($1, $2, $3, $4)
+       on conflict (organization_id, user_id) do update
+         set role_id = excluded.role_id, team_id = excluded.team_id, status = 'active'`,
+      [orgId, userId, role.rows[0].id, teamId],
     );
     const token = randomToken();
     const invitation = await c.query<{ id: string; expires_at: Date }>(

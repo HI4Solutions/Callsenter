@@ -12,10 +12,15 @@ export class AdminError extends Error {
   }
 }
 
-export async function adminFetch<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+export function adminFetch<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+  return apiFetch<T>(`/admin${path}`, init);
+}
+
+// Any API call with the session cookie; errors carry the API's Norwegian message.
+export async function apiFetch<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/admin${path}`, {
+    res = await fetch(`${API_URL}${path}`, {
       method: init.method ?? "GET",
       credentials: "include",
       headers: init.body === undefined ? undefined : { "content-type": "application/json" },

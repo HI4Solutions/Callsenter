@@ -247,3 +247,16 @@ Besluttet 2. oktober 2026, etter mønster fra adminportalen i MedSide. Forskjell
 | Økonomi | Forbruk per callsenter (lydminutter, AI-tokens, BankID-innlogginger), Stripe, faktura og regnskap (MRR, kostnader, netto) | Forbruk i fase 2, resten i fase 4 |
 
 Fra MedSide tas ikke med: passord og 2FA (vi har bare BankID og Vipps), legespesialiteter og PreVisit-nivåer, og globale roller (roller er per callsenter her).
+
+## 11. Adminportalen for callsentrene
+
+Påbegynt 2. oktober 2026. Admin i et callsenter administrerer sitt eget callsenter på `/administrasjon` i web-appen, med API-et under `/org/*`. Det krever rettigheten `users.manage` i callsenteret, og dermed en økt startet med BankID eller passkey. Alt kjører under RLS i økten sitt callsenter, så databasen avgjør hva som er synlig og nekter å gi bort rettigheter man ikke har.
+
+| Fane | Innhold | Når |
+|---|---|---|
+| Brukere | Invitere med rolle og team (også personer som er brukere i et annet callsenter), endre rolle og team, deaktivere og aktivere, invitasjoner, CSV. Man kan ikke endre sitt eget medlemskap. Navnet kan bare endres før første innlogging (deretter kommer det fra BankID eller Vipps) | PR E1 (laget) |
+| Team | Opprette, endre navn, arkivere (medlemmene blir uten team) og gjenopprette | PR E1 (laget) |
+| Roller | Lage roller, velge rettigheter blant dem admin selv har, arkivere | PR E2 |
+| Meldinger | Samtaletråder mellom admin og superadmin | PR E2 |
+
+Brukere som er med i flere callsentre, bytter aktivt callsenter i toppen (`POST /me/organization`). Superadmin kan gå inn i et hvilket som helst callsenter fra fanen Callsentre («Åpne adminportalen for callsenteret»).
