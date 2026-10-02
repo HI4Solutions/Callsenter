@@ -82,12 +82,12 @@ describe("invoicing", () => {
     const s = await setup();
     await as(api, { userId: s.admin }, async (db) => {
       await db.query(
-        `insert into recurring_invoices (organization_id, name, lines, interval_months, next_date)
-         values ($1, 'Abonnement', '[{"description": "VeriQall", "quantity": 1, "unitPrice": 2990}]', 1, current_date - 40)`,
+        `insert into recurring_invoices (organization_id, name, lines, interval_months, start_date, next_date)
+         values ($1, 'Abonnement', '[{"description": "VeriQall", "quantity": 1, "unitPrice": 2990}]', 1, app.oslo_today() - 40, app.oslo_today() - 40)`,
         [s.org],
       );
-      expect((await db.query("select app.generate_recurring_invoices(current_date) as n")).rows[0].n).toBe(2);
-      expect((await db.query("select app.generate_recurring_invoices(current_date) as n")).rows[0].n).toBe(0);
+      expect((await db.query("select app.generate_recurring_invoices(app.oslo_today()) as n")).rows[0].n).toBe(2);
+      expect((await db.query("select app.generate_recurring_invoices(app.oslo_today()) as n")).rows[0].n).toBe(0);
       const drafts = await db.query(
         "select i.status, l.description, l.unit_price::text, l.vat_rate::text from invoices i join invoice_lines l on l.invoice_id = i.id where i.organization_id = $1",
         [s.org],
@@ -96,6 +96,44 @@ describe("invoicing", () => {
         { status: "draft", description: "VeriQall", unit_price: "2990.00", vat_rate: "0.250" },
         { status: "draft", description: "VeriQall", unit_price: "2990.00", vat_rate: "0.250" },
       ]);
+    });
+  });
+
+  it("keeps the billing day for agreements from the 31st, and keeps sent invoices when an agreement is deleted", async () => {
+    const s = await setup();
+    await as(api, { userId: s.admin }, async (db) => {
+      const r = (
+        await db.query(
+          `insert into recurring_invoices (organization_id, name, lines, interval_months, start_date, next_date)
+           values ($1, 'Abonnement', '[{"description": "VeriQall", "quantity": 1, "unitPrice": 100}]', 1, '2026-01-31', '2026-01-31') returning id`,
+          [s.org],
+        )
+      ).rows[0].id;
+      expect((await db.query("select app.generate_recurring_invoices('2026-04-30') as n")).rows[0].n).toBe(4);
+      const notes = await db.query("select note from invoices where recurring_id = $1 order by created_at, note", [r]);
+      expect(notes.rows.map((n) => n.note).sort()).toEqual(
+        ["31.01.2026–27.02.2026", "28.02.2026–30.03.2026", "31.03.2026–29.04.2026", "30.04.2026–30.05.2026"].map((p) => `Abonnement, ${p}`).sort(),
+      );
+      expect((await db.query("select next_date::text from recurring_invoices where id = $1", [r])).rows[0].next_date).toBe("2026-05-31");
+
+      const one = (await db.query("select id from invoices where recurring_id = $1 limit 1", [r])).rows[0].id;
+      await db.query("update invoices set status = 'sent' where id = $1", [one]);
+      await db.query("delete from recurring_invoices where id = $1", [r]);
+      expect((await db.query("select status, recurring_id from invoices where id = $1", [one])).rows[0]).toEqual({ status: "sent", recurring_id: null });
+    });
+  });
+
+  it("credits with the VAT of the original, and only through a credit note", async () => {
+    const s = await setup();
+    await as(api, { userId: s.admin }, async (db) => {
+      const id = await draft(db, s.org, [["Lisens", 1, 100]]);
+      await db.query("update invoices set status = 'sent' where id = $1", [id]);
+      await rejects(db, "update invoices set status = 'credited' where id = $1", [id], /credit note/);
+      await rejects(db, "insert into invoices (organization_id, kind, credit_of) values ($1, 'credit', $2)", [s.org, id], /row-level security/);
+      await db.query("update billing_settings set vat_registered = false");
+      const credit = (await db.query("select app.credit_invoice($1, null) as id", [id])).rows[0].id;
+      const row = (await db.query("select total::text, vat::text, seller->>'vatRegistered' as vat_registered from invoices where id = $1", [credit])).rows[0];
+      expect(row).toEqual({ total: "-125.00", vat: "-25.00", vat_registered: "true" });
     });
   });
 

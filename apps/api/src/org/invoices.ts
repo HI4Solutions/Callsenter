@@ -10,7 +10,7 @@ export async function listOrgInvoices(db: pg.Pool, session: Session) {
       `select i.id, i.kind, i.status, i.number, i.issue_date::text as "issueDate", i.due_date::text as "dueDate",
               i.total::text as total,
               (select coalesce(sum(p.amount), 0) from invoice_payments p where p.invoice_id = i.id)::text as paid,
-              (i.status = 'sent' and i.kind = 'invoice' and i.due_date < current_date) as overdue
+              (i.status = 'sent' and i.kind = 'invoice' and i.due_date < app.oslo_today()) as overdue
        from invoices i
        where i.organization_id = app.current_org_id()
        order by i.number desc`,

@@ -4,6 +4,12 @@
 -- notes included) and is frozen: the seller, the recipient, the lines and the totals never change
 -- afterwards. Call centre admins with billing.read see their own sent invoices.
 
+-- Invoices are dated in Norwegian time (the database runs in UTC).
+create function app.oslo_today() returns date
+  language sql stable set search_path = pg_catalog
+  as $$ select (now() at time zone 'Europe/Oslo')::date $$;
+grant execute on function app.oslo_today() to app_user;
+
 -- --- Settings: the seller on the invoice ------------------------------------------------------
 
 create table billing_settings (
@@ -35,7 +41,11 @@ create table recurring_invoices (
   -- [{"description": text, "quantity": number, "unitPrice": number, "vatRate": number}]
   lines jsonb not null check (jsonb_typeof(lines) = 'array' and jsonb_array_length(lines) between 1 and 50),
   interval_months int not null check (interval_months in (1, 3, 6, 12)),
-  -- The date of the next draft.
+  -- Periods are counted from the start date, so an agreement starting on the 31st keeps billing
+  -- from the last day of short months and back to the 31st (no drift).
+  start_date date not null,
+  billed_periods int not null default 0 check (billed_periods >= 0),
+  -- The start of the next period to invoice: start_date + billed_periods intervals.
   next_date date not null,
   active boolean not null default true,
   created_by uuid references users (id),
@@ -109,6 +119,9 @@ create function app.guard_invoice() returns trigger
   declare
     s billing_settings;
     o organizations;
+    original invoices;
+    vat_on boolean;
+    today date := app.oslo_today();
     t record;
   begin
     if new.organization_id <> old.organization_id or new.kind <> old.kind or new.credit_of is distinct from old.credit_of then
@@ -127,9 +140,15 @@ create function app.guard_invoice() returns trigger
       if s.company_name is null or s.org_number is null or s.account_number is null then
         raise exception 'billing settings are incomplete' using errcode = 'check_violation';
       end if;
+      vat_on := s.vat_registered;
+      -- A credit note mirrors the invoice it cancels: same seller, recipient and VAT treatment.
+      if new.kind = 'credit' then
+        select * into original from invoices where id = new.credit_of;
+        vat_on := coalesce((original.seller->>'vatRegistered')::boolean, s.vat_registered);
+      end if;
       select count(*) as n,
              coalesce(sum(round(quantity * unit_price, 2)), 0) as subtotal,
-             coalesce(sum(round(round(quantity * unit_price, 2) * case when s.vat_registered then vat_rate else 0 end, 2)), 0) as vat
+             coalesce(sum(round(round(quantity * unit_price, 2) * case when vat_on then vat_rate else 0 end, 2)), 0) as vat
         into t from invoice_lines where invoice_id = old.id;
       if t.n = 0 then
         raise exception 'an invoice needs at least one line' using errcode = 'check_violation';
@@ -137,8 +156,8 @@ create function app.guard_invoice() returns trigger
       select * into o from organizations where id = old.organization_id;
       new.number := s.next_number;
       update billing_settings set next_number = next_number + 1;
-      new.issue_date := current_date;
-      new.due_date := case when new.kind = 'credit' then current_date else greatest(coalesce(new.due_date, current_date + s.due_days), current_date) end;
+      new.issue_date := today;
+      new.due_date := case when new.kind = 'credit' then today else greatest(coalesce(new.due_date, today + s.due_days), today) end;
       new.seller := jsonb_build_object(
         'name', s.company_name, 'orgNumber', s.org_number, 'vatRegistered', s.vat_registered, 'address', s.address,
         'email', s.email, 'accountNumber', s.account_number, 'footer', s.footer
@@ -147,6 +166,10 @@ create function app.guard_invoice() returns trigger
         'name', o.name, 'orgNumber', o.org_number, 'address', o.invoice_address, 'email', o.invoice_email,
         'contactName', o.contact_name
       );
+      if new.kind = 'credit' then
+        new.seller := coalesce(original.seller, new.seller);
+        new.recipient := coalesce(original.recipient, new.recipient);
+      end if;
       new.subtotal := t.subtotal;
       new.vat := t.vat;
       new.total := t.subtotal + t.vat;
@@ -155,9 +178,16 @@ create function app.guard_invoice() returns trigger
       return new;
     end if;
 
+    -- Credited only by a sent credit note (app.credit_invoice), never by hand.
+    if new.status = 'credited' and old.status <> 'credited'
+       and not exists (select 1 from invoices c where c.credit_of = old.id and c.status = 'sent') then
+      raise exception 'an invoice is credited with a credit note' using errcode = 'check_violation';
+    end if;
+    -- The link to a fixed agreement is cleared when the agreement is deleted; nothing else moves.
     if old.status <> 'draft'
        and ((old.status = 'sent' and new.status in ('sent', 'paid', 'credited')) or (old.status = 'paid' and new.status in ('paid', 'credited')))
-       and (to_jsonb(new) - 'status' - 'paid_at' - 'updated_at') = (to_jsonb(old) - 'status' - 'paid_at' - 'updated_at') then
+       and (new.recurring_id is null or new.recurring_id = old.recurring_id)
+       and (to_jsonb(new) - 'status' - 'paid_at' - 'updated_at' - 'recurring_id') = (to_jsonb(old) - 'status' - 'paid_at' - 'updated_at' - 'recurring_id') then
       new.updated_at := now();
       return new;
     end if;
@@ -187,7 +217,8 @@ create function app.guard_invoice_line() returns trigger
   declare
     st text;
   begin
-    select status into st from invoices where id = coalesce(new.invoice_id, old.invoice_id);
+    -- Waits for a send in progress, so no line slips into an invoice as it is frozen.
+    select status into st from invoices where id = coalesce(new.invoice_id, old.invoice_id) for share;
     if st is not null and st <> 'draft' then
       raise exception 'the lines of a sent invoice cannot be changed' using errcode = 'check_violation';
     end if;
@@ -265,7 +296,8 @@ create function app.generate_recurring_invoices(upto date) returns int
         insert into invoices (organization_id, recurring_id, note, created_by)
         values (
           r.organization_id, r.id,
-          r.name || ', ' || to_char(r.next_date, 'DD.MM.YYYY') || '–' || to_char((r.next_date + make_interval(months => r.interval_months))::date - 1, 'DD.MM.YYYY'),
+          r.name || ', ' || to_char(r.next_date, 'DD.MM.YYYY') || '–'
+            || to_char((r.start_date + make_interval(months => (r.billed_periods + 1) * r.interval_months))::date - 1, 'DD.MM.YYYY'),
           app.current_user_id()
         )
         returning id into draft;
@@ -273,10 +305,11 @@ create function app.generate_recurring_invoices(upto date) returns int
         select draft, r.organization_id, (l.ord - 1)::int, l.value->>'description', (l.value->>'quantity')::numeric,
                (l.value->>'unitPrice')::numeric, coalesce((l.value->>'vatRate')::numeric, 0.25)
         from jsonb_array_elements(r.lines) with ordinality l(value, ord);
-        r.next_date := (r.next_date + make_interval(months => r.interval_months))::date;
+        r.billed_periods := r.billed_periods + 1;
+        r.next_date := (r.start_date + make_interval(months => r.billed_periods * r.interval_months))::date;
         made := made + 1;
       end loop;
-      update recurring_invoices set next_date = r.next_date, updated_at = now() where id = r.id;
+      update recurring_invoices set billed_periods = r.billed_periods, next_date = r.next_date, updated_at = now() where id = r.id;
     end loop;
     return made;
   end
@@ -301,7 +334,7 @@ create policy recurring_invoices_platform on recurring_invoices for all to app_u
 create policy invoices_platform on invoices for all to app_user
   using ((select app.is_platform_admin())) with check ((select app.is_platform_admin()));
 create policy invoices_insert_draft on invoices as restrictive for insert to app_user
-  with check (status = 'draft');
+  with check (status = 'draft' and kind = 'invoice' and credit_of is null);
 create policy invoice_lines_platform on invoice_lines for all to app_user
   using ((select app.is_platform_admin())) with check ((select app.is_platform_admin()));
 create policy invoice_payments_platform on invoice_payments for all to app_user

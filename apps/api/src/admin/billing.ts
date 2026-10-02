@@ -61,6 +61,7 @@ function translate(error: unknown): never {
     ["only drafts", "Bare utkast kan slettes."],
     ["only a sent invoice", "Bare en sendt faktura kan krediteres, og bare én gang."],
     ["payments go on sent invoices", "Betaling kan bare registreres på en sendt faktura."],
+    ["credited with a credit note", "En faktura krediteres med kreditnota."],
   ];
   for (const [needle, text] of known) if (message.includes(needle)) throw new BadRequest(text);
   if ((error as { code?: string }).code === "23503") throw new BadRequest("Ukjent callsenter.");
@@ -112,7 +113,9 @@ export async function updateBillingSettings(db: pg.Pool, session: Session, body:
   const sets = Object.entries(values).filter(([, v]) => v !== undefined);
   return withSession(db, session, async (c) => {
     if (values.next_number !== undefined) {
-      // The sequence never goes back: no number may be used twice.
+      // The sequence never goes back: no number may be used twice. The lock keeps a send from
+      // slipping in between the check and the update.
+      await c.query("select 1 from billing_settings for update");
       const { rows } = await c.query<{ max: number | null }>("select max(number) as max from invoices");
       if ((rows[0]?.max ?? 0) >= (values.next_number as number)) {
         throw new BadRequest(`Neste fakturanummer må være høyere enn ${rows[0]!.max}.`);
@@ -139,7 +142,7 @@ const TOTALS = `
 const SUMMARY = `i.id, i.organization_id as "organizationId", o.name as "organizationName", i.kind, i.credit_of as "creditOf",
   i.status, i.number, i.issue_date::text as "issueDate", i.due_date::text as "dueDate", i.note, i.sent_at as "sentAt",
   i.paid_at as "paidAt", i.created_at as "createdAt", i.recurring_id as "recurringId",
-  (i.status = 'sent' and i.kind = 'invoice' and i.due_date < current_date) as overdue, ${TOTALS}`;
+  (i.status = 'sent' and i.kind = 'invoice' and i.due_date < app.oslo_today()) as overdue, ${TOTALS}`;
 
 export async function listInvoices(db: pg.Pool, session: Session, query: Record<string, string | undefined>) {
   const status = ["draft", "sent", "paid", "credited", "overdue"].includes(query.status ?? "") ? query.status! : null;
@@ -148,7 +151,7 @@ export async function listInvoices(db: pg.Pool, session: Session, query: Record<
     const { rows } = await c.query(
       `select ${SUMMARY}
        from invoices i join organizations o on o.id = i.organization_id
-       where ($1::text is null or ($1 = 'overdue' and i.status = 'sent' and i.kind = 'invoice' and i.due_date < current_date) or i.status = $1)
+       where ($1::text is null or ($1 = 'overdue' and i.status = 'sent' and i.kind = 'invoice' and i.due_date < app.oslo_today()) or i.status = $1)
          and ($2::uuid is null or i.organization_id = $2)
        order by i.number desc nulls first, i.created_at desc
        limit 500`,
@@ -326,12 +329,17 @@ export async function addUsageLines(db: pg.Pool, session: Session, id: string, b
       "select price_audio_hour::text as audio, price_ai_control::text as ai from billing_settings",
     )).rows[0]!;
     if (prices.audio === null && prices.ai === null) throw new BadRequest("Sett priser for forbruk under Innstillinger først.");
+    // Each call is billed once, even if it was transcribed or checked again after a failure.
     const used = (await c.query<{ seconds: number; controls: number }>(
-      `select coalesce(sum(audio_seconds) filter (where kind = 'transcription_async'), 0)::int as seconds,
-              count(*) filter (where kind = 'ai_control')::int as controls
-       from usage_events
-       where organization_id = $1 and created_at >= ($2 || '-01')::date::timestamp at time zone 'Europe/Oslo'
-         and created_at < (($2 || '-01')::date + interval '1 month')::timestamp at time zone 'Europe/Oslo'`,
+      `with u as (
+         select id, call_id, kind, audio_seconds from usage_events
+         where organization_id = $1 and created_at >= ($2 || '-01')::date::timestamp at time zone 'Europe/Oslo'
+           and created_at < (($2 || '-01')::date + interval '1 month')::timestamp at time zone 'Europe/Oslo'
+       ), audio as (
+         select max(audio_seconds) as s from u where kind = 'transcription_async' group by coalesce(call_id::text, id::text)
+       )
+       select (select coalesce(sum(s), 0) from audio)::int as seconds,
+              (select count(distinct coalesce(call_id::text, id::text)) from u where kind = 'ai_control')::int as controls`,
       [inv.rows[0].organization_id, month],
     )).rows[0]!;
     const label = new Intl.DateTimeFormat("nb-NO", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-01T00:00:00Z`));
@@ -381,7 +389,12 @@ function recurringValues(body: Body, creating: boolean) {
     if (!INTERVALS.includes(interval)) throw new BadRequest("Velg hvor ofte.");
     values.interval_months = interval;
   }
-  if (body.nextDate !== undefined || creating) values.next_date = date(body.nextDate, "neste faktura");
+  if (body.nextDate !== undefined || creating) {
+    // A new next date starts a new count of periods from that date.
+    values.next_date = date(body.nextDate, "neste faktura");
+    values.start_date = values.next_date;
+    values.billed_periods = 0;
+  }
   if (body.active !== undefined) values.active = body.active === true;
   return values;
 }
@@ -393,8 +406,8 @@ export async function createRecurring(db: pg.Pool, session: Session, body: Body)
   return withSession(db, session, async (c) => {
     try {
       const { rows } = await c.query<{ id: string }>(
-        `insert into recurring_invoices (organization_id, name, lines, interval_months, next_date, created_by)
-         values ($1, $2, $3, $4, $5, app.current_user_id()) returning id`,
+        `insert into recurring_invoices (organization_id, name, lines, interval_months, start_date, next_date, created_by)
+         values ($1, $2, $3, $4, $5, $5, app.current_user_id()) returning id`,
         [org, v.name, v.lines, v.interval_months, v.next_date],
       );
       return { id: rows[0]!.id };
@@ -420,15 +433,20 @@ export async function updateRecurring(db: pg.Pool, session: Session, id: string,
 
 export async function deleteRecurring(db: pg.Pool, session: Session, id: string) {
   return withSession(db, session, async (c) => {
-    const { rowCount } = await c.query("delete from recurring_invoices where id = $1", [id]);
-    if (!rowCount) throw new NotFound();
+    let deleted = 0;
+    try {
+      deleted = (await c.query("delete from recurring_invoices where id = $1", [id])).rowCount ?? 0;
+    } catch (error) {
+      translate(error);
+    }
+    if (!deleted) throw new NotFound();
     return { ok: true };
   });
 }
 
 export async function generateRecurring(db: pg.Pool, session: Session) {
   return withSession(db, session, async (c) => {
-    const { rows } = await c.query<{ n: number }>("select app.generate_recurring_invoices(current_date) as n");
+    const { rows } = await c.query<{ n: number }>("select app.generate_recurring_invoices(app.oslo_today()) as n");
     return { created: rows[0]!.n };
   });
 }
@@ -444,15 +462,15 @@ export async function billingOverview(db: pg.Pool, session: Session) {
          (select coalesce(sum((l->>'quantity')::numeric * (l->>'unitPrice')::numeric / r.interval_months), 0)
           from recurring_invoices r, jsonb_array_elements(r.lines) l where r.active)::numeric(12, 2)::text as mrr,
          (select coalesce(sum(subtotal), 0) from invoices where status <> 'draft'
-            and issue_date >= date_trunc('month', current_date))::text as "invoicedMonth",
+            and issue_date >= date_trunc('month', app.oslo_today()))::text as "invoicedMonth",
          (select coalesce(sum(subtotal), 0) from invoices where status <> 'draft'
-            and issue_date >= date_trunc('year', current_date))::text as "invoicedYear",
+            and issue_date >= date_trunc('year', app.oslo_today()))::text as "invoicedYear",
          (select coalesce(sum(i.total - coalesce((select sum(amount) from invoice_payments p where p.invoice_id = i.id), 0)), 0)
           from invoices i where i.status = 'sent' and i.kind = 'invoice')::text as outstanding,
          (select coalesce(sum(i.total - coalesce((select sum(amount) from invoice_payments p where p.invoice_id = i.id), 0)), 0)
-          from invoices i where i.status = 'sent' and i.kind = 'invoice' and i.due_date < current_date)::text as overdue,
+          from invoices i where i.status = 'sent' and i.kind = 'invoice' and i.due_date < app.oslo_today())::text as overdue,
          (select count(*)::int from invoices where status = 'draft') as drafts,
-         (select count(*)::int from recurring_invoices where active and next_date <= current_date) as "recurringDue"`,
+         (select count(*)::int from recurring_invoices where active and next_date <= app.oslo_today()) as "recurringDue"`,
     );
     return rows[0];
   });
