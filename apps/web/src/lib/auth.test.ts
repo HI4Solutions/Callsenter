@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LOGIN_ERRORS, loginErrorMessage, loginStartUrl, safeNext, signedInDestination } from "./auth";
+import { LOGIN_ERRORS, loginErrorMessage, loginPathFor, loginStartUrl, safeNext, signedInDestination } from "./auth";
 
 describe("login helpers", () => {
   it("builds start URLs with invitation and return path", () => {
@@ -31,5 +31,13 @@ describe("where a signed-in user lands", () => {
     expect(signedInDestination({ ...base, platformAdmin: true })).toBe("/admin");
     expect(signedInDestination({ ...base, permissions: ["users.manage"] })).toBe("/administrasjon");
     expect(signedInDestination(base)).toBe("/konto");
+  });
+});
+
+describe("sending signed-out visitors to login", () => {
+  it("returns them to the page they tried to open", () => {
+    expect(loginPathFor("/admin/brukere")).toBe("/logg-inn?neste=%2Fadmin%2Fbrukere");
+    expect(loginPathFor("/")).toBe("/logg-inn");
+    expect(loginPathFor("//evil.example")).toBe("/logg-inn");
   });
 });

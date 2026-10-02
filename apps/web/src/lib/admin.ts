@@ -1,37 +1,13 @@
 // Calls to the superadmin API (apps/api/src/admin). The session cookie lives on the API host,
 // so every call carries credentials; the API only answers this app's origin.
-import { API_URL } from "./auth";
+import { apiFetch } from "./api";
+import { formatDate } from "./format";
 
-export class AdminError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly code?: string,
-  ) {
-    super(message);
-  }
-}
+export { AdminError, apiFetch } from "./api";
+export { formatDate, formatDateTime, invitationState, toCsv } from "./format";
 
 export function adminFetch<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   return apiFetch<T>(`/admin${path}`, init);
-}
-
-// Any API call with the session cookie; errors carry the API's Norwegian message.
-export async function apiFetch<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${API_URL}${path}`, {
-      method: init.method ?? "GET",
-      credentials: "include",
-      headers: init.body === undefined ? undefined : { "content-type": "application/json" },
-      body: init.body === undefined ? undefined : JSON.stringify(init.body),
-    });
-  } catch {
-    throw new AdminError("Får ikke kontakt med serveren. Prøv igjen.", 0);
-  }
-  const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
-  if (!res.ok) throw new AdminError(data.error ?? "Noe gikk galt.", res.status, data.code);
-  return data as T;
 }
 
 export interface OrganizationSummary {
@@ -93,23 +69,6 @@ export function organizationState(org: { status: string; trialEndsAt: string | n
   return { label: "Aktiv", tone: "ok" as const };
 }
 
-export function invitationState(inv: { usedAt: string | null; revokedAt: string | null; expiresAt: string }, now = new Date()) {
-  if (inv.usedAt) return "Brukt";
-  if (inv.revokedAt) return "Trukket tilbake";
-  if (new Date(inv.expiresAt) <= now) return "Utløpt";
-  return "Venter";
-}
-
-export function formatDate(value: string | null): string {
-  if (!value) return "–";
-  return new Intl.DateTimeFormat("nb-NO", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value));
-}
-
-export function formatDateTime(value: string | null): string {
-  if (!value) return "Aldri";
-  return new Intl.DateTimeFormat("nb-NO", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
-}
-
 export interface UserSummary {
   id: string;
   name: string;
@@ -146,18 +105,6 @@ export const LOGIN_RESULT: Record<string, string> = {
   invalid: "Ugyldig",
   error: "Feil",
 };
-
-// CSV for Excel with Norwegian settings: semicolon separated, with a byte order mark so
-// æ, ø and å survive.
-export function toCsv(header: string[], rows: (string | number | boolean | null | undefined)[][]): string {
-  const cell = (value: string | number | boolean | null | undefined) => {
-    const text = value === null || value === undefined ? "" : String(value);
-    // A leading =, +, - or @ would be read as a formula.
-    const safe = /^[=+\-@]/.test(text) ? `'${text}` : text;
-    return /[";\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
-  };
-  return `﻿${[header, ...rows].map((row) => row.map(cell).join(";")).join("\r\n")}\r\n`;
-}
 
 export interface SecurityOverview {
   hours: number;

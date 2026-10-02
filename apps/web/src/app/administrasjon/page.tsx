@@ -5,7 +5,7 @@ import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { useMe } from "@/components/org/org-shell";
-import { formatDateTime, invitationState, toCsv } from "@/lib/admin";
+import { formatDateTime, invitationState, toCsv } from "@/lib/format";
 import { memberState, orgFetch, type OrgOverview } from "@/lib/org";
 
 export default function MembersPage() {

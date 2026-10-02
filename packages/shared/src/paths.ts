@@ -3,7 +3,8 @@
 //
 // Browsers strip tabs and newlines from URLs and read a backslash as a slash, so "/\t/evil.example"
 // or "/\evil.example" would leave the site. Anything with control characters or backslashes,
-// also percent-encoded, is refused, and what is kept must resolve to our own origin.
+// also percent-encoded, is refused, and the normalised result must be a plain path on our own
+// origin.
 const MAX_LENGTH = 512;
 const BASE = "https://app.invalid";
 
@@ -18,5 +19,9 @@ export function safeAppPath(next: string | undefined | null): string | undefined
     return undefined;
   }
   if (url.origin !== BASE) return undefined;
-  return url.pathname + url.search + url.hash;
+  // Resolving dot segments can turn "/.//evil.example" into "//evil.example", which a browser
+  // reads as another host. What is returned is checked again, not only what came in.
+  const result = url.pathname + url.search + url.hash;
+  if (!result.startsWith("/") || result.startsWith("//") || new URL(result, BASE).origin !== BASE) return undefined;
+  return result;
 }

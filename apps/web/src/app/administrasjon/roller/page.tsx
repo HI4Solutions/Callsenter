@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
-import { apiFetch } from "@/lib/admin";
+import { apiFetch } from "@/lib/api";
 
 interface Role {
   id: string;

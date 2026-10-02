@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PasskeyLogin } from "@/components/passkey-login";
 import { SignedInRedirect } from "@/components/signed-in-redirect";
-import { loginErrorMessage, loginStartUrl } from "@/lib/auth";
+import { loginErrorMessage, loginStartUrl, safeNext } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Logg inn" };
 
@@ -15,7 +15,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   const params = await searchParams;
   const error = loginErrorMessage(first(params.feil));
   const invite = first(params.invitasjon);
-  const next = first(params.neste);
+  // Only a path inside the app survives; anything else is dropped here (and again in the API).
+  const next = safeNext(first(params.neste));
 
   return (
     <section className="mx-auto max-w-md">

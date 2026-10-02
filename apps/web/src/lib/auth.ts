@@ -56,3 +56,21 @@ export function signedInDestination(me: Pick<Me, "platformAdmin" | "permissions"
   if (me.permissions.includes("users.manage")) return "/administrasjon";
   return "/konto";
 }
+
+// The login page for someone who is not signed in, returning them to where they were.
+export function loginPathFor(path: string): string {
+  const next = safeNext(path);
+  return next && next !== "/" ? `/logg-inn?neste=${encodeURIComponent(next)}` : "/logg-inn";
+}
+
+// GET /me: the user, "signed-out" when there is no valid session, or null when the API cannot be
+// reached.
+export async function fetchMe(): Promise<Me | "signed-out" | null> {
+  try {
+    const res = await fetch(`${API_URL}/me`, { credentials: "include" });
+    if (res.status === 401) return "signed-out";
+    return res.ok ? ((await res.json()) as Me) : null;
+  } catch {
+    return null;
+  }
+}
