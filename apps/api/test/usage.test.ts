@@ -55,6 +55,62 @@ async function call(cookie: string, method: string, rawPath: string, body?: unkn
   return { status: response.statusCode, body: response.body ? JSON.parse(String(response.body)) : undefined };
 }
 
+describe("accounting", () => {
+  it("sets costs against revenue, with VAT apart, and reports revenue per product", async () => {
+    const admin = await superadmin();
+    const get = (path: string, q: Record<string, string> = {}) => call(admin.cookie, "GET", `${path}?${new URLSearchParams(q)}`);
+    const org = await createOrg();
+    await call(admin.cookie, "PATCH", "/admin/billing/settings", { companyName: "Leverandør AS", orgNumber: "999999999", accountNumber: "12345678903" });
+    // A day far back, so other tests' data does not mix in.
+    const from = "2001-03-01";
+    const to = "2001-03-31";
+    // An invoice of 1000 + 250 VAT (a package and a fee), paid in full on 10 March 2001.
+    const pkg = await call(admin.cookie, "POST", "/admin/billing/packages", { name: "Regnskapspakke", unitPrice: "900" });
+    const inv = await call(admin.cookie, "POST", "/admin/invoices", {
+      organizationId: org,
+      lines: [
+        { kind: "package", packageId: pkg.body.id, description: "Pakke", unitPrice: "900" },
+        { kind: "fee", description: "Fakturagebyr", unitPrice: "100" },
+      ],
+    });
+    await call(admin.cookie, "POST", `/admin/invoices/${inv.body.id}/send`);
+    expect((await call(admin.cookie, "POST", `/admin/invoices/${inv.body.id}/payments`, { amount: "1250", paidOn: "2001-03-10" })).status).toBe(201);
+    // Manual income 500 incl. 25 % VAT, a manual cost 100, a refund -20, and a fixed cost of 310/month.
+    expect((await call(admin.cookie, "POST", "/admin/accounting/entries", { kind: "income", description: "Kurs", amount: "500", vatRate: 0.25, occurredOn: "2001-03-05" })).status).toBe(201);
+    await call(admin.cookie, "POST", "/admin/accounting/entries", { kind: "cost", description: "Konsulent", amount: "100", occurredOn: "2001-03-05" });
+    await call(admin.cookie, "POST", "/admin/accounting/entries", { kind: "cost", description: "Refusjon", amount: "-20", occurredOn: "2001-03-06" });
+    const fixed = await call(admin.cookie, "POST", "/admin/accounting/fixed-costs", { description: "Kontor", amount: "310", startsMonth: "2001-02" });
+    expect(fixed.status).toBe(201);
+
+    const summary = await get("/admin/accounting/summary", { from, to });
+    expect(summary.status).toBe(200);
+    expect(summary.body.revenue).toEqual({ gross: 1750, vat: 350, net: 1400, invoices: 1250, manual: 500 });
+    expect(summary.body.costs).toMatchObject({ manual: 80, fixed: 310 });
+    expect(summary.body.result).toBe(1400 - summary.body.costs.total);
+    // Half of March: half the fixed cost.
+    const half = await get("/admin/accounting/summary", { from: "2001-03-01", to: "2001-03-15" });
+    expect(half.body.costs.fixed).toBe(150);
+
+    const report = await get("/admin/accounting/revenue", { from, to });
+    expect(report.body.rows).toEqual([
+      { month: null, product: "Regnskapspakke", quantity: 1, net: 900, vat: 225, total: 1125 },
+      { month: null, product: "Manuelle innbetalinger", quantity: 1, net: 400, vat: 100, total: 500 },
+      { month: null, product: "Fakturagebyr", quantity: 1, net: 100, vat: 25, total: 125 },
+    ]);
+    const monthly = await get("/admin/accounting/revenue", { from, to, byMonth: "1" });
+    expect(monthly.body.rows.every((r: { month: string }) => r.month === "2001-03")).toBe(true);
+
+    const months = await get("/admin/accounting/months", { months: "3" });
+    expect(months.body).toHaveLength(3);
+    const list = await get("/admin/accounting/entries", { from, to });
+    expect(list.body.entries).toHaveLength(3);
+    expect(list.body.fixed.some((f: { id: string }) => f.id === fixed.body.id)).toBe(true);
+    await call(admin.cookie, "PATCH", `/admin/accounting/fixed-costs/${fixed.body.id}`, { endsMonth: "2001-02" });
+    expect((await get("/admin/accounting/summary", { from, to })).body.costs.fixed).toBe(0);
+    expect((await call(admin.cookie, "DELETE", `/admin/accounting/fixed-costs/${fixed.body.id}`)).status).toBe(200);
+  });
+});
+
 describe("usage and costs", () => {
   it("prices AI, Soniox and eID per call centre, in USD and NOK", async () => {
     const admin = await superadmin();
