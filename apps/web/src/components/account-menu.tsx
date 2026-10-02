@@ -52,7 +52,7 @@ export function AccountMenu() {
         {state.me.user.name}
         <span className="sr-only">, innlogget med {state.me.provider === "bankid" ? "BankID" : "Vipps"}</span>
       </span>
-      <button type="button" onClick={logout} className="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold">
+      <button type="button" onClick={logout} className="inline-flex min-h-11 items-center whitespace-nowrap rounded-lg px-3 font-semibold">
         Logg ut
       </button>
     </div>

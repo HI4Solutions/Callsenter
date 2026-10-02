@@ -240,8 +240,8 @@ Besluttet 2. oktober 2026, etter mønster fra adminportalen i MedSide. Forskjell
 | Callsentre | Liste med søk og status, nytt callsenter (navn, org.nr., kontaktperson, faktura-e-post og -adresse, notat, prøveperiode), moduler per callsenter, brukerne i callsenteret, invitere med rolle (admin som standard), invitasjoner som kan trekkes tilbake | Fase 1, PR A (ferdig) |
 | Brukere | Søk på tvers av callsentre, detaljer med medlemskap og koblede innlogginger (BankID og Vipps), deaktivere, fjerne en innloggingsmetode, aktive økter og tvangsutlogging, gi og fjerne superadmin, CSV-eksport | Fase 1, PR B (laget) |
 | Sikkerhet | Mislykkede innlogginger per IP og bruker, revisjonslogg og tilgangslogg med filter og CSV, IP-sperring (gjelder hele API-et unntatt `/health`, trer i kraft innen ett minutt). PDF-rapport kommer senere | Fase 1, PR C (laget) |
-| Meldinger | Kunngjøringer til alle eller valgte callsentre (tittel, tekst, lenke, av og på), og samtaletråder med admin i callsentrene | Fase 1, PR D |
-| Vekst | Callsentre og brukere over tid, og samtaler fra fase 2 | Fase 1, PR D |
+| Meldinger | Kunngjøringer til alle eller valgte callsentre (tittel, tekst, lenke, periode, av og på), vist som banner for innloggede brukere. Samtaletråder med admin i callsentrene kommer med adminportalen, siden admin trenger et sted å svare | Fase 1, PR D (laget) |
+| Vekst | Nøkkeltall, brukere totalt, nye callsentre og innlogginger per måned, med markedsføringshendelser som markører. Samtaler fra fase 2 | Fase 1, PR D (laget) |
 | Roller og moduler | Modulkatalogen, standardrollene nye callsentre får, og rettighetskatalogen (lesbar) | Fase 1, PR B (laget) |
 | System | Innloggingsmetoder av og på, AI-modell og prompt per funksjon, Soniox-ordliste, kvoter for Bedrock og Soniox | Fase 2 |
 | Økonomi | Forbruk per callsenter (lydminutter, AI-tokens, BankID-innlogginger), Stripe, faktura og regnskap (MRR, kostnader, netto) | Forbruk i fase 2, resten i fase 4 |

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changedFields, invitationState, organizationState, toCsv } from "./admin";
+import { announcementState, changedFields, cumulative, invitationState, organizationState, toCsv } from "./admin";
 
 const now = new Date("2026-10-02T12:00:00Z");
 
@@ -46,5 +46,18 @@ describe("audit diff", () => {
       { field: "status", before: null, after: "active" },
     ]);
     expect(changedFields(null, { id: "x" })).toEqual([{ field: "id", before: null, after: "x" }]);
+  });
+});
+
+describe("messages and growth helpers", () => {
+  it("describes announcement state", () => {
+    expect(announcementState({ active: false, startsAt: "2026-01-01", endsAt: null }, now).label).toBe("Av");
+    expect(announcementState({ active: true, startsAt: "2026-01-01", endsAt: null }, now).label).toBe("Vises nå");
+    expect(announcementState({ active: true, startsAt: "2026-01-01", endsAt: "2026-02-01" }, now).label).toBe("Utløpt");
+    expect(announcementState({ active: true, startsAt: "2026-12-01", endsAt: null }, now).tone).toBe("warning");
+  });
+
+  it("builds running totals", () => {
+    expect(cumulative(10, [1, 0, 3])).toEqual([11, 11, 14]);
   });
 });

@@ -242,3 +242,52 @@ export function formatValue(value: unknown): string {
   if (typeof value === "string") return value;
   return JSON.stringify(value);
 }
+
+export interface AdminAnnouncement {
+  id: string;
+  title: string;
+  body: string;
+  linkUrl: string | null;
+  linkText: string | null;
+  audience: "all" | "selected";
+  active: boolean;
+  startsAt: string;
+  endsAt: string | null;
+  createdAt: string;
+  createdByName: string | null;
+  organizations: { id: string; name: string }[];
+}
+
+export function announcementState(a: { active: boolean; startsAt: string; endsAt: string | null }, now = new Date()) {
+  if (!a.active) return { label: "Av", tone: "danger" as const };
+  if (new Date(a.startsAt) > now) return { label: `Fra ${formatDate(a.startsAt)}`, tone: "warning" as const };
+  if (a.endsAt && new Date(a.endsAt) <= now) return { label: "Utløpt", tone: "danger" as const };
+  return { label: "Vises nå", tone: "ok" as const };
+}
+
+export interface Growth {
+  months: number;
+  totals: {
+    openOrganizations: number;
+    trialOrganizations: number;
+    closedOrganizations: number;
+    activeUsers: number;
+    invitedUsers: number;
+    newUsers30d: number;
+    allUsers: number;
+    usersBefore: number;
+  };
+  series: { month: string; newOrganizations: number; newUsers: number; logins: number }[];
+  events: { id: string; title: string; occurredOn: string }[];
+}
+
+// Running total of users at the end of each month, starting from those created before the window.
+export function cumulative(start: number, values: number[]): number[] {
+  let total = start;
+  return values.map((v) => (total += v));
+}
+
+export function monthLabel(month: string): string {
+  const [year, m] = month.split("-").map(Number);
+  return new Intl.DateTimeFormat("nb-NO", { month: "short", year: "2-digit" }).format(new Date(Date.UTC(year!, m! - 1, 1)));
+}
