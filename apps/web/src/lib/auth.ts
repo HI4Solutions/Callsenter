@@ -50,10 +50,11 @@ export interface Me {
 }
 
 // Where a signed-in user lands when they open the login page: their starting point (superadmin
-// portal, the call centre's administration, the customers, or their account).
+// portal, the call centre's administration, sales, customers, or their account).
 export function signedInDestination(me: Pick<Me, "platformAdmin" | "permissions">): string {
   if (me.platformAdmin) return "/admin";
   if (me.permissions.includes("users.manage")) return "/administrasjon";
+  if (me.permissions.includes("sales.manage")) return "/salg";
   if (me.permissions.includes("customers.read")) return "/kunder";
   return "/konto";
 }

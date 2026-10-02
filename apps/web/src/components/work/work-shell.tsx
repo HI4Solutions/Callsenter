@@ -5,10 +5,12 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { type Tab, TabNav } from "@/components/tab-nav";
 import { API_URL, fetchMe, loginPathFor, type Me } from "@/lib/auth";
 import { usePageTitle } from "@/lib/use-page-title";
+import { canSeeSales } from "@/lib/work";
 
-// The daily work in a call centre. Sales come next (docs/plan.md, section 12).
-const TABS: (Omit<Tab, "active" | "href"> & { href: string; permission?: string })[] = [
-  { label: "Kunder", icon: "contacts", href: "/kunder", permission: "customers.read" },
+// The daily work in a call centre (docs/plan.md, section 12).
+const TABS: (Omit<Tab, "active" | "href"> & { href: string; show?: (permissions: string[]) => boolean })[] = [
+  { label: "Salg", icon: "receipt", href: "/salg", show: canSeeSales },
+  { label: "Kunder", icon: "contacts", href: "/kunder", show: (p) => p.includes("customers.read") },
   { label: "Produkter", icon: "box", href: "/produkter" },
 ];
 
@@ -61,7 +63,7 @@ export function WorkShell({ children }: { children: React.ReactNode }) {
       <TabNav
         label="Callsenter"
         labelsFrom="sm"
-        tabs={TABS.filter((tab) => !tab.permission || access.me.permissions.includes(tab.permission)).map((tab) => ({
+        tabs={TABS.filter((tab) => !tab.show || tab.show(access.me.permissions)).map((tab) => ({
           ...tab,
           active: pathname.startsWith(tab.href),
         }))}

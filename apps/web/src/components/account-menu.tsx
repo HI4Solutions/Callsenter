@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { API_URL, type Me } from "@/lib/auth";
 import { switchOrganization } from "@/lib/org";
+import { canSeeSales } from "@/lib/work";
 
 type State = { status: "loading" } | { status: "signed-out" } | { status: "signed-in"; me: Me };
 
@@ -43,6 +44,12 @@ export function AccountMenu() {
     );
   }
   const { me } = state;
+  // The call centre's daily work starts at the first page the member can use.
+  const work = canSeeSales(me.permissions)
+    ? { href: "/salg", label: "Salg" }
+    : me.permissions.includes("customers.read")
+      ? { href: "/kunder", label: "Kunder" }
+      : { href: "/produkter", label: "Produkter" };
   async function changeOrganization(id: string) {
     try {
       await switchOrganization(id);
@@ -73,11 +80,8 @@ export function AccountMenu() {
         </label>
       )}
       {me.activeOrganizationId && (
-        <Link
-          href={me.permissions.includes("customers.read") ? "/kunder" : "/produkter"}
-          className="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold"
-        >
-          {me.permissions.includes("customers.read") ? "Kunder" : "Produkter"}
+        <Link href={work.href} className="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold">
+          {work.label}
         </Link>
       )}
       {me.permissions.includes("users.manage") && (

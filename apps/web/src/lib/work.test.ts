@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatKroner, formatOrgNumber, formatPhone, formatPrice, lines, months, priceInput } from "./work";
+import { canSeeSales, formatKroner, formatOrgNumber, formatPhone, formatPrice, lines, months, priceInput, saleTone } from "./work";
 
 describe("work formatting", () => {
   it("formats kroner the Norwegian way", () => {
@@ -29,5 +29,14 @@ describe("work formatting", () => {
     expect(months(1)).toBe("1 måned");
     expect(months(12)).toBe("12 måneder");
     expect(lines(" a \n\n b\n")).toEqual(["a", "b"]);
+  });
+
+  it("decides who sees sales and how statuses are colored", () => {
+    expect(canSeeSales(["calls.read.own"])).toBe(true);
+    expect(canSeeSales(["customers.read", "products.manage"])).toBe(false);
+    expect(saleTone("registered")).toBeNull();
+    expect(saleTone("active")).toBe("ok");
+    expect(saleTone("awaiting_confirmation")).toBe("warning");
+    expect(saleTone("withdrawn")).toBe("danger");
   });
 });
