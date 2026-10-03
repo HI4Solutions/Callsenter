@@ -180,7 +180,7 @@ function MobileMenu({ name, children }: { name: string; children: React.ReactNod
         Meny
       </button>
       {open && (
-        <div className="absolute right-0 z-50 mt-2 flex w-64 flex-col gap-1 rounded-xl border border-line bg-surface p-2 shadow-lg">
+        <div className="absolute right-0 z-50 mt-2 flex max-h-[calc(100dvh-5rem)] w-64 flex-col gap-1 overflow-y-auto rounded-xl border border-line bg-surface p-2 shadow-lg">
           <p className="px-3 py-2 text-sm text-muted [overflow-wrap:anywhere]">{name}</p>
           {children}
         </div>
