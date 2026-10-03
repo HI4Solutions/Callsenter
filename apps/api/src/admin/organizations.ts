@@ -64,8 +64,16 @@ function organizationFields(body: Body) {
     recording_retention_months: retentionMonths(body),
     default_locale: organizationLocale(body, "defaultLocale"),
     content_locale: organizationLocale(body, "contentLocale"),
+    content_locale_locked: optionalBoolean(body, "contentLocaleLocked"),
     transcription_languages: spokenLanguages(body, "transcriptionLanguages") ?? undefined,
   };
+}
+
+function optionalBoolean(body: Body, key: string): boolean | undefined {
+  const value = body[key];
+  if (value === undefined) return undefined;
+  if (typeof value !== "boolean") throw new BadRequest("Ugyldig verdi.");
+  return value;
 }
 
 // The call centre's language for the pages and for notes (docs/plan.md, section 19).
@@ -148,7 +156,7 @@ export async function getOrganization(db: pg.Pool, session: Session, orgId: stri
               contact_name as "contactName", contact_email as "contactEmail", contact_phone as "contactPhone",
               invoice_email as "invoiceEmail", invoice_address as "invoiceAddress", note,
               recording_retention_months as "recordingRetentionMonths",
-              default_locale as "defaultLocale", content_locale as "contentLocale",
+              default_locale as "defaultLocale", content_locale as "contentLocale", content_locale_locked as "contentLocaleLocked",
               transcription_languages as "transcriptionLanguages",
               created_at as "createdAt", updated_at as "updatedAt"
        from organizations where id = $1`,

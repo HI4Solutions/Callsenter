@@ -57,6 +57,7 @@ export interface Me {
   locale?: Locale | null;
   organizationLocale?: Locale | null;
   contentLocale?: Locale | null;
+  contentLocaleLocked?: boolean;
   transcriptionLanguages?: string[];
 }
 

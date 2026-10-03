@@ -16,5 +16,8 @@
   "transcriptionLanguages": "Språk i samtalen",
   "save": "Spara språk",
   "saving": "Sparar …",
-  "saved": "Sparat."
+  "saved": "Sparat.",
+  "lockContent": "Lås språket för anteckningar",
+  "lockContentHint": "Säljarna kan då inte välja ett annat språk för anteckningar och AI-kontroll.",
+  "locked": "Låst av callcentret: {language}"
 }

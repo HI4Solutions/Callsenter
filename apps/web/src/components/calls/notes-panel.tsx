@@ -4,8 +4,16 @@ import { type Locale, LOCALE_CODES, LOCALES } from "@veriqall/shared";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
-import { NoteTemplatePicker, useNoteTemplates } from "@/components/calls/note-templates";
+import {
+  ErrorMessage,
+  inputClass,
+  primaryButton,
+  secondaryButton,
+} from "@/components/admin/field";
+import {
+  NoteTemplatePicker,
+  useNoteTemplates,
+} from "@/components/calls/note-templates";
 import { useWorkMe } from "@/components/work/work-shell";
 import type { CallDetail, Note } from "@/lib/calls";
 import { formatDateTime } from "@/lib/format";
@@ -29,7 +37,8 @@ export function NotesPanel({
   const reportsOn = me?.modules?.includes("reports") ?? false;
   const canRequest =
     reportsOn &&
-    (call.isOwn || (me?.permissions.includes("report_templates.manage") ?? false)) &&
+    (call.isOwn ||
+      (me?.permissions.includes("report_templates.manage") ?? false)) &&
     (call.status === "transcribed" || call.status === "analyzed") &&
     call.segments.length > 0;
   const templates = useNoteTemplates(canRequest && !chosen);
@@ -49,7 +58,10 @@ export function NotesPanel({
     try {
       await orgFetch(`/calls/${call.id}/notes`, {
         method: "POST",
-        body: { templateIds: chosen ?? picked, locale: locale === callLocale ? null : locale },
+        body: {
+          templateIds: chosen ?? picked,
+          locale: locale === callLocale ? null : locale,
+        },
       });
       await onChanged();
     } catch (e) {
@@ -63,7 +75,9 @@ export function NotesPanel({
       <div className="flex flex-col gap-4">
         {call.reports.length === 0 && (
           <p className="text-muted">
-            {reportsOn ? "Notatet lages når samtalen er transkribert." : "Rapporter er ikke slått på for callsenteret."}
+            {reportsOn
+              ? "Notatet lages når samtalen er transkribert."
+              : "Rapporter er ikke slått på for callsenteret."}
           </p>
         )}
         {call.reports.map((r) => (
@@ -72,23 +86,43 @@ export function NotesPanel({
         {canRequest && (
           <div className="flex flex-col gap-3 border-t border-line pt-4">
             {chosen ? (
-              <p className="text-sm text-muted">Lager nye notater fra samme transkripsjon med notatmalene som er valgt øverst.</p>
+              <p className="text-sm text-muted">
+                Lager nye notater fra samme transkripsjon med notatmalene som er
+                valgt øverst.
+              </p>
             ) : (
-              <NoteTemplatePicker templates={templates} chosen={picked} onChange={setPicked} />
+              <NoteTemplatePicker
+                templates={templates}
+                chosen={picked}
+                onChange={setPicked}
+              />
             )}
-            <label className="flex flex-col gap-1 sm:max-w-xs">
-              <span className="text-sm font-semibold">{tl("regenerateIn")}</span>
-              <select className={inputClass} value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>
-                {LOCALE_CODES.map((code) => (
-                  <option key={code} value={code} lang={LOCALES[code].tag}>
-                    {LOCALES[code].name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {!call.outputLocaleLocked && (
+              <label className="flex flex-col gap-1 sm:max-w-xs">
+                <span className="text-sm font-semibold">
+                  {tl("regenerateIn")}
+                </span>
+                <select
+                  className={inputClass}
+                  value={locale}
+                  onChange={(e) => setLocale(e.target.value as Locale)}
+                >
+                  {LOCALE_CODES.map((code) => (
+                    <option key={code} value={code} lang={LOCALES[code].tag}>
+                      {LOCALES[code].name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <ErrorMessage message={error} />
             <div>
-              <button type="button" className={secondaryButton} disabled={busy || pending} onClick={regenerate}>
+              <button
+                type="button"
+                className={secondaryButton}
+                disabled={busy || pending}
+                onClick={regenerate}
+              >
                 {pending ? "Lager notater …" : "Regenerer"}
               </button>
             </div>
@@ -99,7 +133,15 @@ export function NotesPanel({
   );
 }
 
-function NoteCard({ note, call, onChanged }: { note: Note; call: CallDetail; onChanged: () => Promise<unknown> }) {
+function NoteCard({
+  note,
+  call,
+  onChanged,
+}: {
+  note: Note;
+  call: CallDetail;
+  onChanged: () => Promise<unknown>;
+}) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(note.content ?? "");
   const [showAi, setShowAi] = useState(false);
@@ -111,9 +153,13 @@ function NoteCard({ note, call, onChanged }: { note: Note; call: CallDetail; onC
     return (
       <article className="rounded-lg border border-line p-3" aria-busy="true">
         <h3 className="font-bold">
-        {note.templateName}
-        {note.locale && <span className="ml-2 text-sm font-normal text-muted">{LOCALES[note.locale].name}</span>}
-      </h3>
+          {note.templateName}
+          {note.locale && (
+            <span className="ml-2 text-sm font-normal text-muted">
+              {LOCALES[note.locale].name}
+            </span>
+          )}
+        </h3>
         <p className="mt-1 text-muted" role="status">
           Notatet skrives …
         </p>
@@ -124,9 +170,13 @@ function NoteCard({ note, call, onChanged }: { note: Note; call: CallDetail; onC
     return (
       <article className="rounded-lg border border-line p-3">
         <h3 className="font-bold">
-        {note.templateName}
-        {note.locale && <span className="ml-2 text-sm font-normal text-muted">{LOCALES[note.locale].name}</span>}
-      </h3>
+          {note.templateName}
+          {note.locale && (
+            <span className="ml-2 text-sm font-normal text-muted">
+              {LOCALES[note.locale].name}
+            </span>
+          )}
+        </h3>
         <p className="mt-1">{note.error ?? "Notatet kunne ikke lages."}</p>
       </article>
     );
@@ -164,7 +214,11 @@ function NoteCard({ note, call, onChanged }: { note: Note; call: CallDetail; onC
     <article className="rounded-lg border border-line p-3">
       <h3 className="font-bold">
         {note.templateName}
-        {note.locale && <span className="ml-2 text-sm font-normal text-muted">{LOCALES[note.locale].name}</span>}
+        {note.locale && (
+          <span className="ml-2 text-sm font-normal text-muted">
+            {LOCALES[note.locale].name}
+          </span>
+        )}
       </h3>
       <p className="mt-1 text-sm text-muted">
         {edited
@@ -185,7 +239,9 @@ function NoteCard({ note, call, onChanged }: { note: Note; call: CallDetail; onC
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
-          <p className="text-sm text-muted">AI-versjonen beholdes, og endringen lagres med navnet ditt.</p>
+          <p className="text-sm text-muted">
+            AI-versjonen beholdes, og endringen lagres med navnet ditt.
+          </p>
           <ErrorMessage message={error} />
           <div className="flex flex-wrap gap-2">
             <button type="submit" className={primaryButton} disabled={busy}>
@@ -205,11 +261,15 @@ function NoteCard({ note, call, onChanged }: { note: Note; call: CallDetail; onC
         </form>
       ) : (
         <>
-          <p className="mt-3 whitespace-pre-wrap [overflow-wrap:anywhere]">{note.content}</p>
+          <p className="mt-3 whitespace-pre-wrap [overflow-wrap:anywhere]">
+            {note.content}
+          </p>
           {edited && showAi && (
             <div className="mt-3 rounded-lg bg-bg p-3">
               <p className="text-sm font-semibold">AI-versjonen</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">{note.aiContent}</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">
+                {note.aiContent}
+              </p>
             </div>
           )}
           <ErrorMessage message={error} />
@@ -230,7 +290,11 @@ function NoteCard({ note, call, onChanged }: { note: Note; call: CallDetail; onC
               </button>
             )}
             {edited && (
-              <button type="button" className={secondaryButton} onClick={() => setShowAi((v) => !v)}>
+              <button
+                type="button"
+                className={secondaryButton}
+                onClick={() => setShowAi((v) => !v)}
+              >
                 {showAi ? "Skjul AI-versjonen" : "Vis AI-versjonen"}
               </button>
             )}

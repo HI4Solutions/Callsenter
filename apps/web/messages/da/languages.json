@@ -16,5 +16,8 @@
   "transcriptionLanguages": "Sprog i samtalerne",
   "save": "Gem sprog",
   "saving": "Gemmer …",
-  "saved": "Gemt."
+  "saved": "Gemt.",
+  "lockContent": "Lås sproget for notater",
+  "lockContentHint": "Sælgerne kan så ikke vælge et andet sprog for notater og AI-kontrol.",
+  "locked": "Låst af callcentret: {language}"
 }
