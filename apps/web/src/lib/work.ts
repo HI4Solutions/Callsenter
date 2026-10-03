@@ -1,7 +1,7 @@
 // The call centre's daily work: sales, customers and products (apps/api/src/org/sales.ts,
 // customers.ts and products.ts). Shared types and formatting for /salg, /kunder and /produkter.
 import type { SaleStatus } from "@veriqall/shared";
-import { formatTagNow } from "./format";
+import { commonWord, formatTagNow } from "./format";
 
 export interface Customer {
   id: string;
@@ -86,19 +86,17 @@ export function formatKroner(value: string | null): string {
 // The price line for a version: "399 kr/mnd + 499 kr", or "–" without a price.
 export function formatPrice(v: { priceOnce: string | null; priceMonthly: string | null }): string {
   const parts = [];
-  if (v.priceMonthly !== null) parts.push(`${formatKroner(v.priceMonthly)}/mnd`);
-  if (v.priceOnce !== null) parts.push(v.priceMonthly !== null ? `${formatKroner(v.priceOnce)} engangs` : formatKroner(v.priceOnce));
+  if (v.priceMonthly !== null) parts.push(commonWord("perMonth", { amount: formatKroner(v.priceMonthly) }));
+  if (v.priceOnce !== null) parts.push(v.priceMonthly !== null ? commonWord("once", { amount: formatKroner(v.priceOnce) }) : formatKroner(v.priceOnce));
   return parts.length ? parts.join(" + ") : "–";
 }
 
 export function months(n: number): string {
-  if (n === 0) return "Ingen";
-  return `${n} ${n === 1 ? "måned" : "måneder"}`;
+  return commonWord("months", { count: n });
 }
 
 export function days(n: number): string {
-  if (n === 0) return "Ingen";
-  return `${n} ${n === 1 ? "dag" : "dager"}`;
+  return commonWord("days", { count: n });
 }
 
 // Prices as typed in the form: "399.50" becomes "399,50".

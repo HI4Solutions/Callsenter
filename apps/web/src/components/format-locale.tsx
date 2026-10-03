@@ -9,6 +9,6 @@ import { setFormatLocale } from "@/lib/format";
 export function FormatLocale() {
   const locale = useLocale();
   const t = useTranslations("common");
-  setFormatLocale(LOCALES[locale].tag, t("never"));
+  setFormatLocale(LOCALES[locale].tag, (key, values) => t(key, values));
   return null;
 }

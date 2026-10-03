@@ -1,0 +1,202 @@
+{
+  "flag": {
+    "approved": "Godkendt",
+    "deviation": "Afvigelse",
+    "violation": "Brud"
+  },
+  "callStatus": {
+    "recording": "Optager",
+    "processing": "Transskriberes",
+    "transcribed": "Transskriberet",
+    "analyzed": "Færdig",
+    "failed": "Fejlede"
+  },
+  "callSource": {
+    "microphone": "Mikrofon",
+    "tab": "Fanelyd og mikrofon",
+    "upload": "Uploadet fil"
+  },
+  "findingKind": {
+    "required_point": "Obligatorisk punkt",
+    "forbidden_phrase": "Forbudt formulering",
+    "price_terms": "Pris og vilkår",
+    "other": "Andet"
+  },
+  "saleStatus": {
+    "registered": "Registreret",
+    "awaiting_confirmation": "Afventer bekræftelse",
+    "confirmed": "Bekræftet",
+    "active": "Aktiv",
+    "rejected": "Afvist",
+    "withdrawn": "Fortrudt",
+    "cancelled": "Annulleret"
+  },
+  "saleAction": {
+    "registered": "Registreret",
+    "awaiting_confirmation": "Sendt til bekræftelse",
+    "confirmed": "Markér som bekræftet",
+    "active": "Markér som aktiv",
+    "rejected": "Kunden afviste",
+    "withdrawn": "Kunden fortrød",
+    "cancelled": "Annullér"
+  },
+  "customerKind": {
+    "person": "Privatperson",
+    "business": "Virksomhed"
+  },
+  "versionStatus": {
+    "draft": "Kladde",
+    "published": "Gældende",
+    "retired": "Erstattet"
+  },
+  "complaintStatus": {
+    "open": "Ny",
+    "investigating": "Under behandling",
+    "resolved": "Løst",
+    "rejected": "Afvist"
+  },
+  "channel": {
+    "phone": "Telefon",
+    "email": "E-mail",
+    "letter": "Brev",
+    "web": "Webformular",
+    "other": "Andet"
+  },
+  "coachingKind": {
+    "praise": "Ros",
+    "improve": "Kan blive bedre"
+  },
+  "period": {
+    "today": "I dag",
+    "yesterday": "I går",
+    "this-week": "Denne uge",
+    "last-week": "Sidste uge",
+    "this-month": "Denne måned",
+    "last-month": "Sidste måned",
+    "last-30": "Seneste 30 dage",
+    "last-90": "Seneste 90 dage",
+    "this-year": "Året til dato",
+    "custom": "Vælg datoer"
+  },
+  "userStatus": {
+    "invited": "Inviteret",
+    "active": "Aktiv",
+    "disabled": "Deaktiveret"
+  },
+  "loginResult": {
+    "success": "Gennemført",
+    "cancelled": "Afbrudt",
+    "unknown_identity": "Ukendt bruger",
+    "invalid": "Ugyldig",
+    "error": "Fejl"
+  },
+  "auditAction": {
+    "insert": "Oprettet",
+    "update": "Ændret",
+    "delete": "Slettet"
+  },
+  "auditTable": {
+    "organizations": "Callcenter",
+    "organization_modules": "Modul",
+    "users": "Bruger",
+    "platform_admins": "Superadmin",
+    "teams": "Team",
+    "roles": "Rolle",
+    "role_permissions": "Rettighed i rolle",
+    "memberships": "Medlemskab",
+    "invitations": "Invitation",
+    "identities": "Loginmetode",
+    "sessions": "Sessioner",
+    "blocked_ips": "IP-spærring"
+  },
+  "invoiceStatus": {
+    "draft": "Kladde",
+    "scheduled": "Planlagt",
+    "sent": "Sendt",
+    "paid": "Betalt",
+    "credited": "Krediteret",
+    "payment_missed": "Betaling udeblevet"
+  },
+  "paymentMethod": {
+    "bank": "Bank",
+    "stripe": "Stripe",
+    "other": "Andet"
+  },
+  "interval": {
+    "1": "Hver måned",
+    "3": "Hvert kvartal",
+    "6": "Hvert halve år",
+    "12": "Hvert år"
+  },
+  "modules": {
+    "sales": {
+      "name": "Kunder, produkter og salg",
+      "description": "Kunder, sælgere, produkter, salg og status med kundehistorik."
+    },
+    "product_templates": {
+      "name": "Produktskabeloner",
+      "description": "Pris, vilkår, godkendte formuleringer og regler pr. produkt."
+    },
+    "transcription": {
+      "name": "Transskription",
+      "description": "Tale til tekst med Soniox, søgning og kobling mellem lyd og tekst."
+    },
+    "reports": {
+      "name": "Rapporter",
+      "description": "Rapport efter hver samtale, med rapportskabeloner."
+    },
+    "ai_control": {
+      "name": "AI-kontrol",
+      "description": "Samtalen tjekkes mod produktskabelonen og markeres grøn, gul eller rød."
+    },
+    "sale_verification": {
+      "name": "Salgsverificering",
+      "description": "Kunden accepterer købet med BankID eller Vipps. Tillægsmodul med omkostning pr. accept."
+    },
+    "documentation": {
+      "name": "Dokumentation",
+      "description": "Salgsresumé af, hvad der blev sagt, tilbudt og accepteret."
+    },
+    "complaints": {
+      "name": "Klagehåndtering",
+      "description": "Samlet dokumentation for klagesager."
+    },
+    "dashboard": {
+      "name": "Dashboard og coaching",
+      "description": "Salg, kvalitet, afvigelser og feedback til sælgere."
+    }
+  },
+  "permissions": {
+    "calls.read.own": "Egne samtaler",
+    "calls.read.team": "Teamets samtaler",
+    "calls.read.all": "Alle samtaler i callcentret",
+    "calls.audio.play": "Afspilning af optagelser",
+    "calls.upload": "Uploade optagelser",
+    "customers.read": "Se kunder og historik",
+    "customers.manage": "Oprette og ændre kunder",
+    "sales.manage": "Registrere og ændre salg",
+    "flags.review": "Behandle gule og røde markeringer",
+    "complaints.manage": "Klagesager",
+    "coaching.give": "Feedback til sælgere",
+    "dashboard.team": "Dashboard for teamet",
+    "dashboard.all": "Dashboard for hele callcentret",
+    "products.manage": "Produkter og produktskabeloner",
+    "report_templates.manage": "Rapportskabeloner",
+    "users.manage": "Brugere og teams",
+    "roles.manage": "Roller og rettigheder",
+    "audit.read": "Revisions- og adgangslog",
+    "billing.read": "Fakturaer"
+  },
+  "permissionGroups": {
+    "calls": "Samtaler",
+    "sales": "Salg og kunder",
+    "quality": "Kvalitet og coaching",
+    "administration": "Administration"
+  },
+  "defaultRoles": {
+    "seller": "Sælger",
+    "leader": "Leder",
+    "compliance": "Compliance",
+    "admin": "Admin"
+  }
+}

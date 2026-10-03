@@ -1,0 +1,202 @@
+{
+  "flag": {
+    "approved": "Genehmigt",
+    "deviation": "Abweichung",
+    "violation": "Verstoß"
+  },
+  "callStatus": {
+    "recording": "Wird aufgenommen",
+    "processing": "Wird transkribiert",
+    "transcribed": "Transkribiert",
+    "analyzed": "Fertig",
+    "failed": "Fehlgeschlagen"
+  },
+  "callSource": {
+    "microphone": "Mikrofon",
+    "tab": "Tab-Audio und Mikrofon",
+    "upload": "Hochgeladene Datei"
+  },
+  "findingKind": {
+    "required_point": "Pflichtpunkt",
+    "forbidden_phrase": "Verbotene Formulierung",
+    "price_terms": "Preis und Bedingungen",
+    "other": "Sonstiges"
+  },
+  "saleStatus": {
+    "registered": "Erfasst",
+    "awaiting_confirmation": "Wartet auf Bestätigung",
+    "confirmed": "Bestätigt",
+    "active": "Aktiv",
+    "rejected": "Abgelehnt",
+    "withdrawn": "Widerrufen",
+    "cancelled": "Storniert"
+  },
+  "saleAction": {
+    "registered": "Erfasst",
+    "awaiting_confirmation": "Zur Bestätigung gesendet",
+    "confirmed": "Als bestätigt markieren",
+    "active": "Als aktiv markieren",
+    "rejected": "Kunde hat abgelehnt",
+    "withdrawn": "Kunde hat widerrufen",
+    "cancelled": "Stornieren"
+  },
+  "customerKind": {
+    "person": "Privatperson",
+    "business": "Unternehmen"
+  },
+  "versionStatus": {
+    "draft": "Entwurf",
+    "published": "Aktuell",
+    "retired": "Ersetzt"
+  },
+  "complaintStatus": {
+    "open": "Neu",
+    "investigating": "In Bearbeitung",
+    "resolved": "Gelöst",
+    "rejected": "Abgelehnt"
+  },
+  "channel": {
+    "phone": "Telefon",
+    "email": "E-Mail",
+    "letter": "Brief",
+    "web": "Webformular",
+    "other": "Sonstiges"
+  },
+  "coachingKind": {
+    "praise": "Lob",
+    "improve": "Verbesserungsfähig"
+  },
+  "period": {
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "this-week": "Diese Woche",
+    "last-week": "Letzte Woche",
+    "this-month": "Dieser Monat",
+    "last-month": "Letzter Monat",
+    "last-30": "Letzte 30 Tage",
+    "last-90": "Letzte 90 Tage",
+    "this-year": "Seit Jahresbeginn",
+    "custom": "Daten wählen"
+  },
+  "userStatus": {
+    "invited": "Eingeladen",
+    "active": "Aktiv",
+    "disabled": "Deaktiviert"
+  },
+  "loginResult": {
+    "success": "Erfolgreich",
+    "cancelled": "Abgebrochen",
+    "unknown_identity": "Unbekannter Benutzer",
+    "invalid": "Ungültig",
+    "error": "Fehler"
+  },
+  "auditAction": {
+    "insert": "Erstellt",
+    "update": "Geändert",
+    "delete": "Gelöscht"
+  },
+  "auditTable": {
+    "organizations": "Callcenter",
+    "organization_modules": "Modul",
+    "users": "Benutzer",
+    "platform_admins": "Superadmin",
+    "teams": "Team",
+    "roles": "Rolle",
+    "role_permissions": "Berechtigung in Rolle",
+    "memberships": "Mitgliedschaft",
+    "invitations": "Einladung",
+    "identities": "Anmeldemethode",
+    "sessions": "Sitzungen",
+    "blocked_ips": "IP-Sperre"
+  },
+  "invoiceStatus": {
+    "draft": "Entwurf",
+    "scheduled": "Geplant",
+    "sent": "Versendet",
+    "paid": "Bezahlt",
+    "credited": "Gutgeschrieben",
+    "payment_missed": "Zahlung ausgeblieben"
+  },
+  "paymentMethod": {
+    "bank": "Bank",
+    "stripe": "Stripe",
+    "other": "Sonstiges"
+  },
+  "interval": {
+    "1": "Jeden Monat",
+    "3": "Jedes Quartal",
+    "6": "Jedes Halbjahr",
+    "12": "Jedes Jahr"
+  },
+  "modules": {
+    "sales": {
+      "name": "Kunden, Produkte und Verkäufe",
+      "description": "Kunden, Verkäufer, Produkte, Verkäufe und Status mit Kundenhistorie."
+    },
+    "product_templates": {
+      "name": "Produktvorlagen",
+      "description": "Preis, Bedingungen, genehmigte Formulierungen und Regeln pro Produkt."
+    },
+    "transcription": {
+      "name": "Transkription",
+      "description": "Sprache zu Text mit Soniox, Suche und Verknüpfung von Audio und Text."
+    },
+    "reports": {
+      "name": "Berichte",
+      "description": "Ein Bericht nach jedem Gespräch, mit Berichtsvorlagen."
+    },
+    "ai_control": {
+      "name": "KI-Prüfung",
+      "description": "Das Gespräch wird mit der Produktvorlage abgeglichen und grün, gelb oder rot markiert."
+    },
+    "sale_verification": {
+      "name": "Verkaufsbestätigung",
+      "description": "Der Kunde bestätigt den Kauf mit BankID oder Vipps. Zusatzmodul mit Kosten pro Bestätigung."
+    },
+    "documentation": {
+      "name": "Dokumentation",
+      "description": "Verkaufszusammenfassung dessen, was gesagt, angeboten und angenommen wurde."
+    },
+    "complaints": {
+      "name": "Beschwerdemanagement",
+      "description": "Gesammelte Dokumentation für Beschwerdefälle."
+    },
+    "dashboard": {
+      "name": "Dashboard und Coaching",
+      "description": "Verkäufe, Qualität, Abweichungen und Feedback an Verkäufer."
+    }
+  },
+  "permissions": {
+    "calls.read.own": "Eigene Gespräche",
+    "calls.read.team": "Gespräche des Teams",
+    "calls.read.all": "Alle Gespräche im Callcenter",
+    "calls.audio.play": "Aufnahmen abspielen",
+    "calls.upload": "Aufnahmen hochladen",
+    "customers.read": "Kunden und Historie sehen",
+    "customers.manage": "Kunden anlegen und ändern",
+    "sales.manage": "Verkäufe erfassen und ändern",
+    "flags.review": "Gelbe und rote Markierungen bearbeiten",
+    "complaints.manage": "Beschwerdefälle",
+    "coaching.give": "Feedback an Verkäufer",
+    "dashboard.team": "Dashboard für das Team",
+    "dashboard.all": "Dashboard für das ganze Callcenter",
+    "products.manage": "Produkte und Produktvorlagen",
+    "report_templates.manage": "Berichtsvorlagen",
+    "users.manage": "Benutzer und Teams",
+    "roles.manage": "Rollen und Berechtigungen",
+    "audit.read": "Prüf- und Zugriffsprotokoll",
+    "billing.read": "Rechnungen"
+  },
+  "permissionGroups": {
+    "calls": "Gespräche",
+    "sales": "Verkauf und Kunden",
+    "quality": "Qualität und Coaching",
+    "administration": "Verwaltung"
+  },
+  "defaultRoles": {
+    "seller": "Verkäufer",
+    "leader": "Teamleiter",
+    "compliance": "Compliance",
+    "admin": "Admin"
+  }
+}
