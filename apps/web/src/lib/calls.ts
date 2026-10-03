@@ -44,6 +44,12 @@ export interface CallDetail extends CallSummary {
   // The worker is processing the call right now.
   working: boolean;
   templateVersionId: string | null;
+  // The mandatory points of the template version the call is checked against.
+  requiredPoints: RequiredPoint[];
+  // The signed-in member made the call (only they adjust its notes).
+  isOwn: boolean;
+  // The note templates chosen in the studio (one note each after the call).
+  noteTemplateIds: string[];
   segments: { seq: number; speaker: string | null; startMs: number; endMs: number; text: string }[];
   analyses: {
     id: string;
@@ -56,7 +62,37 @@ export interface CallDetail extends CallSummary {
     reviewedByName: string | null;
     reviewNote: string | null;
   }[];
-  reports: { id: string; templateName: string; content: string; model: string; createdAt: string }[];
+  reports: Note[];
+}
+
+export interface RequiredPoint {
+  id: string;
+  text: string;
+}
+
+// A note (report) from the call: written by AI, possibly adjusted by the seller.
+export interface Note {
+  id: string;
+  templateName: string;
+  status: "pending" | "done" | "failed";
+  error: string | null;
+  // The seller's latest version, or the AI text.
+  content: string | null;
+  aiContent: string | null;
+  editedAt: string | null;
+  editedByName: string | null;
+  edits: number;
+  requestedByName: string | null;
+  model: string | null;
+  createdAt: string;
+}
+
+export interface CallStatusCheck {
+  status: CallStatus;
+  working: boolean;
+  analyses: number;
+  reports: number;
+  pendingReports: number;
 }
 
 export interface RealtimeConfig {

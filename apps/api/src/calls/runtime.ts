@@ -25,12 +25,12 @@ export async function loadCallServices(): Promise<CallServices | undefined> {
   return {
     store: s3Store(bucket),
     soniox: await loadSoniox(),
-    async startWorker(callId) {
+    async startWorker(callId, reportId) {
       await lambda.send(
         new InvokeCommand({
           FunctionName: workerFunction,
           InvocationType: "Event",
-          Payload: new TextEncoder().encode(JSON.stringify(callId ? { callId } : {})),
+          Payload: new TextEncoder().encode(JSON.stringify({ ...(callId && { callId }), ...(reportId && { reportId }) })),
         }),
       );
     },

@@ -10,7 +10,7 @@ import { BadRequest, type Body, isUuid, optionalText, requiredText } from "../ad
 import type { Session } from "../auth/session.ts";
 import type { CallServices } from "../calls/services.ts";
 import { SONIOX_REALTIME_MODEL, SONIOX_REALTIME_URL } from "../calls/soniox.ts";
-import { extension } from "../calls/process.ts";
+import { DEFAULT_REPORT, extension } from "../calls/process.ts";
 import { chunkKey } from "../calls/store.ts";
 import { withSession } from "../me.ts";
 
@@ -87,17 +87,19 @@ export async function createCall(db: pg.Pool, session: Session, services: CallSe
   const customerId = uuidOrNull(body, "customerId", "kunde") ?? null;
   const saleId = uuidOrNull(body, "saleId", "salg") ?? null;
   const productId = uuidOrNull(body, "productId", "produkt") ?? null;
+  const notes = body.noteTemplateIds === undefined ? [] : noteTemplateIds(body.noteTemplateIds);
 
   const created = await withSession(db, session, async (c) => {
     if (!(await moduleEnabled(c, "transcription"))) throw new BadRequest("Transkribering er ikke slått på for callsenteret.");
+    if (notes.length) await activeTemplates(c, notes);
     const settings = await transcriptionMode(c);
     // An uploaded file has no live text.
     const mode = source === "upload" ? "chunked" : settings.mode;
     try {
       const { rows } = await c.query<{ id: string; expires_at: Date }>(
-        `insert into calls (organization_id, user_id, source, transcription_mode, audio_mime, title, customer_id, sale_id, product_id)
-         values (app.current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8) returning id, expires_at`,
-        [session.userId, source, mode, mime, title, customerId, saleId, productId],
+        `insert into calls (organization_id, user_id, source, transcription_mode, audio_mime, title, customer_id, sale_id, product_id, note_templates)
+         values (app.current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9) returning id, expires_at`,
+        [session.userId, source, mode, mime, title, customerId, saleId, productId, notes],
       );
       return { id: rows[0]!.id, expiresAt: rows[0]!.expires_at, mode, terms: settings.terms };
     } catch (error) {
@@ -292,7 +294,8 @@ export async function callStatus(db: pg.Pool, session: Session, callId: string) 
     const { rows } = await c.query(
       `select c.id, c.status, c.error, coalesce(c.lease_until > now(), false) as working,
               (select count(*) from call_analyses a where a.call_id = c.id)::int as analyses,
-              (select count(*) from reports r where r.call_id = c.id)::int as reports
+              (select count(*) from reports r where r.call_id = c.id and r.status = 'done')::int as reports,
+              (select count(*) from reports r where r.call_id = c.id and r.status = 'pending')::int as "pendingReports"
        from calls c where c.id = $1`,
       [callId],
     );
@@ -306,7 +309,8 @@ export async function getCall(db: pg.Pool, session: Session, callId: string, met
     const call = await c.query(
       `select ${SUMMARY}, c.note, c.transcription_mode as "transcriptionMode", c.audio_key is not null as "hasAudio",
               coalesce(c.lease_until > now(), false) as working,
-              c.template_version_id as "templateVersionId"
+              c.template_version_id as "templateVersionId", coalesce(tv.required_points, '[]') as "requiredPoints",
+              c.user_id = app.current_user_id() as "isOwn", c.note_templates as "noteTemplateIds"
        ${FROM} where c.id = $1`,
       [callId],
     );
@@ -323,9 +327,20 @@ export async function getCall(db: pg.Pool, session: Session, callId: string, met
        where a.call_id = $1 order by a.created_at desc`,
       [callId],
     );
+    // The latest adjustment by the seller is the note; the AI text is kept beside it.
     const reports = await c.query(
-      `select id, template_name as "templateName", content, model, created_at as "createdAt"
-       from reports where call_id = $1 order by created_at desc`,
+      `select r.id, r.template_name as "templateName", r.status, r.error, r.model, r.created_at as "createdAt",
+              coalesce(e.content, r.content) as content, r.content as "aiContent",
+              e.created_at as "editedAt", eu.full_name as "editedByName",
+              (select count(*) from report_edits x where x.report_id = r.id)::int as edits,
+              ru.full_name as "requestedByName"
+       from reports r
+       left join lateral (
+         select content, created_at, edited_by from report_edits where report_id = r.id order by created_at desc limit 1
+       ) e on true
+       left join users eu on eu.id = e.edited_by
+       left join users ru on ru.id = r.requested_by
+       where r.call_id = $1 order by r.created_at desc`,
       [callId],
     );
     await logAccess(c, callId, "view", meta);
@@ -364,6 +379,7 @@ export async function updateCall(db: pg.Pool, session: Session, services: CallSe
     customer_id: uuidOrNull(body, "customerId", "kunde"),
     sale_id: uuidOrNull(body, "saleId", "salg"),
     product_id: uuidOrNull(body, "productId", "produkt"),
+    note_templates: body.noteTemplateIds === undefined ? undefined : noteTemplateIds(body.noteTemplateIds),
   };
   const sets = Object.entries(values).filter(([, v]) => v !== undefined);
   const analyse = await withSession(db, session, async (c) => {
@@ -373,6 +389,7 @@ export async function updateCall(db: pg.Pool, session: Session, services: CallSe
     );
     if (!rows[0]) throw new NotFound();
     if (!sets.length) return false;
+    if (values.note_templates) await activeTemplates(c, values.note_templates as string[]);
     try {
       const updated = await c.query<{ template_version_id: string | null }>(
         `update calls set ${sets.map(([k], i) => `${k} = $${i + 2}`).join(", ")} where id = $1 returning template_version_id`,
@@ -405,6 +422,147 @@ export async function reviewAnalysis(db: pg.Pool, session: Session, callId: stri
     );
     if (!rowCount) throw new NotFound();
     return { id: analysisId };
+  });
+}
+
+// --- Notes (Samtalestudio, docs/plan.md, section 18) -------------------------------------------
+
+function translateNote(error: unknown): never {
+  const message = (error as Error).message ?? "";
+  if (message.includes("already being written")) throw new BadRequest("Det lages allerede notater for denne samtalen. Vent til de er ferdige.");
+  if (message.includes("too many notes")) throw new BadRequest("Samtalen kan ha høyst 10 notater.");
+  throw error;
+}
+
+// Another note from the same transcript, with the chosen note template (or the call centre's
+// default). The worker writes it; the studio checks the status until it is done.
+export async function requestNote(db: pg.Pool, session: Session, services: CallServices, callId: string, body: Body) {
+  // Several note templates (the studio's chosen ones), one, or none for the default.
+  const ids = body.templateIds !== undefined ? noteTemplateIds(body.templateIds) : [uuidOrNull(body, "templateId", "notatmal") ?? null].filter((v) => v !== null);
+  const created = await withSession(db, session, async (c) => {
+    const call = await c.query<{ status: string }>("select status from calls where id = $1", [callId]);
+    if (!call.rows[0]) throw new NotFound();
+    if (!["transcribed", "analyzed"].includes(call.rows[0].status)) throw new BadRequest("Samtalen er ikke ferdig transkribert ennå.");
+    const chosen = ids.length ? await activeTemplates(c, ids) : [await defaultTemplate(c)];
+    const made: string[] = [];
+    try {
+      for (const template of chosen) {
+        const { rows } = await c.query<{ id: string }>(
+          `insert into reports (organization_id, call_id, template_id, template_name, requested_by, status)
+           values (app.current_org_id(), $1, $2, $3, app.current_user_id(), 'pending') returning id`,
+          [callId, template.id, template.name],
+        );
+        made.push(rows[0]!.id);
+      }
+    } catch (error) {
+      translateNote(error);
+    }
+    return made;
+  });
+  for (const id of created) await services.startWorker(undefined, id);
+  return { ids: created, status: "pending" };
+}
+
+// The call centre's default note template, or VeriQall's built-in one.
+async function defaultTemplate(c: pg.PoolClient): Promise<{ id: string | null; name: string }> {
+  const { rows } = await c.query<{ id: string; name: string }>(
+    "select id, name from report_templates where organization_id = app.current_org_id() and is_default and archived_at is null",
+  );
+  return rows[0] ?? { id: null, name: DEFAULT_REPORT.name };
+}
+
+// Note templates in use, in the order chosen; an unknown or archived one is refused.
+async function activeTemplates(c: pg.PoolClient, ids: string[]): Promise<{ id: string; name: string }[]> {
+  const { rows } = await c.query<{ id: string; name: string }>(
+    "select id, name from report_templates where id = any($1::uuid[]) and archived_at is null",
+    [ids],
+  );
+  if (rows.length !== ids.length) throw new BadRequest("Ukjent notatmal.");
+  return ids.map((id) => rows.find((r) => r.id === id)!);
+}
+
+function noteTemplateIds(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length > 5 || !value.every((v) => typeof v === "string" && isUuid(v))) {
+    throw new BadRequest("Velg høyst fem notatmaler.");
+  }
+  return [...new Set(value as string[])];
+}
+
+// The seller adjusts the note. The AI text stays as it was; each adjustment is kept.
+export async function editNote(db: pg.Pool, session: Session, callId: string, reportId: string, body: Body) {
+  const content = requiredText(body, "content", "Notatet", 20000);
+  return withSession(db, session, async (c) => {
+    const { rows } = await c.query<{ own: boolean; status: string; content: string | null }>(
+      `select c.user_id = app.current_user_id() as own, r.status,
+              coalesce((select content from report_edits where report_id = r.id order by created_at desc limit 1), r.content) as content
+       from reports r join calls c on c.id = r.call_id where r.id = $1 and r.call_id = $2`,
+      [reportId, callId],
+    );
+    const found = rows[0];
+    if (!found) throw new NotFound();
+    if (!found.own) throw new BadRequest("Bare selgeren som hadde samtalen, kan endre notatet.");
+    if (found.status !== "done") throw new BadRequest("Notatet er ikke ferdig ennå.");
+    if (found.content === content) return { id: reportId, changed: false };
+    await c.query(
+      `insert into report_edits (organization_id, report_id, call_id, content, edited_by)
+       values (app.current_org_id(), $1, $2, $3, app.current_user_id())`,
+      [reportId, callId, content],
+    );
+    return { id: reportId, changed: true };
+  });
+}
+
+// The seller's earlier versions of a note, newest first, with the AI text last.
+export async function noteHistory(
+  db: pg.Pool,
+  session: Session,
+  callId: string,
+  reportId: string,
+  meta: { ip?: string; userAgent?: string },
+) {
+  return withSession(db, session, async (c) => {
+    const report = await c.query<{ content: string | null; created_at: Date; model: string | null }>(
+      "select content, created_at, model from reports where id = $1 and call_id = $2",
+      [reportId, callId],
+    );
+    if (!report.rows[0]) throw new NotFound();
+    const edits = await c.query(
+      `select e.content, e.created_at as "createdAt", u.full_name as "byName"
+       from report_edits e left join users u on u.id = e.edited_by
+       where e.report_id = $1 order by e.created_at desc`,
+      [reportId],
+    );
+    await logAccess(c, callId, "view", meta);
+    return [
+      ...edits.rows.map((e) => ({ ...e, ai: false })),
+      { content: report.rows[0].content, createdAt: report.rows[0].created_at, byName: null, ai: true },
+    ];
+  });
+}
+
+// The member's default product (the template) in the studio.
+export async function getStudio(db: pg.Pool, session: Session) {
+  return withSession(db, session, async (c) => {
+    const { rows } = await c.query<{ product_id: string | null }>(
+      `select s.product_id from studio_preferences s join products p on p.id = s.product_id and p.archived_at is null`,
+    );
+    return { productId: rows[0]?.product_id ?? null };
+  });
+}
+
+export async function setStudio(db: pg.Pool, session: Session, body: Body) {
+  const productId = uuidOrNull(body, "productId", "produkt") ?? null;
+  return withSession(db, session, async (c) => {
+    if (productId) {
+      const { rowCount } = await c.query("select 1 from products where id = $1 and archived_at is null", [productId]);
+      if (!rowCount) throw new BadRequest("Ukjent produkt.");
+    }
+    await c.query(
+      `insert into studio_preferences (organization_id, user_id, product_id) values (app.current_org_id(), app.current_user_id(), $1)
+       on conflict (organization_id, user_id) do update set product_id = excluded.product_id, updated_at = now()`,
+      [productId],
+    );
+    return { productId };
   });
 }
 

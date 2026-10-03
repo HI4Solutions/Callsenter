@@ -120,8 +120,17 @@ export function SaleDocumentationView({ doc }: { doc: SaleDocumentation }) {
           )}
           {c.report && (
             <>
-              <h3 className="mt-4 font-bold">Rapport ({c.report.templateName})</h3>
+              <h3 className="mt-4 font-bold">Notat ({c.report.templateName})</h3>
               <p className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{c.report.content}</p>
+              {c.report.aiContent && (
+                <>
+                  <p className="mt-2 text-sm text-muted">
+                    Justert av {c.report.editedByName ?? "selgeren"}
+                    {c.report.editedAt && ` ${formatDateTime(c.report.editedAt)}`}. AI-versjonen:
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">{c.report.aiContent}</p>
+                </>
+              )}
             </>
           )}
           {c.segments.length > 0 && (

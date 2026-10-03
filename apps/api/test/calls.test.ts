@@ -6,7 +6,7 @@ import { createHandler } from "../src/api.ts";
 import { sha256 } from "../src/auth/crypto.ts";
 import type { AuthDeps } from "../src/auth/types.ts";
 import type { Ai } from "../src/calls/ai.ts";
-import { housekeeping, processCall, type WorkerDeps } from "../src/calls/process.ts";
+import { housekeeping, pendingReports, processCall, processReport, type WorkerDeps } from "../src/calls/process.ts";
 import type { CallServices } from "../src/calls/services.ts";
 import { Soniox, toSegments } from "../src/calls/soniox.ts";
 import type { AudioStore } from "../src/calls/store.ts";
@@ -92,7 +92,15 @@ const ai: Ai = {
   },
 };
 
-const services: CallServices = { store, soniox, startWorker: async (id) => void (id && started.push(id)) };
+const startedNotes: string[] = [];
+const services: CallServices = {
+  store,
+  soniox,
+  startWorker: async (id, reportId) => {
+    if (id) started.push(id);
+    if (reportId) startedNotes.push(reportId);
+  },
+};
 const deps: AuthDeps = {
   config: { appOrigin: ORIGIN, callbackBase: "https://api.test", providers: {} },
   authDb: auth,
@@ -184,7 +192,7 @@ describe("calls: recording to report", () => {
       ["1", "Det er helt gratis."],
     ]);
     expect(detail.body.analyses[0].findings[1]).toMatchObject({ level: "red", quote: "Det er helt gratis.", startMs: 40_000 });
-    expect(detail.body.reports[0]).toMatchObject({ templateName: "Standardrapport", content: "Sammendrag: Kari ringte om fastpris." });
+    expect(detail.body.reports[0]).toMatchObject({ templateName: "Standardnotat", content: "Sammendrag: Kari ringte om fastpris." });
 
     const audio = await call(seller, "GET", `/org/calls/${id}/audio`);
     expect(audio.body.url).toBe(`https://s3.test/get/${s.org}/${id}/audio`);
@@ -241,6 +249,118 @@ describe("calls: recording to report", () => {
     expect(started).toEqual([second.id]);
     detail = await call(seller2, "GET", `/org/calls/${second.id}`);
     expect(detail.body.templateVersion).toBe(1);
+  });
+});
+
+describe("calls: studio", () => {
+  it("uses the seller's additional information for the note but never for the AI control", async () => {
+    const s = await setup();
+    const seller = await sessionFor(await member(s.org, "seller"), s.org);
+    const created = await call(seller, "POST", "/org/calls", { source: "tab", mime: "audio/webm", productId: s.productId });
+    const id = created.body.id as string;
+    expect((await call(seller, "PATCH", `/org/calls/${id}`, { note: "Kunden har avtale med Fjordkraft til mars." })).status).toBe(200);
+    const chunk = await call(seller, "POST", `/org/calls/${id}/chunks`, { seq: 0 });
+    objects.set(chunk.body.url.replace("https://s3.test/put/", ""), new TextEncoder().encode("lyd"));
+    await call(seller, "POST", `/org/calls/${id}/complete`, {});
+    prompts.length = 0;
+    await processCall(workerDeps, id);
+    expect(prompts[0]).not.toContain("Fjordkraft");
+    expect(prompts[1]).toContain("<additional_information>\nKunden har avtale med Fjordkraft til mars.");
+    const detail = await call(seller, "GET", `/org/calls/${id}`);
+    expect(detail.body).toMatchObject({ isOwn: true, note: "Kunden har avtale med Fjordkraft til mars." });
+    expect(detail.body.requiredPoints).toEqual([expect.objectContaining({ text: "Opplys om angreretten" })]);
+  });
+
+  it("makes another note with another template, lets the seller adjust it and keeps the AI text", async () => {
+    const s = await setup();
+    const sellerId = await member(s.org, "seller");
+    const seller = await sessionFor(sellerId, s.org);
+    const { id } = await record(seller, { productId: s.productId });
+    // Not before the call is transcribed.
+    expect((await call(seller, "POST", `/org/calls/${id}/notes`, {})).body.error).toBe("Samtalen er ikke ferdig transkribert ennå.");
+    await processCall(workerDeps, id);
+
+    const template = await call(s.admin, "POST", "/org/report-templates", { name: "Kort notat", instructions: "Tre linjer." });
+    const asked = await call(seller, "POST", `/org/calls/${id}/notes`, { templateIds: [template.body.id] });
+    expect(asked.status).toBe(201);
+    const askedId = asked.body.ids[0] as string;
+    expect(startedNotes).toContain(askedId);
+    expect((await call(seller, "POST", `/org/calls/${id}/notes`, { templateIds: ["00000000-0000-4000-8000-000000000000"] })).body.error).toBe(
+      "Ukjent notatmal.",
+    );
+    let status = await call(seller, "GET", `/org/calls/${id}`, undefined, { status: "1" });
+    expect(status.body).toMatchObject({ reports: 1, pendingReports: 1 });
+
+    prompts.length = 0;
+    await processReport(workerDeps, askedId);
+    expect(prompts[0]).toContain("<report_instructions>\nTre linjer.");
+    status = await call(seller, "GET", `/org/calls/${id}`, undefined, { status: "1" });
+    expect(status.body).toMatchObject({ reports: 2, pendingReports: 0 });
+
+    const note = (await call(seller, "GET", `/org/calls/${id}`)).body.reports[0];
+    expect(note).toMatchObject({ templateName: "Kort notat", status: "done", edits: 0, requestedByName: expect.any(String) });
+    const edited = await call(seller, "PATCH", `/org/calls/${id}/notes/${note.id}`, { content: "Kari takket ja til fastpris." });
+    expect(edited.body).toMatchObject({ changed: true });
+    // Saving the same text again adds nothing.
+    expect((await call(seller, "PATCH", `/org/calls/${id}/notes/${note.id}`, { content: "Kari takket ja til fastpris." })).body).toMatchObject({
+      changed: false,
+    });
+    const after = (await call(s.admin, "GET", `/org/calls/${id}`)).body.reports[0];
+    expect(after).toMatchObject({ content: "Kari takket ja til fastpris.", aiContent: "Sammendrag: Kari ringte om fastpris.", edits: 1 });
+    // A leader sees the note and its history, but only the seller adjusts it.
+    expect((await call(s.admin, "PATCH", `/org/calls/${id}/notes/${note.id}`, { content: "Endret" })).body.error).toBe(
+      "Bare selgeren som hadde samtalen, kan endre notatet.",
+    );
+    const history = await call(s.admin, "GET", `/org/calls/${id}/notes/${note.id}/history`);
+    expect(history.body.map((h: { ai: boolean }) => h.ai)).toEqual([false, true]);
+    // A colleague cannot ask for notes on someone else's call.
+    const colleague = await sessionFor(await member(s.org, "seller"), s.org);
+    expect((await call(colleague, "POST", `/org/calls/${id}/notes`, {})).status).toBe(404);
+  });
+
+  it("fails a note when the modules are off, and picks up notes whose worker never started", async () => {
+    const s = await setup();
+    const seller = await sessionFor(await member(s.org, "seller"), s.org);
+    const { id } = await record(seller, {});
+    await processCall(workerDeps, id);
+    const asked = (await call(seller, "POST", `/org/calls/${id}/notes`, {})).body.ids[0] as string;
+    await owner.query("update reports set created_at = now() - interval '5 minutes' where id = $1", [asked]);
+    expect(await pendingReports(worker)).toContain(asked);
+    await owner.query("update organization_modules set enabled = false where organization_id = $1 and module = 'reports'", [s.org]);
+    await processReport(workerDeps, asked);
+    const note = (await call(seller, "GET", `/org/calls/${id}`)).body.reports.find((r: { id: string }) => r.id === asked);
+    expect(note).toMatchObject({ status: "failed", error: "Rapporter er ikke slått på for callsenteret." });
+    expect((await call(seller, "POST", `/org/calls/${id}/notes`, {})).body.code).toBe("modul_av");
+  });
+
+  it("writes one note per note template chosen in the studio", async () => {
+    const s = await setup();
+    const seller = await sessionFor(await member(s.org, "seller"), s.org);
+    const first = await call(s.admin, "POST", "/org/report-templates", { name: "Kundenotat", instructions: "Til kunden." });
+    const second = await call(s.admin, "POST", "/org/report-templates", { name: "Ledernotat", instructions: "Til lederen." });
+    expect((await call(seller, "POST", "/org/calls", { source: "tab", mime: "audio/webm", noteTemplateIds: ["x"] })).status).toBe(400);
+    const { id } = await record(seller, { noteTemplateIds: [first.body.id] });
+    // Changed while recording or before the call is processed.
+    expect((await call(seller, "PATCH", `/org/calls/${id}`, { noteTemplateIds: [second.body.id, first.body.id] })).status).toBe(200);
+    prompts.length = 0;
+    await processCall(workerDeps, id);
+    const detail = (await call(seller, "GET", `/org/calls/${id}`)).body;
+    expect(detail.noteTemplateIds).toEqual([second.body.id, first.body.id]);
+    expect(detail.reports.map((r: { templateName: string }) => r.templateName).sort()).toEqual(["Kundenotat", "Ledernotat"]);
+    expect(prompts.filter((p) => p.includes("Til lederen."))).toHaveLength(1);
+    // "Regenerer" with both gives two more.
+    const again = await call(seller, "POST", `/org/calls/${id}/notes`, { templateIds: [first.body.id, second.body.id] });
+    expect(again.body.ids).toHaveLength(2);
+  });
+
+  it("remembers each member's default product", async () => {
+    const s = await setup();
+    const seller = await sessionFor(await member(s.org, "seller"), s.org);
+    expect((await call(seller, "GET", "/org/studio")).body).toEqual({ productId: null });
+    expect((await call(seller, "PUT", "/org/studio", { productId: s.productId })).status).toBe(200);
+    expect((await call(seller, "GET", "/org/studio")).body).toEqual({ productId: s.productId });
+    expect((await call(seller, "PUT", "/org/studio", { productId: null })).status).toBe(200);
+    expect((await call(seller, "GET", "/org/studio")).body).toEqual({ productId: null });
   });
 });
 
