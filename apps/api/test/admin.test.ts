@@ -211,6 +211,26 @@ describe("superadmin API: invitations", () => {
     expect((await call(cookie, "DELETE", `/admin/organizations/${body.id}/invitations/${invited.body.id}`)).status).toBe(404);
   });
 
+  it("adds a person from another call centre without a link, and stops their old link", async () => {
+    const { cookie } = await superadmin();
+    const first = (await call(cookie, "POST", "/admin/organizations", { name: "Første AS" })).body;
+    const second = (await call(cookie, "POST", "/admin/organizations", { name: "Andre AS" })).body;
+    const phone = `+479${String(randomBytes(4).readUInt32BE() % 10_000_000).padStart(7, "0")}`;
+    const invited = await call(cookie, "POST", `/admin/organizations/${first.id}/invitations`, { fullName: "Kari", phone });
+    expect(invited.body.link).toEqual(expect.any(String));
+
+    // The same person in another call centre: added, but no link that could claim the account.
+    const again = await call(cookie, "POST", `/admin/organizations/${second.id}/invitations`, { fullName: "Kari", phone });
+    expect(again.status).toBe(201);
+    expect(again.body).toMatchObject({ userId: invited.body.userId, link: null, emailed: false });
+    const links = await owner.query("select count(*)::int as n from invitations where user_id = $1", [invited.body.userId]);
+    expect(links.rows[0].n).toBe(1);
+
+    // The first link can no longer attach a new login, since the person now belongs to two.
+    const redeemable = await owner.query("select app.invitation_redeemable($1) as ok", [invited.body.id]);
+    expect(redeemable.rows[0].ok).toBe(false);
+  });
+
   it("requires a name and a phone number or e-mail, and a known role", async () => {
     const { cookie } = await superadmin();
     const { body } = await call(cookie, "POST", "/admin/organizations", { name: "Feil AS" });

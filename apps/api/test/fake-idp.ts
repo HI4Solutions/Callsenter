@@ -22,7 +22,7 @@ export async function createFakeIdp(options: FakeIdpOptions) {
   const jwk = { ...(await exportJWK(publicKey)), kid: "test-key", alg: "RS256", use: "sig" };
   const codes = new Map<string, { user: FakeUser; nonce: string; challenge: string; redirectUri: string }>();
   const accessTokens = new Map<string, FakeUser>();
-  const tamper = { nonce: undefined as string | undefined, omitIdToken: false };
+  const tamper = { nonce: undefined as string | undefined, omitIdToken: false, acr: undefined as string | undefined };
 
   const discovery = {
     issuer: options.issuer,
@@ -55,7 +55,7 @@ export async function createFakeIdp(options: FakeIdpOptions) {
       const accessToken = randomUUID();
       accessTokens.set(accessToken, grant.user);
       const claims: Record<string, unknown> = { sub: grant.user.sub, nonce: tamper.nonce ?? grant.nonce };
-      if (!options.userinfo) Object.assign(claims, { name: grant.user.name, acr: "urn:grn:authn:no:bankid" });
+      if (!options.userinfo) Object.assign(claims, { name: grant.user.name, acr: tamper.acr ?? "urn:grn:authn:no:bankid" });
       const idToken = await new SignJWT(claims)
         .setProtectedHeader({ alg: "RS256", kid: "test-key" })
         .setIssuer(options.issuer)

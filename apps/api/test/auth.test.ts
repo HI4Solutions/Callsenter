@@ -52,6 +52,7 @@ beforeEach(() => {
   clearOidcCaches();
   vipps.tamper.nonce = undefined;
   bankid.tamper.nonce = undefined;
+  bankid.tamper.acr = undefined;
 });
 
 const meta = { ip: "127.0.0.1", userAgent: "vitest" };
@@ -154,6 +155,14 @@ describe("BankID login", () => {
   it("refuses an id token with the wrong nonce", async () => {
     const { token } = await invite();
     bankid.tamper.nonce = "someone-elses-nonce";
+    const { result } = await login("bankid", { sub: randomSub() }, { invite: token });
+    expect(errorOf(result.location)).toBe("feil");
+    expect(result.sessionToken).toBeUndefined();
+  });
+
+  it("refuses another e-ID level than BankID, whatever was asked for", async () => {
+    const { token } = await invite();
+    bankid.tamper.acr = "urn:grn:authn:no:other";
     const { result } = await login("bankid", { sub: randomSub() }, { invite: token });
     expect(errorOf(result.location)).toBe("feil");
     expect(result.sessionToken).toBeUndefined();
