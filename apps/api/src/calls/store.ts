@@ -4,7 +4,8 @@ import { DeleteObjectsCommand, GetObjectCommand, ListObjectsV2Command, PutObject
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export interface AudioStore {
-  presignPut(key: string, contentType: string): Promise<string>;
+  // The size is signed into the URL: S3 refuses a body of any other length.
+  presignPut(key: string, contentType: string, size: number): Promise<string>;
   presignGet(key: string, filename: string, contentType: string): Promise<string>;
   list(prefix: string): Promise<{ key: string; size: number }[]>;
   get(key: string): Promise<Uint8Array>;
@@ -18,8 +19,10 @@ const GET_SECONDS = 600;
 
 export function s3Store(bucket: string, client = new S3Client({})): AudioStore {
   return {
-    presignPut: (key, contentType) =>
-      getSignedUrl(client, new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType }), { expiresIn: PUT_SECONDS }),
+    presignPut: (key, contentType, size) =>
+      getSignedUrl(client, new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType, ContentLength: size }), {
+        expiresIn: PUT_SECONDS,
+      }),
     presignGet: (key, filename, contentType) =>
       getSignedUrl(
         client,
