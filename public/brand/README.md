@@ -12,4 +12,4 @@ Denne mappen er kilden. `apps/web` kopierer den til `apps/web/public/brand/` (gi
 
 Fra andre:
 
-- `bankid-logo.svg` og `bankid-logo-white.svg`: BankID-logoen i BankIDs lilla (#39134C) og i hvitt, levert av Nadeem 3. oktober 2026. Knappene bruker `apps/web/src/components/bankid-logo.tsx`, som tegner logoen lilla i lys modus og hvit i mørk modus. Bør byttes med filene fra BankIDs merkevaresider før produksjon.
+- `bankid-logo.svg` og `bankid-logo-white.svg`: BankID-logoen i BankIDs lilla (#39134C) og i hvitt, levert av Nadeem 3. oktober 2026. Knappene (`apps/web/src/components/provider-buttons.tsx`) bruker symbolet, de åtte strekene, i hvitt på BankIDs lilla. Bør byttes med filene fra BankIDs merkevaresider før produksjon.

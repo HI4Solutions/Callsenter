@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { BankIdLogo } from "@/components/bankid-logo";
 import { PasskeyLogin } from "@/components/passkey-login";
+import { BankIdButton, VippsButton } from "@/components/provider-buttons";
 import { SignedInRedirect } from "@/components/signed-in-redirect";
 import { loginErrorMessage, loginStartUrl, safeNext } from "@/lib/auth";
 
@@ -36,20 +36,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
       )}
 
       <div className="mt-8 flex flex-col gap-3">
-        {/* TODO before production: Vipps' official login button (own designs are not allowed). */}
-        <a
-          href={loginStartUrl("vipps", { invite, next })}
-          className="inline-flex min-h-12 items-center justify-center rounded-lg bg-brand px-5 font-semibold text-on-brand"
-        >
-          Logg inn med Vipps
-        </a>
-        <a
-          href={loginStartUrl("bankid", { invite, next })}
-          aria-label="Logg inn med BankID"
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-line bg-surface px-5 font-semibold"
-        >
-          Logg inn med <BankIdLogo />
-        </a>
+        {/* TODO before production: Vipps' official symbol (own designs are not allowed). */}
+        <VippsButton href={loginStartUrl("vipps", { invite, next })}>Logg inn med Vipps</VippsButton>
+        <BankIdButton href={loginStartUrl("bankid", { invite, next })}>Logg inn med BankID</BankIdButton>
         {!invite && <PasskeyLogin next={next} />}
       </div>
     </section>

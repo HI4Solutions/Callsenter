@@ -39,7 +39,7 @@ Ferdig:
 - Passkeys: innlogging med passkey (WebAuthn, `apps/api/src/auth/passkey.ts`), som teller som sterk innlogging som BankID. Legges til under `/konto` i en BankID-økt. Migrasjonen `0007_passkeys.sql`. Se `docs/auth.md`.
 
 Ikke gjort:
-- Vipps-knappen må byttes til Vipps' offisielle før produksjon. BankID-knappene har BankIDs logo (3. oktober).
+- Vipps-knappen må byttes til Vipps' offisielle før produksjon. Knappene for Vipps og BankID har leverandørens farge og symbol til venstre (3. oktober); Vipps-symbolet er en plassholder.
 - Produksjon er ikke opprettet, og skal ikke opprettes før lansering. Lambda-kvoten er økt til 1000 i kontoen (3. oktober); en egen produksjonskonto må få den økt på nytt.
 - Egne domener for produksjon (`app.veriqall.no`, `api.veriqall.no`). I staging virker `staging.veriqall.no` og `api.staging.veriqall.no`.
 - Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.

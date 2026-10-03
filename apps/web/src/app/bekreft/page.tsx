@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ErrorMessage, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
-import { BankIdLogo } from "@/components/bankid-logo";
+import { ErrorMessage, secondaryButton, LoadState } from "@/components/admin/field";
+import { BankIdButton, VippsButton } from "@/components/provider-buttons";
 import { API_URL } from "@/lib/auth";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { usePageTitle } from "@/lib/use-page-title";
@@ -132,21 +132,12 @@ export default function ConfirmPage() {
         <p className="text-sm text-muted">Tilbudet må godtas av kjøperen selv. Du godtar ved å identifisere deg, og vi bruker bare navnet ditt (og mobilnummeret ved Vipps) som bevis.</p>
         <ErrorMessage message={error} />
         <div className="flex flex-wrap gap-2">
-          <a
-            href={read ? `${API_URL}/confirm/bankid/start?t=${encodeURIComponent(token)}` : undefined}
-            aria-disabled={!read}
-            aria-label="Godta med BankID"
-            className={`${secondaryButton} gap-2 ${read ? "" : "pointer-events-none opacity-60"}`}
-          >
-            Godta med <BankIdLogo height={18} />
-          </a>
-          <a
-            href={read ? `${API_URL}/confirm/vipps/start?t=${encodeURIComponent(token)}` : undefined}
-            aria-disabled={!read}
-            className={`${primaryButton} ${read ? "" : "pointer-events-none opacity-60"}`}
-          >
+          <BankIdButton href={`${API_URL}/confirm/bankid/start?t=${encodeURIComponent(token)}`} disabled={!read}>
+            Godta med BankID
+          </BankIdButton>
+          <VippsButton href={`${API_URL}/confirm/vipps/start?t=${encodeURIComponent(token)}`} disabled={!read}>
             Godta med Vipps
-          </a>
+          </VippsButton>
           <button type="button" disabled={busy} className={secondaryButton} onClick={decline}>
             Avslå
           </button>
