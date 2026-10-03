@@ -79,6 +79,8 @@ Ikke gjort:
 - Dashboard per nivå, admin (3. oktober): Administrasjon har fått Oversikt som første fane. Den viser brukere og innloggingsmåter, team og roller, aktivitet per team, forbruk, fakturaer og moduler. Brukere er flyttet til `/administrasjon/brukere`. Migrasjonen `0031_org_summary.sql`.
 - Fase 1, PR F1 (grunndata): kunder (privat og bedrift, ingen fødselsnumre) og produkter med versjonerte produktmaler, migrasjonen `0011_customers_products.sql`, API under `/org/customers` og `/org/products`, og sidene `/kunder` og `/produkter` (`docs/plan.md`, seksjon 12).
 
+- Landingsside (3. oktober, påbegynt, `docs/plan.md`, seksjon 20): den offentlige forsiden på alle fem språk ligger som `apps/web/src/app/landingsside/page.dev.tsx` og finnes bare i utvikling, så ingen ser den i staging eller produksjon ennå. Tekstene i navnerommet `landing` lastes bare i utvikling (`DEV_NAMESPACES`). Kontaktadressen er en plassholder, og prisene står uten tall.
+
 **Neste steg:** Test fase 2 i staging (Soniox-nøkkel fra EU-prosjekt, Claude slått på i Bedrock, moduler på for callsenteret). Test fase 3 i staging (lenke til kunden, aksept med BankID og Vipps, klage med dokumentasjon). Test fase 4A og 4B i staging (dashboard, coaching og fakturering). Alle fasene i planen er bygget. Seksjon 13–16 er godkjent 3. oktober og justeres etter full testing. Det som gjenstår, er juridiske avklaringer, databehandleravtaler, e-post (SES), Vipps-knappen, og senere SMS (med Salgsverifisering), Stripe og produksjon.
 
 ## Kommandoer

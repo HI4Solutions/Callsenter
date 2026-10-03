@@ -1,0 +1,145 @@
+{
+  "meta": {
+    "title": "Dokumenteret og verificeret telefonsalg",
+    "description": "VeriQall optager, transskriberer og kontrollerer salgssamtaler med AI, lader kunden bekræfte købet med BankID eller Vipps og samler dokumentationen til opfølgning, klager og coaching."
+  },
+  "hero": {
+    "eyebrow": "Til callcentre, der sælger over telefonen",
+    "title": "Hver samtale dokumenteret. Hvert salg verificeret.",
+    "lead": "VeriQall optager og transskriberer salgssamtalerne, kontrollerer dem mod produktskabelonen med AI, lader kunden bekræfte købet med BankID eller Vipps og samler alt som dokumentation til opfølgning, klager og coaching.",
+    "demo": "Bed om en demo",
+    "demoSubject": "Demo af VeriQall",
+    "login": "Log ind",
+    "fact1": "Lagres og behandles i EU",
+    "fact2": "Login med BankID, Vipps og passkey",
+    "fact3": "Fem sprog i appen, over 60 i transskriptionen"
+  },
+  "demo": {
+    "caption": "AI-kontrollen, som sælgeren ser den, mens samtalen er i gang.",
+    "title": "AI-kontrol",
+    "template": "Mobil Fri 10 GB",
+    "reference": "Reference VQ-7K3M-Q9TX",
+    "point1": "Pris oplyst: 299 kr. pr. måned",
+    "point2": "Bindingsperiode på 12 måneder forklaret",
+    "point3": "Fortrydelsesret på 14 dage nævnt",
+    "point3Note": "Først nævnt, efter at kunden sagde ja (04:12).",
+    "point4": "Ingen forbudte formuleringer",
+    "transcriptTitle": "Transskription",
+    "seller": "Sælger",
+    "customer": "Kunde",
+    "line1": "Så sætter vi aftalen op fra den 1. november: 299 kroner om måneden med tolv måneders binding.",
+    "line2": "Ja, det lyder fint.",
+    "line3": "Og du har naturligvis 14 dages fortrydelsesret.",
+    "confirmation": "Kunden accepterede tilbuddet med BankID den 3. oktober kl. 14:32."
+  },
+  "why": {
+    "title": "Telefonsalg stiller strenge krav, og beviserne ligger i samtalen",
+    "item1Title": "Kunden skal acceptere skriftligt",
+    "item1": "Ved telefonsalg til forbrugere er aftalen mange steder først bindende, når kunden har accepteret tilbuddet skriftligt efter samtalen. Uden et tydeligt spor bliver salget let bestridt.",
+    "item2Title": "Klagen kommer uger senere",
+    "item2": "Så skal nogen finde optagelsen, lytte samtalen igennem og vise, hvad der faktisk blev sagt, tilbudt og accepteret.",
+    "item3Title": "Ingen har tid til at lytte til alle samtaler",
+    "item3": "Ledere og compliance hører et udvalg. Afvigelser opdages sent, og coachingen bygger på mavefornemmelse."
+  },
+  "how": {
+    "title": "Sådan virker det",
+    "step1Title": "Optag i browseren",
+    "step1": "Sælgeren optager samtalen i Samtalestudiet, fra mikrofonen eller fra det faneblad, hvor telefoniløsningen eller Teams kører. Ingen installation og intet skift af telefonisystem.",
+    "step2Title": "Transskription, mens samtalen er i gang",
+    "step2": "Teksten kommer inden for få sekunder, med tidsstempel og kobling til lyden. Over 60 sprog og en søgning, der finder hver samtale igen.",
+    "step3Title": "AI-kontrol mod produktskabelonen",
+    "step3": "Pris, bindingsperiode, fortrydelsesret samt godkendte og forbudte formuleringer tjekkes mod skabelonen for produktet. Advarselslamperne lyser grønt, gult eller rødt, mens samtalen er i gang, så sælgeren kan rette op, før kunden lægger på.",
+    "step4Title": "Kunden bekræfter med BankID eller Vipps",
+    "step4": "Kunden får et link, ser tilbuddet med pris, binding og fortrydelsesfrist og accepterer eller afviser. Kun køberen selv kan acceptere, og beviset gemmes, så det aldrig kan ændres.",
+    "step4Note": "Tillægsmodul. Bruger I jeres eget system til bekræftelse, indsætter sælgeren samtalens reference dér.",
+    "step5Title": "Dokumentation og klager",
+    "step5": "Hvert salg får et notat skrevet af AI og en samlet dokumentation: tilbuddet, accepten, samtalen, transskriptionen og kontrollen. En klage behandles med alt på ét sted."
+  },
+  "features": {
+    "title": "Alt, hvad callcentret har brug for",
+    "intro": "Modulerne slås til pr. callcenter, så I betaler for det, I bruger.",
+    "f1Title": "Samtalestudie",
+    "f1": "Advarselslamper pr. obligatorisk punkt, transskription live, et notat, der skrives, mens du taler, og en reference, du indsætter i jeres eget salgssystem.",
+    "f2Title": "Produktskabeloner",
+    "f2": "Pris, vilkår, obligatoriske punkter og forbudte formuleringer pr. produkt. Versioneret, så hver samtale måles mod den skabelon, der gjaldt dengang.",
+    "f3Title": "Notater og rapporter",
+    "f3": "AI skriver notatet efter jeres egne notatskabeloner, på det sprog I vælger. Sælgeren kan justere det, og AI-versionen bevares.",
+    "f4Title": "Kunder og salg",
+    "f4": "Kunder, produkter og salg med statusforløb og fuld historik, koblet til samtalerne.",
+    "f5Title": "Klagehåndtering",
+    "f5": "Optagelse, transskription, tilbud, accept og afvigelser samles til færdig klagedokumentation.",
+    "f6Title": "Dashboard og coaching",
+    "f6": "Egne tal til sælgeren, teamet til lederen, hele callcentret til admin og et særskilt kvalitetsfaneblad til compliance. Feedback går direkte til sælgeren.",
+    "f7Title": "Roller og rettigheder",
+    "f7": "Opret jeres egne roller, og giv rettigheder pr. rolle. Ingen kan give mere væk, end de selv har.",
+    "f8Title": "Administration",
+    "f8": "Brugere, teams, roller, fakturaer og beskeder til os, samlet for callcentrets admin."
+  },
+  "roles": {
+    "title": "Lavet til hele callcentret",
+    "r1Title": "Sælgeren",
+    "r1": "Ser lamperne, mens samtalen er i gang, får notatet skrevet og skal aldrig lede efter samtalen senere.",
+    "r2Title": "Lederen",
+    "r2": "Ser teamet samlet, hvem der har brug for opfølgning, og giver feedback på konkrete samtaler.",
+    "r3Title": "Compliance",
+    "r3": "Behandler flagene i kø, bygger klagesagen ud fra dokumentationen og ser, hvem der har åbnet hvilke optagelser.",
+    "r4Title": "Admin",
+    "r4": "Styrer brugere, teams og roller og ser forbrug og fakturaer."
+  },
+  "trust": {
+    "title": "Bygget til at være bevis",
+    "intro": "Dokumentationen skal holde, når nogen bestrider et salg. Derfor er VeriQall bygget med sporing, kryptering og adgangsstyring fra bunden.",
+    "t1Title": "Lagret i EU",
+    "t1": "Optagelser, transskriptioner og data lagres krypteret hos AWS i Stockholm. Transskriptionen sker i EU, og AI-kontrollen kører hos AWS i samme region.",
+    "t2Title": "Hvert callcenter ser kun sit eget",
+    "t2": "Data er adskilt pr. callcenter helt ned i databasen, ikke kun i appen.",
+    "t3Title": "Login med BankID, Vipps og passkey",
+    "t3": "Administrative opgaver kræver en session, der er startet med BankID.",
+    "t4Title": "Alt spores",
+    "t4": "Hver ændring står i en revisionslog, der ikke kan ændres, og hver afspilning af en optagelse i en adgangslog.",
+    "t5Title": "Beviser, der ikke kan ændres",
+    "t5": "Kundens accept gemmes med det dokument, kunden så, metode, tidspunkt og en kryptografisk kontrolsum. En afgjort bekræftelse kan aldrig ændres.",
+    "t6Title": "Sletning efter plan",
+    "t6": "Optagelser slettes automatisk efter 3 til 12 måneder, alt efter hvad I vælger. Personnumre gemmes aldrig i klartekst."
+  },
+  "languages": {
+    "title": "På jeres sprog",
+    "text": "Appen findes på norsk, engelsk, svensk, dansk og tysk, og hver bruger vælger selv. Notater og AI-kontrol skrives på det sprog, callcentret bestemmer, eller det, sælgeren vælger pr. samtale. Transskriptionen genkender over 60 sprog, også når der tales flere sprog i samme samtale."
+  },
+  "pricing": {
+    "title": "Pris",
+    "intro": "Månedspris pr. callcenter efter pakke og moduler, med forbrug oveni. Vi giver tilbud efter en gennemgang af jeres behov.",
+    "p1Title": "Pakke",
+    "p1": "Fast månedspris for callcentret, med de moduler I vælger.",
+    "p2Title": "Forbrug",
+    "p2": "Transskription pr. time lyd og AI-kontrol pr. samtale, faktureret bagud hver måned.",
+    "p3Title": "Salgsverificering",
+    "p3": "Tillægsmodul. Hver accept med BankID eller Vipps faktureres pr. bekræftelse.",
+    "cta": "Bed om tilbud"
+  },
+  "faq": {
+    "title": "Spørgsmål og svar",
+    "q1": "Skal vi skifte telefonisystem?",
+    "a1": "Nej. Optagelsen sker i browseren, fra mikrofonen eller fra det faneblad, hvor telefoniløsningen kører. Salget registreres, hvor I gør det i dag, med samtalens reference indsat.",
+    "q2": "Hvad med samtykke til optagelse?",
+    "a2": "I informerer kunden om optagelsen, som I gør i dag. VeriQall gemmer optagelsen sikkert og sletter den automatisk, når opbevaringstiden er udløbet.",
+    "q3": "Kan vi beholde vores eget system til bekræftelse?",
+    "a3": "Ja. Salgsverificering med BankID og Vipps er et valgfrit tillægsmodul. Uden det kobler I samtalen til salget med referencen.",
+    "q4": "Hvilke sprog understøttes?",
+    "a4": "Appen på norsk, engelsk, svensk, dansk og tysk, og notater og AI-kontrol på de samme sprog. Transskription på over 60 sprog.",
+    "q5": "Hvor lagres data, og hvor længe?",
+    "a5": "Krypteret hos AWS i Stockholm. Optagelser slettes automatisk efter 3 til 12 måneder, alt efter hvad callcentret vælger.",
+    "q6": "Hvordan kommer vi i gang?",
+    "a6": "Vi opretter callcentret og inviterer jeres administrator. Admin inviterer brugerne, som logger ind med Vipps eller BankID. Ingen installation, og I kan være i gang samme dag."
+  },
+  "cta": {
+    "title": "Vil du se VeriQall i brug?",
+    "text": "Send os en e-mail, så viser vi jer platformen og sætter et testcallcenter op til jer.",
+    "button": "Bed om en demo"
+  },
+  "footer": {
+    "provider": "VeriQall leveres af Hi4 Solutions AS.",
+    "contact": "Kontakt",
+    "login": "Log ind"
+  }
+}
