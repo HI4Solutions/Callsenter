@@ -39,7 +39,7 @@ Ferdig:
 
 Ikke gjort:
 - Vipps-knappen må byttes til Vipps' offisielle før produksjon.
-- Produksjon er ikke opprettet, og skal ikke opprettes før lansering. Be om økt Lambda-kvote (nye kontoer har 10 samtidige kjøringer) før produksjon.
+- Produksjon er ikke opprettet, og skal ikke opprettes før lansering. Lambda-kvoten er økt til 1000 i kontoen (3. oktober); en egen produksjonskonto må få den økt på nytt.
 - Egne domener for produksjon (`app.veriqall.no`, `api.veriqall.no`). I staging virker `staging.veriqall.no` og `api.staging.veriqall.no`.
 - CloudTrail til egen kryptert bøtte (revisjonslogg lag 1 i `docs/plan.md`, seksjon 3) er ikke satt opp.
 - Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.
@@ -60,6 +60,7 @@ Ikke gjort:
 - Forbruk ved bitvis transkripsjon (3. oktober): hver bit lagres med nummer i `usage_events.piece` (migrasjonen `0026_usage_pieces.sql`), og fakturaen summerer bitene per samtale. Før ble en samtale fakturert som én bit på 15 sekunder. En bit telles bare én gang, og leasen er 5 minutter.
 - Sikkerhet (3. oktober, fra gjennomgangen av API og database): invitasjonslenker kan ikke lenger overta eksisterende brukere i andre callsentre (migrasjonen `0025_invitation_claims.sql`, `docs/auth.md`), `acr` fra Idura må være BankID, og lesing av transkripsjonsbiter etter opptaket logges i `access_log`. De andre funnene står i PR-en og venter.
 - Brukervennlighet (3. oktober): menyen i toppen er én rad med egen mobilmeny, fanene har tekst og kan rulles på mobil, feilsider har «Prøv igjen», Samtalestudio viser kildevalget før «Start opptak» og har Stopp nederst på mobil, og tall vises med vanlig sats (ikke `tabular-nums`).
+- Kapasitet (3. oktober): workeren har tak på 200 samtidige kjøringer, og API-et tåler 200 kall i sekundet (topper 500), se `infra/README.md` under Kapasitet.
 - RLS-ytelse (3. oktober): policyene på `calls` og `sales` henter rettigheter og team én gang per spørring i stedet for per rad (migrasjonen `0027_visibility_performance.sql`). Med 100 000 samtaler gikk en selgers liste fra 25 sekunder til 17 ms, og en telling fra 10 minutter til under 40 ms. Ytelsestest i `packages/db/test/visibility-performance.test.ts`.
 - Revisjonslogg for samtaler (3. oktober): `calls` logges bare når status, koblinger, feil, varighet eller notatmaler endres, og tilleggsinformasjon og tittel bare som «endret», aldri teksten (migrasjonen `0028_call_audit.sql`). Rader som allerede var skrevet, ble redusert på samme måte.
 - Fase 1, PR F1 (grunndata): kunder (privat og bedrift, ingen fødselsnumre) og produkter med versjonerte produktmaler, migrasjonen `0011_customers_products.sql`, API under `/org/customers` og `/org/products`, og sidene `/kunder` og `/produkter` (`docs/plan.md`, seksjon 12).
