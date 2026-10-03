@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
 import { ComplaintStatusBadge } from "@/components/work/complaint-status";
 import { SaleDocumentationView } from "@/components/work/sale-documentation";
 import { useWorkMe } from "@/components/work/work-shell";
@@ -52,7 +52,7 @@ export default function ComplaintPage() {
     };
   }, [id]);
 
-  if (!complaint) return error ? <ErrorMessage message={error} /> : <p className="text-muted">Laster …</p>;
+  if (!complaint) return <LoadState error={error} />;
   const k = complaint;
 
   async function assignToMe() {
@@ -109,7 +109,7 @@ export default function ComplaintPage() {
     <section className="flex flex-col gap-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <Link href="/klager" className="text-sm font-semibold text-brand print:hidden">
+          <Link href="/klager" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand print:hidden">
             ← Alle klager
           </Link>
           <div className="mt-2 flex flex-wrap items-center gap-3">

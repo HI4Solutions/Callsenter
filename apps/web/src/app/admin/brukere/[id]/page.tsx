@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import { ErrorMessage, Field, LoadState, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
 import {
   adminFetch,
@@ -45,7 +45,7 @@ export default function UserPage() {
     return (
       <section>
         <BackLink />
-        {error ? <ErrorMessage message={error} /> : <p className="mt-6 text-muted">Laster …</p>}
+        <div className="mt-6"><LoadState error={error} /></div>
       </section>
     );
   }

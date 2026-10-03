@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
 import { LinkedCalls } from "@/components/work/linked-calls";
 import { SaleStatusBadge } from "@/components/work/sale-status";
 import { useWorkMe } from "@/components/work/work-shell";
@@ -40,7 +40,7 @@ export default function SalePage() {
     };
   }, [id]);
 
-  if (!sale) return error ? <ErrorMessage message={error} /> : <p className="text-muted">Laster …</p>;
+  if (!sale) return <LoadState error={error} />;
 
   const rows: [string, React.ReactNode][] = [
     [
@@ -71,7 +71,7 @@ export default function SalePage() {
   return (
     <section className="flex flex-col gap-8">
       <div>
-        <Link href="/salg" className="text-sm font-semibold text-brand">
+        <Link href="/salg" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">
           ← Alle salg
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">

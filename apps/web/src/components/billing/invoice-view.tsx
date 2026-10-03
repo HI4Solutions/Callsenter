@@ -75,7 +75,7 @@ export function InvoiceView({ invoice }: { invoice: InvoiceDetail }) {
               <th className="px-2 py-2 text-right font-semibold">Beløp</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-line tabular-nums">
+          <tbody className="divide-y divide-line">
             {invoice.lines.map((l) => (
               <tr key={l.id}>
                 <td className="px-2 py-2 [overflow-wrap:anywhere]">{l.description}</td>
@@ -89,7 +89,7 @@ export function InvoiceView({ invoice }: { invoice: InvoiceDetail }) {
         </table>
       </div>
 
-      <dl className="grid grid-cols-[auto_auto] gap-x-6 gap-y-1 self-end text-right tabular-nums">
+      <dl className="grid grid-cols-[auto_auto] gap-x-6 gap-y-1 self-end text-right">
         <dt className="text-muted">Sum eks. mva</dt>
         <dd>{kr(invoice.subtotal)}</dd>
         <dt className="text-muted">Mva</dt>

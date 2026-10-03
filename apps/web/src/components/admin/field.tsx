@@ -34,3 +34,21 @@ export function ErrorMessage({ message }: { message: string | null }) {
     </p>
   );
 }
+
+// While a page's data loads, or when it could not be loaded: the error with a way to try again.
+export function LoadState({ error }: { error: string | null }) {
+  if (!error) return <p className="text-muted">Laster …</p>;
+  return (
+    <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-line bg-surface p-4">
+      <p>{error}</p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={secondaryButton} onClick={() => window.location.reload()}>
+          Prøv igjen
+        </button>
+        <button type="button" className={secondaryButton} onClick={() => window.history.back()}>
+          Tilbake
+        </button>
+      </div>
+    </div>
+  );
+}

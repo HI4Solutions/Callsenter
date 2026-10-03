@@ -136,12 +136,12 @@ export function DashboardView({ data, sellerLinks }: { data: Dashboard; sellerLi
                         p.name
                       )}
                     </td>
-                    <td className="px-2 py-3 text-right tabular-nums">{fmt.format(p.sales)}</td>
-                    <td className="px-2 py-3 text-right tabular-nums">{share(p.confirmed, p.sales)}</td>
-                    <td className="px-2 py-3 text-right tabular-nums">{fmt.format(p.calls)}</td>
-                    <td className="px-2 py-3 text-right tabular-nums">{fmt.format(p.yellow)}</td>
-                    <td className="px-2 py-3 text-right tabular-nums">{fmt.format(p.red)}</td>
-                    <td className="px-2 py-3 text-right tabular-nums">{fmt.format(p.complaints)}</td>
+                    <td className="px-2 py-3 text-right">{fmt.format(p.sales)}</td>
+                    <td className="px-2 py-3 text-right">{share(p.confirmed, p.sales)}</td>
+                    <td className="px-2 py-3 text-right">{fmt.format(p.calls)}</td>
+                    <td className="px-2 py-3 text-right">{fmt.format(p.yellow)}</td>
+                    <td className="px-2 py-3 text-right">{fmt.format(p.red)}</td>
+                    <td className="px-2 py-3 text-right">{fmt.format(p.complaints)}</td>
                   </tr>
                 ))}
               </tbody>

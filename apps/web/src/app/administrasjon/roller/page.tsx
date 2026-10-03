@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
 import { apiFetch } from "@/lib/api";
 
 interface Role {
@@ -57,7 +57,7 @@ export default function RolesPage() {
     }
   }
 
-  if (!data) return error ? <ErrorMessage message={error} /> : <p className="text-muted">Laster …</p>;
+  if (!data) return <LoadState error={error} />;
   const active = data.roles.filter((r) => !r.archivedAt);
   const archived = data.roles.filter((r) => r.archivedAt);
   const describe = new Map(data.permissions.map((p) => [p.key, p.description]));

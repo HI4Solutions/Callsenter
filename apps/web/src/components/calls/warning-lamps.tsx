@@ -83,7 +83,7 @@ function Detail({ finding, onSeek }: { finding: Finding; onSeek?: (ms: number) =
       {finding.quote && (
         <p className="mt-1">
           {finding.startMs !== null && onSeek ? (
-            <button type="button" className="mr-2 min-h-11 font-mono text-brand tabular-nums" onClick={() => onSeek(finding.startMs!)}>
+            <button type="button" className="mr-2 min-h-11 font-mono text-brand" onClick={() => onSeek(finding.startMs!)}>
               {formatDuration(finding.startMs)}
             </button>
           ) : null}

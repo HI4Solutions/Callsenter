@@ -50,14 +50,14 @@ export function TranscriptPanel({
                 {onSeek ? (
                   <button
                     type="button"
-                    className="min-h-11 shrink-0 self-start rounded-lg px-2 font-mono text-sm text-brand tabular-nums hover:bg-bg"
+                    className="min-h-11 shrink-0 self-start rounded-lg px-2 font-mono text-sm text-brand hover:bg-bg"
                     onClick={() => onSeek(s.startMs)}
                     title="Spill av herfra"
                   >
                     {formatDuration(s.startMs)}
                   </button>
                 ) : (
-                  <span className="shrink-0 px-2 pt-1 font-mono text-sm text-muted tabular-nums">{formatDuration(s.startMs)}</span>
+                  <span className="shrink-0 px-2 pt-1 font-mono text-sm text-muted">{formatDuration(s.startMs)}</span>
                 )}
                 <p className="min-w-0 pt-1 [overflow-wrap:anywhere]">
                   {s.speaker && <span className="mr-2 text-sm font-semibold text-muted">Taler {s.speaker}</span>}
