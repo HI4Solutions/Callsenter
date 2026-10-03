@@ -2,6 +2,7 @@
 import type { Locale } from "@veriqall/shared";
 import type account from "../../messages/nb/account.json";
 import type calls from "../../messages/nb/calls.json";
+import type admin from "../../messages/nb/admin.json";
 import type common from "../../messages/nb/common.json";
 import type complaints from "../../messages/nb/complaints.json";
 import type confirm from "../../messages/nb/confirm.json";
@@ -36,6 +37,7 @@ export interface Messages {
   complaints: typeof complaints;
   economy: typeof economy;
   dashboard: typeof dashboard;
+  admin: typeof admin;
 }
 
 declare module "next-intl" {
