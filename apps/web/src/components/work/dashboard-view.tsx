@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Card } from "@/components/admin/card";
 import { ColumnChart, type Point } from "@/components/admin/charts";
 import { Flag } from "@/components/flag";
+import { type FlagColumn, FlagBar, FlagColumns, type FlagFilter } from "@/components/work/flag-charts";
 import { type Dashboard, share } from "@/lib/dashboard";
 
 const fmt = new Intl.NumberFormat("nb-NO");
@@ -24,6 +25,48 @@ function series(daily: Dashboard["daily"], key: "sales" | "calls"): Point[] {
   return weeks;
 }
 
+const DAY = new Intl.DateTimeFormat("nb-NO", { day: "numeric", month: "long", timeZone: "UTC" });
+
+// The flags over the period: hour by hour for one day, per day up to 45 days, then per week.
+function flagColumns(data: Dashboard): { title: string; columns: FlagColumn[] } {
+  const unchecked = (x: { calls: number; green: number; yellow: number; red: number }) => Math.max(0, x.calls - x.green - x.yellow - x.red);
+  if (data.hourly.length) {
+    const used = data.hourly.filter((h) => h.calls > 0).map((h) => h.hour);
+    const first = Math.min(8, ...used);
+    const last = Math.max(17, ...used);
+    return {
+      title: "AI-kontroll per time",
+      columns: data.hourly
+        .filter((h) => h.hour >= first && h.hour <= last)
+        .map((h) => ({
+          label: String(h.hour).padStart(2, "0"),
+          title: `Kl. ${String(h.hour).padStart(2, "0")}`,
+          ...h,
+          unchecked: unchecked(h),
+        })),
+    };
+  }
+  const label = (day: string) => {
+    const [, m, d] = day.split("-");
+    return `${Number(d)}.${Number(m)}.`;
+  };
+  const title = (day: string) => DAY.format(new Date(`${day}T00:00:00Z`));
+  if (data.daily.length <= 45) {
+    return {
+      title: "AI-kontroll per dag",
+      columns: data.daily.map((d) => ({ label: label(d.day), title: title(d.day), ...d, unchecked: unchecked(d) })),
+    };
+  }
+  const columns: FlagColumn[] = [];
+  for (let i = 0; i < data.daily.length; i += 7) {
+    const chunk = data.daily.slice(i, i + 7);
+    const sum = (k: "calls" | "green" | "yellow" | "red") => chunk.reduce((n, d) => n + d[k], 0);
+    const week = { calls: sum("calls"), green: sum("green"), yellow: sum("yellow"), red: sum("red") };
+    columns.push({ label: label(chunk[0]!.day), title: `Uken fra ${title(chunk[0]!.day)}`, ...week, unchecked: unchecked(week) });
+  }
+  return { title: "AI-kontroll per uke", columns };
+}
+
 function Stat({ label, value, note }: { label: string; value: string; note?: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-line bg-surface p-4">
@@ -34,12 +77,24 @@ function Stat({ label, value, note }: { label: string; value: string; note?: Rea
   );
 }
 
-export function DashboardView({ data, sellerLinks }: { data: Dashboard; sellerLinks: boolean }) {
+export function DashboardView({
+  data,
+  sellerLinks,
+  flagFilter,
+  onFlag,
+}: {
+  data: Dashboard;
+  sellerLinks: boolean;
+  // The flag chosen in the chart, which filters the list of calls below it.
+  flagFilter: FlagFilter;
+  onFlag: (f: FlagFilter) => void;
+}) {
+  const over = flagColumns(data);
   const hours = data.calls.durationMs / 3_600_000;
   const perWeek = data.daily.length > 45;
   return (
     <div className="flex flex-col gap-8">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
         <Stat label="Salg" value={fmt.format(data.sales.total)} note={`${fmt.format(data.sales.pending)} venter på bekreftelse`} />
         <Stat
           label="Bekreftet"
@@ -56,43 +111,59 @@ export function DashboardView({ data, sellerLinks }: { data: Dashboard; sellerLi
           value={fmt.format(data.calls.total)}
           note={`${hours >= 10 ? Math.round(hours) : hours.toFixed(1).replace(".", ",")} timer opptak`}
         />
+        <Stat
+          label="Klager"
+          value={fmt.format(data.complaints.received)}
+          note={`${fmt.format(data.complaints.open)} åpne. ${data.scope === "all" ? "Alle i callsenteret." : "På salg i utvalget."}`}
+        />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4">
         <Card title="AI-kontroll">
-          {data.calls.analyzed === 0 ? (
-            <p className="text-muted">Ingen kontrollerte samtaler i perioden.</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap gap-2">
-                <Flag level="approved">Godkjent: {fmt.format(data.calls.green)}</Flag>
-                <Flag level="deviation">Avvik: {fmt.format(data.calls.yellow)}</Flag>
-                <Flag level="violation">Brudd: {fmt.format(data.calls.red)}</Flag>
-              </div>
+          <div className="flex flex-col gap-3">
+            <FlagBar
+              counts={{
+                green: data.calls.green,
+                yellow: data.calls.yellow,
+                red: data.calls.red,
+                unchecked: Math.max(0, data.calls.total - data.calls.analyzed),
+              }}
+              selected={flagFilter}
+              onSelect={onFlag}
+            />
+            {data.calls.total > 0 && (
               <p className="text-sm text-muted">
-                {fmt.format(data.calls.analyzed)} samtaler kontrollert, {share(data.calls.green, data.calls.analyzed)} uten avvik.
-                {data.calls.unreviewed > 0 && ` ${fmt.format(data.calls.unreviewed)} flagg er ikke behandlet.`}
+                {data.calls.analyzed ? `${share(data.calls.green, data.calls.analyzed)} av de kontrollerte er uten avvik. ` : ""}
+                {data.calls.unreviewed > 0 ? (
+                  <button type="button" className="font-semibold text-brand" onClick={() => onFlag("unreviewed")}>
+                    {fmt.format(data.calls.unreviewed)} flagg er ikke behandlet
+                  </button>
+                ) : (
+                  "Alle flagg er behandlet."
+                )}
               </p>
-            </div>
-          )}
-        </Card>
-        <Card title="Klager">
-          <p>
-            <span className="text-3xl font-semibold">{fmt.format(data.complaints.received)}</span>{" "}
-            <span className="text-muted">mottatt i perioden, {fmt.format(data.complaints.open)} fortsatt åpne</span>
-          </p>
-          <p className="mt-2 text-sm text-muted">
-            {data.scope === "all" ? "Alle klager i callsenteret." : "Klager på salg i utvalget."}
-          </p>
+            )}
+          </div>
         </Card>
       </div>
 
-      <Card title="Utvikling">
-        <div className="flex flex-col gap-10">
-          <ColumnChart title={perWeek ? "Salg per uke" : "Salg per dag"} points={series(data.daily, "sales")} unit="salg" />
-          <ColumnChart title={perWeek ? "Samtaler per uke" : "Samtaler per dag"} points={series(data.daily, "calls")} unit="samtaler" />
-        </div>
-      </Card>
+      {(data.calls.total > 0 || data.daily.length > 1) && (
+        <Card title="Utvikling">
+          <div className="flex flex-col gap-10">
+            {data.calls.total > 0 && <FlagColumns title={over.title} columns={over.columns} />}
+            {data.daily.length > 1 && (
+              <>
+                <ColumnChart title={perWeek ? "Salg per uke" : "Salg per dag"} points={series(data.daily, "sales")} unit="salg" />
+                <ColumnChart
+                  title={perWeek ? "Samtaler per uke" : "Samtaler per dag"}
+                  points={series(data.daily, "calls")}
+                  unit="samtaler"
+                />
+              </>
+            )}
+          </div>
+        </Card>
+      )}
 
       {data.findings.length > 0 && (
         <Card title="Hyppigste avvik">

@@ -13,6 +13,20 @@ const deps: AuthDeps = {
   appDb: api,
   fetch,
   now: () => new Date(),
+  // Calls are only listed here; nothing is recorded or played.
+  calls: {
+    store: {
+      presignPut: async () => "",
+      presignGet: async () => "",
+      list: async () => [],
+      get: async () => new Uint8Array(),
+      put: async () => undefined,
+      delete: async () => undefined,
+    },
+    soniox: null,
+    startWorker: async () => undefined,
+    startPiece: async () => undefined,
+  },
 };
 const handler = createHandler({ checkDatabase: async () => true, auth: async () => deps });
 
@@ -72,6 +86,76 @@ describe("dashboard", () => {
     expect((await call(s.leader, "GET", "/org/dashboard", undefined, { from: "2024-01-01", to: "2026-09-01" })).status).toBe(400);
     await owner.query("update organization_modules set enabled = false where organization_id = $1", [s.org]);
     expect((await call(s.seller, "GET", "/org/dashboard")).body.code).toBe("modul_av");
+  });
+});
+
+describe("dashboard: AI flags and calls to follow up", () => {
+  it("counts flags per day and hour, lists the flagged calls of the period, and shows a call's log to leaders", async () => {
+    const s = await setup();
+    const adminId = await member(s.org, "admin");
+    const admin = await sessionFor(adminId, s.org, "bankid");
+    // Three calls by the seller on 1 September (Norwegian time): green, red and one not checked.
+    const at = ["2026-09-01T08:15:00+02:00", "2026-09-01T09:30:00+02:00", "2026-09-01T09:45:00+02:00"];
+    const ids: string[] = [];
+    // The database sets the start time itself; the test moves it back with the guard off.
+    const client = await owner.connect();
+    try {
+      await client.query("begin");
+      await client.query("alter table calls disable trigger calls_guard");
+      for (const t of at) {
+        const id = (
+          await client.query(
+            `insert into calls (organization_id, user_id, source, transcription_mode, title)
+             values ($1, $2, 'microphone', 'chunked', 'Test') returning id`,
+            [s.org, s.sellerId],
+          )
+        ).rows[0].id;
+        await client.query("update calls set started_at = $2 where id = $1", [id, t]);
+        ids.push(id);
+      }
+      await client.query("alter table calls enable trigger calls_guard");
+      await client.query("commit");
+    } finally {
+      client.release();
+    }
+    const product = (await owner.query("insert into products (organization_id, name) values ($1, 'Strøm') returning id", [s.org])).rows[0].id;
+    const version = (
+      await owner.query(
+        `insert into product_template_versions (organization_id, product_id, version, status, published_at, price_monthly)
+         values ($1, $2, 1, 'published', now(), 399) returning id`,
+        [s.org, product],
+      )
+    ).rows[0].id;
+    for (const [i, flag] of [[0, "green"], [1, "red"]] as const) {
+      await owner.query(
+        `insert into call_analyses (organization_id, call_id, template_version_id, model, flag, summary, findings)
+         values ($1, $2, $3, 'm', $4, 'x', '[]')`,
+        [s.org, ids[i], version, flag],
+      );
+    }
+    const day = await call(admin, "GET", "/org/dashboard", undefined, { scope: "all", from: "2026-09-01", to: "2026-09-01" });
+    expect(day.status).toBe(200);
+    expect(day.body.daily).toEqual([{ day: "2026-09-01", sales: 0, confirmed: 0, calls: 3, green: 1, yellow: 0, red: 1 }]);
+    expect(day.body.hourly).toHaveLength(24);
+    expect(day.body.hourly[9]).toEqual({ hour: 9, calls: 2, green: 0, yellow: 0, red: 1 });
+    const week = await call(admin, "GET", "/org/dashboard", undefined, { scope: "all", from: "2026-09-01", to: "2026-09-07" });
+    expect(week.body.hourly).toEqual([]);
+
+    const period = { from: "2026-09-01", to: "2026-09-01" };
+    const flagged = await call(admin, "GET", "/org/calls", undefined, { ...period, flagged: "1" });
+    expect(flagged.body.map((c: { id: string; flag: string; userName: string }) => [c.id, c.flag])).toEqual([[ids[1], "red"]]);
+    expect(flagged.body[0].userName).toBeTruthy();
+    expect((await call(admin, "GET", "/org/calls", undefined, { ...period, unchecked: "1" })).body.map((c: { id: string }) => c.id)).toEqual([ids[2]]);
+    expect((await call(admin, "GET", "/org/calls", undefined, { ...period, teamId: s.team })).body).toHaveLength(3);
+    expect((await call(admin, "GET", "/org/calls", undefined, { from: "2026-09-02", to: "2026-09-02" })).body).toHaveLength(0);
+
+    // Viewing the call is logged, and leaders with audit.read see the log; the seller does not.
+    await call(admin, "GET", `/org/calls/${ids[1]}`);
+    const log = await call(admin, "GET", `/org/calls/${ids[1]}/log`);
+    expect(log.status).toBe(200);
+    expect(log.body.access[0]).toMatchObject({ action: "view", resource: "call" });
+    expect(log.body.changes.some((x: { table: string; flag: string }) => x.table === "call_analyses" && x.flag === "red")).toBe(true);
+    expect((await call(s.seller, "GET", `/org/calls/${ids[1]}/log`)).status).toBe(403);
   });
 });
 

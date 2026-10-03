@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { AdditionalInfo } from "@/components/calls/additional-info";
+import { CallLog } from "@/components/calls/call-log";
 import { NotesPanel } from "@/components/calls/notes-panel";
 import { TranscriptPanel } from "@/components/calls/transcript-panel";
 import { useCall } from "@/components/calls/use-call";
@@ -157,6 +158,7 @@ export default function CallPage() {
       {me?.modules?.includes("dashboard") && (
         <Coaching sellerId={call.userId} sellerName={call.userName} callId={call.id} title="Tilbakemelding på samtalen" />
       )}
+      {permissions.includes("audit.read") && <CallLog callId={call.id} />}
       <Links call={call} canEdit={permissions.includes("calls.upload") && !call.analyses.length && !call.working} onChanged={load} />
     </section>
   );
