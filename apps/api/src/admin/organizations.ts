@@ -204,6 +204,7 @@ export async function inviteMember(db: pg.Pool, session: Session, orgId: string,
     // The person may already be a user elsewhere; the lookup works across call centres.
     const existing = await c.query<{ id: string | null }>("select app.user_id_for_invitation($1, $2) as id", [phone, email]);
     let userId = existing.rows[0]?.id ?? undefined;
+    if (userId === session.userId) throw new BadRequest("Du kan ikke invitere deg selv.");
     if (userId) {
       const status = await c.query<{ status: string }>("select status from users where id = $1", [userId]);
       if (status.rows[0]?.status === "disabled") throw new BadRequest("Brukeren er deaktivert.");
@@ -232,6 +233,13 @@ export async function inviteMember(db: pg.Pool, session: Session, orgId: string,
          set role_id = excluded.role_id, team_id = excluded.team_id, status = 'active'`,
       [orgId, userId, role.rows[0].id, teamId],
     );
+    // A link may only go to someone who has never logged in and belongs to no other call
+    // centre (migration 0025). Anyone else is added without a link, and sees the call centre
+    // the next time they log in with their own BankID, Vipps or passkey.
+    const claimable = await c.query<{ ok: boolean }>("select app.invitation_claimable($1) as ok", [userId]);
+    if (!claimable.rows[0]?.ok) {
+      return { id: null, userId, link: null, expiresAt: null, organizationName: exists.rows[0]!.name };
+    }
     const token = randomToken();
     const invitation = await c.query<{ id: string; expires_at: Date }>(
       `insert into invitations (organization_id, user_id, token_hash, created_by)
@@ -250,7 +258,7 @@ export async function inviteMember(db: pg.Pool, session: Session, orgId: string,
   });
   // Sent after the invitation is committed; the link is shown either way.
   const { organizationName, ...result } = invited;
-  const emailed = email ? await sendInvitation(email, fullName, organizationName, result.link) : false;
+  const emailed = email && result.link ? await sendInvitation(email, fullName, organizationName, result.link) : false;
   return { ...result, emailed };
 }
 

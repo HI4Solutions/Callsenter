@@ -228,14 +228,16 @@ export async function listPieces(
 ) {
   const after = Number(query.after ?? -1);
   return withSession(db, session, async (c) => {
-    const call = await c.query("select 1 from calls where id = $1", [callId]);
-    if (!call.rowCount) throw new NotFound();
+    const call = await c.query<{ status: string }>("select status from calls where id = $1", [callId]);
+    if (!call.rows[0]) throw new NotFound();
     const { rows } = await c.query(
       `select seq, start_ms as "startMs", status, segments from call_pieces
        where call_id = $1 and seq > $2 order by seq`,
       [callId, Number.isInteger(after) ? after : -1],
     );
-    if (!Number.isInteger(after) || after < 0) await logAccess(c, callId, "view", meta);
+    // The recorder polls with ?after= while recording, and logs the first read. Any other read
+    // of the text (after the recording, or from the start) is a view of the transcript.
+    if (!Number.isInteger(after) || after < 0 || call.rows[0].status !== "recording") await logAccess(c, callId, "view", meta);
     return rows;
   });
 }

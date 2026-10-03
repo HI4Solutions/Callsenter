@@ -208,6 +208,8 @@ function Invite({ data, onInvited }: { data: OrgOverview; onInvited: () => Promi
   const [form, setForm] = useState({ fullName: "", phone: "", email: "", roleId: defaultRole?.id ?? "", teamId: "" });
   const [error, setError] = useState<string | null>(null);
   const [link, setLink] = useState<{ url: string; expiresAt: string; emailedTo: string | null } | null>(null);
+  // The person already has a login elsewhere: added without a link.
+  const [added, setAdded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -216,13 +218,18 @@ function Invite({ data, onInvited }: { data: OrgOverview; onInvited: () => Promi
     setSaving(true);
     setError(null);
     setLink(null);
+    setAdded(false);
     setCopied(false);
     try {
-      const result = await orgFetch<{ link: string; expiresAt: string; emailed: boolean }>("/invitations", {
+      const result = await orgFetch<{ link: string | null; expiresAt: string | null; emailed: boolean }>("/invitations", {
         method: "POST",
         body: { ...form, teamId: form.teamId || null },
       });
-      setLink({ url: result.link, expiresAt: result.expiresAt, emailedTo: result.emailed ? form.email.trim() : null });
+      if (result.link && result.expiresAt) {
+        setLink({ url: result.link, expiresAt: result.expiresAt, emailedTo: result.emailed ? form.email.trim() : null });
+      } else {
+        setAdded(true);
+      }
       setForm({ ...form, fullName: "", phone: "", email: "" });
       await onInvited();
     } catch (e) {
@@ -277,6 +284,12 @@ function Invite({ data, onInvited }: { data: OrgOverview; onInvited: () => Promi
           </button>
         </div>
       </form>
+      {added && (
+        <p role="status" className="mt-6 rounded-lg border border-line p-4">
+          Personen er allerede bruker av VeriQall og er lagt til. Av sikkerhetshensyn lages det ingen lenke: callsenteret vises
+          når hen logger inn med sin egen BankID, Vipps eller passkey.
+        </p>
+      )}
       {link && (
         <div className="mt-6 rounded-lg border border-line p-4">
           <p className="font-semibold">Invitasjonslenke</p>
