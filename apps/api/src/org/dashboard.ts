@@ -86,6 +86,16 @@ export async function getTeamDashboard(db: pg.Pool, session: Session, query: Rec
   });
 }
 
+// The quality dashboard for compliance: dashboard.all with flags.review or complaints.manage
+// (checked by the database); who opened recordings only with audit.read.
+export async function getQualityDashboard(db: pg.Pool, session: Session, query: Record<string, string | undefined>) {
+  const { from, to } = period(query);
+  return withSession(db, session, async (c) => {
+    const { rows } = await c.query<{ q: Record<string, unknown> }>(`select app.dashboard_quality(${BOUNDS}) as q`, [from, to]);
+    return { from, to, ...rows[0]!.q };
+  });
+}
+
 const NOTE_COLUMNS = `n.id, n.seller_id as "sellerId", s.full_name as "sellerName", n.author_id as "authorId", a.full_name as "authorName",
   n.call_id as "callId", c.title as "callTitle", c.started_at as "callStartedAt", n.kind, n.body, n.created_at as "createdAt", n.read_at as "readAt"`;
 

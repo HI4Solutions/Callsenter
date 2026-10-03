@@ -1,29 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ErrorMessage, Field, inputClass } from "@/components/admin/field";
 import { Coaching } from "@/components/work/coaching";
 import type { FlagFilter } from "@/components/work/flag-charts";
 import { MyDashboard, TeamLevel } from "@/components/work/level-dashboards";
+import { QualityDashboard } from "@/components/work/quality-dashboard";
 import { PeriodCalls } from "@/components/work/period-calls";
 import { PeriodPicker, useStoredPeriod } from "@/components/work/period-picker";
 import { NoAccess, useWorkMe } from "@/components/work/work-shell";
 import { canSeeCalls } from "@/lib/calls";
-import { canSeeDashboard, type Dashboard } from "@/lib/dashboard";
+import { canSeeDashboard, canSeeQuality, type Dashboard } from "@/lib/dashboard";
 import { formatDate } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 
 // A dashboard for each level (docs/plan.md, section 15): Meg for everyone, Teamet with
-// dashboard.team (or dashboard.all), Callsenteret with dashboard.all. The choice is remembered
-// on the device; the first time, leaders start with what they lead.
-type Level = "me" | "team" | "all";
+// dashboard.team (or dashboard.all), Callsenteret with dashboard.all, and Kvalitet with
+// dashboard.all and flags.review or complaints.manage. The choice is remembered on the device;
+// the first time, leaders start with what they lead and compliance with Kvalitet.
+type Level = "me" | "team" | "all" | "quality";
 
 const LEVEL_KEY = "veriqall.oversikt.niva";
 
 function storedLevel(): Level | null {
   try {
     const value = localStorage.getItem(LEVEL_KEY);
-    return value === "me" || value === "team" || value === "all" ? value : null;
+    return value === "me" || value === "team" || value === "all" || value === "quality" ? value : null;
   } catch {
     return null;
   }
@@ -37,7 +39,13 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [level, setLevel] = useState<Level | null>(null);
   const [team, setTeam] = useState<string | null>(null);
+  const activeTab = useRef<HTMLButtonElement>(null);
   const visible = me ? canSeeDashboard(me) : false;
+
+  // On a phone the tabs scroll sideways; keep the chosen one in view.
+  useEffect(() => {
+    activeTab.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [level, access]);
 
   // Which teams the user may look at (all of them with dashboard.all, otherwise their own).
   useEffect(() => {
@@ -60,12 +68,17 @@ export default function DashboardPage() {
   const levels: { key: Level; label: string }[] = [{ key: "me", label: "Meg" }];
   if (teams.length) levels.push({ key: "team", label: teams.length === 1 && !canSeeAll ? `Team ${teams[0]!.name}` : "Teamet" });
   if (canSeeAll) levels.push({ key: "all", label: "Callsenteret" });
+  const permissions = me?.permissions ?? [];
+  const quality = canSeeAll && canSeeQuality(permissions);
+  if (quality) levels.push({ key: "quality", label: "Kvalitet" });
 
-  // The first time: the highest level the user has. Later: the last one chosen on this device.
+  // The first time: the highest level the user has, and Kvalitet for those who neither sell nor
+  // manage users (compliance). Later: the last one chosen on this device.
   if (access && level === null) {
     const saved = storedLevel();
     const allowed = (l: Level) => levels.some((x) => x.key === l);
-    setLevel(saved && allowed(saved) ? saved : canSeeAll ? "all" : teams.length ? "team" : "me");
+    const compliance = quality && !permissions.includes("sales.manage") && !permissions.includes("users.manage");
+    setLevel(saved && allowed(saved) ? saved : compliance ? "quality" : canSeeAll ? "all" : teams.length ? "team" : "me");
   }
   if (teams.length && (team === null || !teams.some((t) => t.id === team))) setTeam(teams[0]!.id);
 
@@ -98,8 +111,14 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-extrabold tracking-tight">Oversikt</h1>
           <p className="mt-2 text-muted">
             {period.from === period.to ? formatDate(period.from) : `${formatDate(period.from)}–${formatDate(period.to)}`}.{" "}
-            {shown === "me" ? "Dine egne tall." : shown === "team" ? `Team ${teamName ?? ""}.` : "Hele callsenteret."} Tallene viser
-            antall, ikke innhold.
+            {shown === "me"
+              ? "Dine egne tall."
+              : shown === "team"
+                ? `Team ${teamName ?? ""}.`
+                : shown === "quality"
+                  ? "Kvalitet og etterlevelse i hele callsenteret."
+                  : "Hele callsenteret."}{" "}
+            Tallene viser antall, ikke innhold.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
@@ -123,6 +142,7 @@ export default function DashboardPage() {
           {levels.map((l) => (
             <button
               key={l.key}
+              ref={shown === l.key ? activeTab : undefined}
               type="button"
               role="tab"
               aria-selected={shown === l.key}
@@ -144,6 +164,8 @@ export default function DashboardPage() {
         <MyDashboard from={period.from} to={period.to} flag={flag} onFlag={pickFlag} />
       ) : shown === "team" && team ? (
         <TeamLevel key={team} team={team} from={period.from} to={period.to} flag={flag} onFlag={pickFlag} />
+      ) : shown === "quality" ? (
+        <QualityDashboard from={period.from} to={period.to} flag={flag} onFlag={pickFlag} />
       ) : (
         <TeamLevel key="all" team={null} from={period.from} to={period.to} flag={flag} onFlag={pickFlag} />
       )}

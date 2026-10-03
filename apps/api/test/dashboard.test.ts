@@ -176,6 +176,16 @@ describe("coaching", () => {
     expect((await call(s.leader, "GET", "/org/dashboard/team", undefined, { team: "nope" })).status).toBe(400);
   });
 
+  it("gives compliance the quality dashboard, and nobody without dashboard.all", async () => {
+    const s = await setup();
+    const compliance = await as(s.org, "compliance");
+    const q = await call(compliance, "GET", "/org/dashboard/quality", undefined, { from: "2026-09-01", to: "2026-09-07" });
+    expect(q.status).toBe(200);
+    expect(q.body).toMatchObject({ from: "2026-09-01", to: "2026-09-07", flags: { open: 0, checked: 0 }, products: [], sellers: [] });
+    expect((await call(s.leader, "GET", "/org/dashboard/quality")).status).toBe(403);
+    expect((await call(s.seller, "GET", "/org/dashboard/quality")).status).toBe(403);
+  });
+
   it("lets a leader give feedback that the seller reads and marks as read", async () => {
     const s = await setup();
     const given = await call(s.leader, "POST", "/org/coaching", { sellerId: s.sellerId, kind: "praise", body: "God avslutning" });
