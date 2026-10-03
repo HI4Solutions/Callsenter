@@ -572,6 +572,23 @@ describe("calls: robustness", () => {
     expect(usage.rows.map((r) => r.kind)).toEqual(["transcription_async", "transcription_realtime"]);
   });
 
+  it("checks a call once when the note fails after the AI control, and writes only the missing note", async () => {
+    const s = await setup();
+    const seller = await sessionFor(await member(s.org, "seller"), s.org);
+    const { id } = await record(seller, { productId: s.productId });
+    const noteDown: Ai = { ...ai, text: async () => Promise.reject(new Error("bedrock down")) };
+    await processCall({ ...workerDeps, ai: noteDown }, id);
+    expect((await call(seller, "GET", `/org/calls/${id}`)).body.status).toBe("failed");
+    expect((await call(seller, "POST", `/org/calls/${id}/retry`)).status).toBe(200);
+    await processCall(workerDeps, id);
+    const detail = (await call(seller, "GET", `/org/calls/${id}`)).body;
+    expect(detail.status).toBe("analyzed");
+    expect(detail.analyses).toHaveLength(1);
+    expect(detail.reports).toHaveLength(1);
+    const usage = await owner.query("select kind from usage_events where call_id = $1 and kind in ('ai_control', 'report') order by kind", [id]);
+    expect(usage.rows.map((r) => r.kind)).toEqual(["ai_control", "report"]);
+  });
+
   it("caps realtime keys and refuses them for chunked calls", async () => {
     const s = await setup();
     const seller = await sessionFor(await member(s.org, "seller"), s.org);
