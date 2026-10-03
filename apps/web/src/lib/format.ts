@@ -63,3 +63,9 @@ export function toCsv(header: string[], rows: (string | number | boolean | null 
   };
   return `\uFEFF${[header, ...rows].map((row) => row.map(cell).join(";")).join("\r\n")}\r\n`;
 }
+
+// A permission ("calls.read.own") as its key in messages/<locale>/domain.json ("calls_read_own"):
+// next-intl reads dots as nesting.
+export function permissionKey(permission: string): "calls_read_own" {
+  return permission.replaceAll(".", "_") as "calls_read_own";
+}
