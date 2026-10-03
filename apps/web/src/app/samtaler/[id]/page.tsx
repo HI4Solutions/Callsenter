@@ -7,6 +7,7 @@ import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
 import { AdditionalInfo } from "@/components/calls/additional-info";
 import { CallLog } from "@/components/calls/call-log";
+import { CallStatusBadge } from "@/components/calls/call-status";
 import { NotesPanel } from "@/components/calls/notes-panel";
 import { TranscriptPanel } from "@/components/calls/transcript-panel";
 import { useCall } from "@/components/calls/use-call";
@@ -14,7 +15,7 @@ import { Flag } from "@/components/flag";
 import { Coaching } from "@/components/work/coaching";
 import { CustomerPicker } from "@/components/work/customer-picker";
 import { useWorkMe } from "@/components/work/work-shell";
-import { CALL_STATUS, type CallDetail, FINDING_KIND, FLAG_LEVEL, formatDuration, SOURCE } from "@/lib/calls";
+import { type CallDetail, FINDING_KIND, FLAG_LEVEL, formatDuration, SOURCE } from "@/lib/calls";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 import type { Customer, ProductSummary } from "@/lib/work";
@@ -59,6 +60,8 @@ export default function CallPage() {
   if (!call) return <LoadState error={error} />;
   const analysis = call.analyses[0];
   const canPlay = permissions.includes("calls.audio.play") && call.hasAudio;
+  // Recording and transcript to the right from lg (and first on a phone), the rest to the left.
+  const side = canPlay || call.segments.length > 0;
 
   return (
     <section className="flex flex-col gap-8">
@@ -70,15 +73,12 @@ export default function CallPage() {
           <h1 className="text-3xl font-extrabold tracking-tight [overflow-wrap:anywhere]">
             {call.title || call.customerName || call.productName || "Samtale"}
           </h1>
-          {analysis ? (
-            <Flag level={FLAG_LEVEL[analysis.flag]} />
-          ) : (
-            <span className="inline-flex items-center rounded-full border border-line px-3 py-1 text-sm font-medium">{CALL_STATUS[call.status]}</span>
-          )}
+          {analysis ? <Flag level={FLAG_LEVEL[analysis.flag]} /> : <CallStatusBadge status={call.status} />}
         </div>
         <p className="mt-2 text-muted">
           {[formatDateTime(call.startedAt), call.userName, formatDuration(call.durationMs), SOURCE[call.source]].filter(Boolean).join(" · ")}
         </p>
+        <Links call={call} canEdit={permissions.includes("calls.upload") && !call.analyses.length && !call.working} onChanged={load} />
       </div>
       <ErrorMessage message={error} />
 
@@ -111,55 +111,61 @@ export default function CallPage() {
         </Card>
       )}
 
-      {canPlay && (
-        <Card title="Opptak">
-          {audio ? (
-            // A short-lived link; every playback is logged.
-            <audio
-              ref={player}
-              src={audio}
-              controls
-              preload="metadata"
-              className="w-full"
-              // The link lasts ten minutes; after that the player shows the button again for a new one.
-              onError={() => setAudio(null)}
-              onLoadedMetadata={(e) => {
-                if (pendingSeek.current === null) return;
-                e.currentTarget.currentTime = pendingSeek.current / 1000;
-                pendingSeek.current = null;
-                void e.currentTarget.play().catch(() => undefined);
-              }}
-            />
-          ) : (
-            <button type="button" className={primaryButton} onClick={() => play()}>
-              Spill av
-            </button>
+      <div className={`grid gap-8 lg:items-start [&>*]:min-w-0 ${side ? "lg:grid-cols-2" : ""}`}>
+        {side && (
+          <div className="flex flex-col gap-8 lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
+            {canPlay && (
+              <Card title="Opptak">
+                {audio ? (
+                  // A short-lived link; every playback is logged.
+                  <audio
+                    ref={player}
+                    src={audio}
+                    controls
+                    preload="metadata"
+                    className="w-full"
+                    // The link lasts ten minutes; after that the player shows the button again for a new one.
+                    onError={() => setAudio(null)}
+                    onLoadedMetadata={(e) => {
+                      if (pendingSeek.current === null) return;
+                      e.currentTarget.currentTime = pendingSeek.current / 1000;
+                      pendingSeek.current = null;
+                      void e.currentTarget.play().catch(() => undefined);
+                    }}
+                  />
+                ) : (
+                  <button type="button" className={primaryButton} onClick={() => play()}>
+                    Spill av
+                  </button>
+                )}
+                <p className="mt-2 text-sm text-muted">Slettes automatisk {formatDate(call.expiresAt)}.</p>
+              </Card>
+            )}
+            {call.segments.length > 0 && <TranscriptPanel segments={call.segments} onSeek={canPlay ? play : undefined} />}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-8 lg:col-start-1 lg:row-start-1">
+          {analysis && <Analysis call={call} analysis={analysis} onSeek={canPlay ? play : undefined} onChanged={load} />}
+
+          <NotesPanel call={call} onChanged={load} />
+
+          <AdditionalInfo
+            key={call.id}
+            value={call.note ?? ""}
+            canEdit={call.isOwn && permissions.includes("calls.upload")}
+            onSave={async (text) => {
+              await orgFetch(`/calls/${call.id}`, { method: "PATCH", body: { note: text.trim() || null } });
+              await load();
+            }}
+          />
+
+          {me?.modules?.includes("dashboard") && (
+            <Coaching sellerId={call.userId} sellerName={call.userName} callId={call.id} title="Tilbakemelding på samtalen" />
           )}
-          <p className="mt-2 text-sm text-muted">Slettes automatisk {formatDate(call.expiresAt)}.</p>
-        </Card>
-      )}
-
-      {analysis && <Analysis call={call} analysis={analysis} onSeek={canPlay ? play : undefined} onChanged={load} />}
-
-      {call.segments.length > 0 && <TranscriptPanel segments={call.segments} onSeek={canPlay ? play : undefined} />}
-
-      <NotesPanel call={call} onChanged={load} />
-
-      <AdditionalInfo
-        key={call.id}
-        value={call.note ?? ""}
-        canEdit={call.isOwn && permissions.includes("calls.upload")}
-        onSave={async (text) => {
-          await orgFetch(`/calls/${call.id}`, { method: "PATCH", body: { note: text.trim() || null } });
-          await load();
-        }}
-      />
-
-      {me?.modules?.includes("dashboard") && (
-        <Coaching sellerId={call.userId} sellerName={call.userName} callId={call.id} title="Tilbakemelding på samtalen" />
-      )}
-      {permissions.includes("audit.read") && <CallLog callId={call.id} />}
-      <Links call={call} canEdit={permissions.includes("calls.upload") && !call.analyses.length && !call.working} onChanged={load} />
+          {permissions.includes("audit.read") && <CallLog callId={call.id} />}
+        </div>
+      </div>
     </section>
   );
 }
@@ -210,7 +216,12 @@ function Analysis({
             {f.quote && (
               <p className="mt-2 [overflow-wrap:anywhere]">
                 {f.startMs !== null && onSeek ? (
-                  <button type="button" className="mr-2 font-mono text-sm text-brand" onClick={() => onSeek(f.startMs!)}>
+                  <button
+                    type="button"
+                    className="-my-2 mr-1 inline-flex min-h-11 items-center rounded-lg px-2 font-mono text-sm text-brand hover:bg-bg"
+                    onClick={() => onSeek(f.startMs!)}
+                    title="Spill av herfra"
+                  >
                     {formatDuration(f.startMs)}
                   </button>
                 ) : null}
@@ -286,53 +297,56 @@ function Links({ call, canEdit, onChanged }: { call: CallDetail; canEdit: boolea
     }
   }
 
-  return (
-    <Card
-      title="Koblinger"
-      actions={
-        canEdit &&
-        !editing && (
-          <button type="button" className={secondaryButton} onClick={() => setEditing(true)}>
-            Endre
-          </button>
-        )
-      }
-    >
-      {editing ? (
-        <form onSubmit={save} className="flex flex-col gap-4">
-          <Field label="Tittel">
-            <input maxLength={200} className={`${inputClass} sm:max-w-md`} value={title} onChange={(e) => setTitle(e.target.value)} />
-          </Field>
-          <CustomerPicker value={customer} onChange={setCustomer} />
-          {!call.saleId && (
-            <Field label="Produkt" hint="Når et produkt kobles til, sjekkes samtalen mot gjeldende produktmal.">
-              <select className={`${inputClass} sm:max-w-md`} value={productId} onChange={(e) => setProductId(e.target.value)}>
-                <option value="">Ikke valgt</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+  if (editing) {
+    return (
+      <div className="mt-4">
+        <Card title="Koblinger">
+          <form onSubmit={save} className="flex flex-col gap-4">
+            <Field label="Tittel">
+              <input maxLength={200} className={`${inputClass} sm:max-w-md`} value={title} onChange={(e) => setTitle(e.target.value)} />
             </Field>
-          )}
-          <ErrorMessage message={error} />
-          <div className="flex gap-2">
-            <button type="submit" className={primaryButton}>
-              Lagre
-            </button>
-            <button type="button" className={secondaryButton} onClick={() => setEditing(false)}>
-              Avbryt
-            </button>
-          </div>
-        </form>
-      ) : (
-        <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[12rem_1fr]">
-          <dt className="text-sm font-semibold text-muted">Kunde</dt>
+            <CustomerPicker value={customer} onChange={setCustomer} />
+            {!call.saleId && (
+              <Field label="Produkt" hint="Når et produkt kobles til, sjekkes samtalen mot gjeldende produktmal.">
+                <select className={`${inputClass} sm:max-w-md`} value={productId} onChange={(e) => setProductId(e.target.value)}>
+                  <option value="">Ikke valgt</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
+            <ErrorMessage message={error} />
+            <div className="flex gap-2">
+              <button type="submit" className={primaryButton}>
+                Lagre
+              </button>
+              <button type="button" className={secondaryButton} onClick={() => setEditing(false)}>
+                Avbryt
+              </button>
+            </div>
+          </form>
+        </Card>
+      </div>
+    );
+  }
+
+  // Customer, sale and product right under the title, where they are looked for.
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+      <dl className="flex flex-wrap items-center gap-x-6 gap-y-1">
+        <div className="flex gap-1.5">
+          <dt className="text-muted">Kunde:</dt>
           <dd>{call.customerId ? <Link href={`/kunder/${call.customerId}`} className="font-semibold text-brand">{call.customerName}</Link> : "–"}</dd>
-          <dt className="text-sm font-semibold text-muted">Salg</dt>
+        </div>
+        <div className="flex gap-1.5">
+          <dt className="text-muted">Salg:</dt>
           <dd>{call.saleId ? <Link href={`/salg/${call.saleId}`} className="font-semibold text-brand">Se salget</Link> : "–"}</dd>
-          <dt className="text-sm font-semibold text-muted">Produkt</dt>
+        </div>
+        <div className="flex gap-1.5">
+          <dt className="text-muted">Produkt:</dt>
           <dd>
             {call.productId ? (
               <Link href={`/produkter/${call.productId}`} className="font-semibold text-brand">
@@ -343,8 +357,13 @@ function Links({ call, canEdit, onChanged }: { call: CallDetail; canEdit: boolea
               "–"
             )}
           </dd>
-        </dl>
+        </div>
+      </dl>
+      {canEdit && (
+        <button type="button" className="inline-flex min-h-11 items-center font-semibold text-brand" onClick={() => setEditing(true)}>
+          Endre koblinger
+        </button>
       )}
-    </Card>
+    </div>
   );
 }

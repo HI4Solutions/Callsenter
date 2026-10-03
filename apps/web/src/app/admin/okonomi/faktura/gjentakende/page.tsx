@@ -53,25 +53,23 @@ export default function RecurringPage() {
   const today = osloToday();
   return (
     <section className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Økonomi</h1>
-          <p className="mt-2 text-muted">
-            Faste avtaler sendes automatisk hver morgen, et fast antall dager før forfall. Planlagte fakturaer sendes samme morgen som fakturadatoen.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" disabled={busy} className={secondaryButton} onClick={runNow}>
-            Kjør nå
-          </button>
-          {!editing && (
-            <button type="button" className={primaryButton} onClick={() => setEditing("new")}>
-              Ny gjentakende faktura
-            </button>
-          )}
-        </div>
+      <div>
+        <h1 className="text-3xl font-extrabold tracking-tight">Økonomi</h1>
+        <p className="mt-2 text-muted">
+          Faste avtaler sendes automatisk hver morgen, et fast antall dager før forfall. Planlagte fakturaer sendes samme morgen som fakturadatoen.
+        </p>
       </div>
       <EconomyNav />
+      <div className="flex flex-wrap gap-2">
+        {!editing && (
+          <button type="button" className={primaryButton} onClick={() => setEditing("new")}>
+            Ny gjentakende faktura
+          </button>
+        )}
+        <button type="button" disabled={busy} className={secondaryButton} onClick={runNow}>
+          Kjør nå
+        </button>
+      </div>
       {message && <p role="status">{message}</p>}
       <ErrorMessage message={error} />
       {editing && (
@@ -89,7 +87,7 @@ export default function RecurringPage() {
       ) : agreements.length === 0 ? (
         <p className="text-muted">Ingen gjentakende fakturaer.</p>
       ) : (
-        <div className="-mx-2 overflow-x-auto">
+        <div className="-mx-2 scroll-x">
           <table className="w-full min-w-[44rem] text-left">
             <thead className="text-sm text-muted">
               <tr>

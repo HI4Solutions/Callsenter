@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { useWorkMe } from "@/components/work/work-shell";
+import { EmptyState } from "@/components/empty-state";
 import { orgFetch } from "@/lib/org";
 import { formatPrice, months, type ProductSummary } from "@/lib/work";
 
@@ -97,7 +98,12 @@ export default function ProductsPage() {
       {!shown ? (
         !error && <p className="text-muted">Laster …</p>
       ) : shown.length === 0 ? (
-        <p className="text-muted">Ingen produkter ennå.</p>
+        <EmptyState title={archived ? "Ingen arkiverte produkter" : "Ingen produkter ennå"}>
+          {!archived &&
+            (canManage
+              ? "Lag det første med «Nytt produkt». Produktmalen bestemmer hva AI-kontrollen sjekker samtalene mot."
+              : "Produktene legges inn av en leder eller admin i callsenteret.")}
+        </EmptyState>
       ) : (
         <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
           {shown.map((p) => (

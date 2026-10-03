@@ -153,7 +153,7 @@ export function SellersTable({ data, sellerLinks }: { data: Dashboard; sellerLin
   if (!data.sellers.length) return null;
   return (
     <Card title="Selgere">
-      <div className="-mx-2 overflow-x-auto">
+      <div className="-mx-2 scroll-x">
         <table className="w-full min-w-[40rem] text-left">
           <thead className="text-sm text-muted">
             <tr>

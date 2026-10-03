@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_ROLES, isPermission, PERMISSION_KEYS, STRONG_AUTH_PERMISSIONS } from "./permissions.ts";
+import { DEFAULT_ROLES, isPermission, PERMISSION_GROUPS, PERMISSION_KEYS, STRONG_AUTH_PERMISSIONS } from "./permissions.ts";
 
 describe("permission catalog", () => {
   it("recognises only catalog permissions", () => {
@@ -18,6 +18,12 @@ describe("permission catalog", () => {
 
   it("requires strong authentication only for catalog permissions", () => {
     for (const permission of STRONG_AUTH_PERMISSIONS) expect(isPermission(permission)).toBe(true);
+  });
+
+  it("puts every permission in exactly one group", () => {
+    const grouped = PERMISSION_GROUPS.flatMap((g) => g.permissions);
+    expect([...grouped].sort()).toEqual([...PERMISSION_KEYS].sort());
+    expect(new Set(grouped).size).toBe(grouped.length);
   });
 });
 

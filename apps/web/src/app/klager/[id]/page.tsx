@@ -16,8 +16,8 @@ import { formatPhone } from "@/lib/work";
 const ACTIONS: Record<ComplaintStatus, string> = {
   open: "Åpne igjen",
   investigating: "Start behandling",
-  resolved: "Løs saken",
-  rejected: "Avvis klagen",
+  resolved: "Marker som løst",
+  rejected: "Marker som avvist",
 };
 
 const NEXT: Record<ComplaintStatus, ComplaintStatus[]> = {

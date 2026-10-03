@@ -64,7 +64,7 @@ export function InvoiceView({ invoice }: { invoice: InvoiceDetail }) {
 
       {invoice.note && <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{invoice.note}</p>}
 
-      <div className="-mx-2 overflow-x-auto">
+      <div className="-mx-2 scroll-x">
         <table className="w-full min-w-[36rem] text-left text-sm">
           <thead className="border-b border-line text-muted">
             <tr>

@@ -7,6 +7,7 @@ import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { SaleList } from "@/components/work/sale-list";
 import { NoAccess, useWorkMe } from "@/components/work/work-shell";
+import { EmptyState } from "@/components/empty-state";
 import { orgFetch } from "@/lib/org";
 import { canSeeSales, type Customer, formatPrice, type ProductSummary, type SaleSummary } from "@/lib/work";
 
@@ -94,7 +95,13 @@ export default function SalesPage() {
       {!sales ? (
         !error && <p className="text-muted">Laster …</p>
       ) : sales.length === 0 ? (
-        <p className="text-muted">{status || mine || query.trim() ? "Ingen salg passer filteret." : "Ingen salg ennå."}</p>
+        status || mine || query.trim() ? (
+          <p className="text-muted">Ingen salg passer filteret.</p>
+        ) : (
+          <EmptyState title="Ingen salg ennå">
+            {canManage ? "Registrer det første med «Nytt salg». Kunden kan så godta tilbudet med BankID eller Vipps." : "Salgene dine vises her når de er registrert."}
+          </EmptyState>
+        )
       ) : (
         <SaleList sales={sales} />
       )}

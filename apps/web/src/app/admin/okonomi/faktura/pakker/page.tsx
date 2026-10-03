@@ -35,18 +35,18 @@ export default function PackagesPage() {
 
   return (
     <section className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 className="text-3xl font-extrabold tracking-tight">Økonomi</h1>
+        <p className="mt-2 text-muted">Pakkene callsentrene kjøper. En pakke på en faktura med tilgang slår på modulene i pakken.</p>
+      </div>
+      <EconomyNav />
+      {!editing && (
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Økonomi</h1>
-          <p className="mt-2 text-muted">Pakkene callsentrene kjøper. En pakke på en faktura med tilgang slår på modulene i pakken.</p>
-        </div>
-        {!editing && (
           <button type="button" className={primaryButton} onClick={() => setEditing("new")}>
             Ny pakke
           </button>
-        )}
-      </div>
-      <EconomyNav />
+        </div>
+      )}
       <ErrorMessage message={error} />
       {editing && (
         <PackageForm

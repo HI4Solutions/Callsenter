@@ -22,24 +22,67 @@ const INVOICING = [
 export const LAST_SECTION_KEY = "veriqall.okonomi";
 const INVOICE_PAGE = /^\/admin\/okonomi\/faktura\/[0-9a-f-]{36}$/;
 
-function Links({ links, label, exact }: { links: { href: string; label: string }[]; label: string; exact: (href: string) => boolean }) {
+// The parts of Økonomi as a segmented control, and the parts of Faktura as underlined links
+// under it, so neither looks like a button that does something.
+function Links({
+  links,
+  label,
+  exact,
+  variant,
+}: {
+  links: { href: string; label: string }[];
+  label: string;
+  exact: (href: string) => boolean;
+  variant: "segments" | "underline";
+}) {
   const pathname = usePathname();
+  const isActive = (href: string) =>
+    // An invoice's own page belongs under Fakturaer.
+    exact(href) ? pathname === href || INVOICE_PAGE.test(pathname) : pathname.startsWith(href);
+  if (variant === "segments") {
+    return (
+      <nav aria-label={label} className="print:hidden">
+        <ul className="grid grid-cols-4 gap-1 rounded-xl border border-line bg-bg p-1 sm:inline-flex sm:max-w-full sm:flex-wrap">
+          {links.map((l) => {
+            const active = isActive(l.href);
+            return (
+              <li key={l.href}>
+                <Link
+                  href={l.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex min-h-10 w-full items-center justify-center rounded-lg px-2 text-sm font-semibold sm:px-4 sm:text-base ${
+                    active ? "bg-surface text-fg shadow-sm ring-1 ring-line" : "text-muted hover:text-fg"
+                  }`}
+                >
+                  {l.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    );
+  }
   return (
-    <nav aria-label={label} className="flex flex-wrap gap-2 print:hidden">
-      {links.map((l) => {
-        // An invoice's own page belongs under Fakturaer.
-        const active = exact(l.href) ? pathname === l.href || INVOICE_PAGE.test(pathname) : pathname.startsWith(l.href);
-        return (
-          <Link
-            key={l.href}
-            href={l.href}
-            aria-current={active ? "page" : undefined}
-            className={`inline-flex min-h-11 items-center rounded-lg border px-4 font-semibold ${active ? "border-brand bg-brand text-on-brand" : "border-line hover:bg-bg"}`}
-          >
-            {l.label}
-          </Link>
-        );
-      })}
+    <nav aria-label={label} className="border-b border-line print:hidden">
+      <ul className="flex flex-wrap gap-x-5">
+        {links.map((l) => {
+          const active = isActive(l.href);
+          return (
+            <li key={l.href}>
+              <Link
+                href={l.href}
+                aria-current={active ? "page" : undefined}
+                className={`-mb-px inline-flex min-h-11 items-center border-b-2 font-semibold ${
+                  active ? "border-brand text-brand" : "border-transparent text-muted hover:text-fg"
+                }`}
+              >
+                {l.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
     </nav>
   );
 }
@@ -57,10 +100,10 @@ export function EconomyNav() {
     }
   }, [pathname]);
   return (
-    <div className="flex flex-col gap-3">
-      <Links links={SECTIONS} label="Økonomi" exact={() => false} />
+    <div className="flex flex-col gap-4">
+      <Links links={SECTIONS} label="Økonomi" exact={() => false} variant="segments" />
       {pathname.startsWith("/admin/okonomi/faktura") && (
-        <Links links={INVOICING} label="Faktura" exact={(href) => href === "/admin/okonomi/faktura"} />
+        <Links links={INVOICING} label="Faktura" exact={(href) => href === "/admin/okonomi/faktura"} variant="underline" />
       )}
     </div>
   );

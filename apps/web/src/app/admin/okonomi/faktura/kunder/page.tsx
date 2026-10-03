@@ -51,7 +51,7 @@ export default function CustomersPage() {
       {!customers ? (
         !error && <p className="text-muted">Laster …</p>
       ) : (
-        <div className="-mx-2 overflow-x-auto">
+        <div className="-mx-2 scroll-x">
           <table className="w-full min-w-[48rem] text-left">
             <thead className="text-sm text-muted">
               <tr>

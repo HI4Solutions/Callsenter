@@ -7,6 +7,7 @@ import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton } from "@/components/admin/field";
 import { CustomerForm } from "@/components/work/customer-form";
 import { NoAccess, useWorkMe } from "@/components/work/work-shell";
+import { EmptyState } from "@/components/empty-state";
 import { orgFetch } from "@/lib/org";
 import { type Customer, CUSTOMER_KIND, formatOrgNumber, formatPhone } from "@/lib/work";
 
@@ -92,7 +93,13 @@ export default function CustomersPage() {
       {!customers ? (
         !error && <p className="text-muted">Laster …</p>
       ) : customers.length === 0 ? (
-        <p className="text-muted">{query.trim() ? "Ingen kunder passer søket." : archived ? "Ingen arkiverte kunder." : "Ingen kunder ennå."}</p>
+        query.trim() || archived ? (
+          <p className="text-muted">{query.trim() ? "Ingen kunder passer søket." : "Ingen arkiverte kunder."}</p>
+        ) : (
+          <EmptyState title="Ingen kunder ennå">
+            {canManage ? "Legg til den første med «Ny kunde». Et salg registreres alltid på en kunde." : "Kundene legges inn av noen som har tilgang til å endre kunder."}
+          </EmptyState>
+        )
       ) : (
         <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
           {customers.map((c) => (

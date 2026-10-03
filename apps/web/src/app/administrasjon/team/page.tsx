@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
+import { EmptyState } from "@/components/empty-state";
 import { orgFetch, type OrgOverview } from "@/lib/org";
 
 export default function TeamsPage() {
@@ -70,7 +71,7 @@ export default function TeamsPage() {
       <ErrorMessage message={error} />
       <Card title={`Team (${active.length})`}>
         {active.length === 0 ? (
-          <p className="text-muted">Ingen team ennå.</p>
+          <EmptyState title="Ingen team ennå">Lag det første over. Team trengs for teamledere, og for tall per team på dashboardet.</EmptyState>
         ) : (
           <ul className="divide-y divide-line">
             {active.map((t) => (

@@ -76,7 +76,8 @@ export default function CallCentresPage() {
                       <p className="font-semibold">{org.name}</p>
                       <p className="text-sm text-muted">
                         {org.orgNumber ? `Org.nr. ${org.orgNumber} · ` : ""}
-                        {org.activeMembers} aktive, {org.invitedMembers} inviterte · sist innlogget {formatDateTime(org.lastLoginAt)}
+                        {org.activeMembers} aktive, {org.invitedMembers} inviterte ·{" "}
+                        {org.lastLoginAt ? `sist innlogget ${formatDateTime(org.lastLoginAt)}` : "ingen har logget inn"}
                       </p>
                     </div>
                     <StatusBadge tone={state.tone}>{state.label}</StatusBadge>

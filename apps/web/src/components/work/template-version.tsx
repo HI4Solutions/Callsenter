@@ -230,12 +230,13 @@ export function DraftEditor({
         >
           Lagre og publiser
         </button>
+        {/* Away from the save buttons, and quieter, since it throws the work away. */}
         <button
           type="button"
           disabled={busy}
-          className={secondaryButton}
+          className="inline-flex min-h-11 items-center px-2 font-semibold text-muted underline-offset-4 hover:text-fg hover:underline disabled:opacity-60 sm:ml-auto"
           onClick={() => {
-            if (window.confirm("Slette utkastet?")) void run(onDelete);
+            if (window.confirm("Slette utkastet? Endringene i det går tapt.")) void run(onDelete);
           }}
         >
           Slett utkast
