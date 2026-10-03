@@ -177,3 +177,53 @@ export function previousPeriod(from: string, to: string): { from: string; to: st
 export function sum(values: number[]): number {
   return values.reduce((total, v) => total + v, 0);
 }
+
+// The quality dashboard for compliance (app.dashboard_quality). Parts for modules that are off,
+// or without audit.read, are null.
+export interface QualityDashboard {
+  from: string;
+  to: string;
+  flags: {
+    open: number;
+    openByAge: { day: number; days3: number; week: number; older: number };
+    oldestOpenAt: string | null;
+    reviewed: number;
+    medianHoursToReview: number | null;
+    checked: number;
+    yellow: number;
+    red: number;
+  };
+  products: { name: string; checked: number; yellow: number; red: number }[];
+  sellers: { userId: string; name: string; checked: number; yellow: number; red: number }[];
+  complaints: {
+    received: number;
+    byStatus: { open: number; investigating: number; resolved: number; rejected: number };
+    openNow: number;
+    medianDaysToClose: number | null;
+    byChannel: Record<string, number>;
+    weekly: { week: string; received: number }[];
+  } | null;
+  confirmations: {
+    sent: number;
+    accepted: number;
+    rejected: number;
+    pending: number;
+    expired: number;
+    revoked: number;
+    bankid: number;
+    vipps: number;
+    identityMismatch: number;
+  } | null;
+  access: {
+    views: number;
+    plays: number;
+    downloads: number;
+    searches: number;
+    users: { userId: string; name: string; total: number; views: number; plays: number; searches: number }[];
+  } | null;
+}
+
+// Who gets the quality tab: the whole call centre, and reviewing flags or complaints.
+export function canSeeQuality(permissions: string[]): boolean {
+  return permissions.includes("dashboard.all") && (permissions.includes("flags.review") || permissions.includes("complaints.manage"));
+}

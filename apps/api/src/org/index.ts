@@ -41,7 +41,7 @@ import {
 import { addComplaintNote, createComplaint, getComplaint, listComplaints, updateComplaint } from "./complaints.ts";
 import { createConfirmation, revokeConfirmation } from "./confirmations.ts";
 import { createCustomer, getCustomer, listCustomers, updateCustomer } from "./customers.ts";
-import { createCoaching, getBenchmark, getDashboard, getTeamDashboard, listCoaching, readCoaching } from "./dashboard.ts";
+import { createCoaching, getBenchmark, getDashboard, getQualityDashboard, getTeamDashboard, listCoaching, readCoaching } from "./dashboard.ts";
 import { getSaleDocumentation } from "./documentation.ts";
 import { listOrgInvoices } from "./invoices.ts";
 import {
@@ -399,6 +399,9 @@ export async function handleOrg(
     }
     if (method === "GET" && path === "/org/dashboard/team") {
       return reply(200, await getTeamDashboard(deps.appDb, session, event.queryStringParameters ?? {}));
+    }
+    if (method === "GET" && path === "/org/dashboard/quality") {
+      return reply(200, await getQualityDashboard(deps.appDb, session, event.queryStringParameters ?? {}));
     }
     if (path === "/org/coaching") {
       if (method === "GET") return reply(200, await listCoaching(deps.appDb, session, event.queryStringParameters ?? {}));
