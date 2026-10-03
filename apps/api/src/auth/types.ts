@@ -52,6 +52,7 @@ export type LoginError =
   | "invitasjon"
   | "deaktivert"
   | "allerede_koblet"
+  | "navn_ulikt"
   | "ikke_satt_opp"
   | "feil";
 
