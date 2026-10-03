@@ -199,6 +199,10 @@ Resources:
                 Resource:
                   - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/rds/instance/veriqall-${Environment}/postgresql
                   - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/rds/instance/veriqall-${Environment}/postgresql:*
+              # AssociateKmsKey requires the caller to be able to describe the key.
+              - Effect: Allow
+                Action: kms:DescribeKey
+                Resource: !GetAtt Key.Arn
               - Effect: Allow
                 Action:
                   - logs:CreateLogStream
@@ -228,17 +232,20 @@ Resources:
           import time
 
           import boto3
+          import botocore.exceptions
           import cfnresponse
 
           logs = boto3.client("logs")
 
           def associate_key(name, key):
-              # A key policy changed in the same deploy can take a little while to apply.
+              # A key policy or role policy changed in the same deploy can take a little while
+              # to apply.
               for attempt in range(6):
                   try:
                       return logs.associate_kms_key(logGroupName=name, kmsKeyId=key)
-                  except logs.exceptions.InvalidParameterException:
-                      if attempt == 5:
+                  except botocore.exceptions.ClientError as error:
+                      code = error.response["Error"]["Code"]
+                      if attempt == 5 or code not in ("InvalidParameterException", "AccessDeniedException"):
                           raise
                       time.sleep(5)
 
