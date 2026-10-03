@@ -129,3 +129,51 @@ export function share(part: number, whole: number): string {
 export function canSeeDashboard(me: { modules?: string[] }): boolean {
   return (me.modules ?? []).includes("dashboard");
 }
+
+// The team's average per seller, without names (apps/api/src/org/dashboard.ts). Figures only
+// when at least three were active in the team, so no colleague's numbers can be worked out.
+export interface Benchmark {
+  teamName: string;
+  sellers: number;
+  tooFew: boolean;
+  perSeller: { calls: number; sales: number; confirmed: number; durationMs: number } | null;
+  // Whole percent, or null when there was nothing to divide by.
+  shares: { confirmed: number | null; green: number | null; red: number | null } | null;
+}
+
+// Each seller in a team (or the whole call centre) day by day, for leaders.
+export interface TeamSeller {
+  userId: string;
+  name: string;
+  // One number per day in `days`.
+  calls: number[];
+  sales: number[];
+  red: number[];
+  unreviewed: number;
+  // Feedback given in the period, and the last feedback ever.
+  feedback: number;
+  lastFeedbackAt: string | null;
+}
+
+export interface TeamDashboard {
+  from: string;
+  to: string;
+  team: string | null;
+  days: string[];
+  sellers: TeamSeller[];
+}
+
+// Number of days in a period, both ends included.
+export function dayCount(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000) + 1;
+}
+
+// The period of the same length right before, to compare with.
+export function previousPeriod(from: string, to: string): { from: string; to: string } {
+  const days = dayCount(from, to);
+  return { from: addDays(from, -days), to: addDays(from, -1) };
+}
+
+export function sum(values: number[]): number {
+  return values.reduce((total, v) => total + v, 0);
+}

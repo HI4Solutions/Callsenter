@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { ErrorMessage, Field, inputClass } from "@/components/admin/field";
 import { Coaching } from "@/components/work/coaching";
-import { DashboardView } from "@/components/work/dashboard-view";
 import type { FlagFilter } from "@/components/work/flag-charts";
+import { MyDashboard, TeamLevel } from "@/components/work/level-dashboards";
 import { PeriodCalls } from "@/components/work/period-calls";
 import { PeriodPicker, useStoredPeriod } from "@/components/work/period-picker";
 import { NoAccess, useWorkMe } from "@/components/work/work-shell";
@@ -13,46 +13,83 @@ import { canSeeDashboard, type Dashboard } from "@/lib/dashboard";
 import { formatDate } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 
-// Who the numbers are for: "me", "all", or a team id.
+// A dashboard for each level (docs/plan.md, section 15): Meg for everyone, Teamet with
+// dashboard.team (or dashboard.all), Callsenteret with dashboard.all. The choice is remembered
+// on the device; the first time, leaders start with what they lead.
+type Level = "me" | "team" | "all";
+
+const LEVEL_KEY = "veriqall.oversikt.niva";
+
+function storedLevel(): Level | null {
+  try {
+    const value = localStorage.getItem(LEVEL_KEY);
+    return value === "me" || value === "team" || value === "all" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function DashboardPage() {
   const me = useWorkMe();
-  const [view, setView] = useState("me");
-  // Leaders start with what they lead: the whole call centre, or their team.
-  const [chosen, setChosen] = useState(false);
   const [period, setPeriod] = useStoredPeriod();
   const [flag, setFlag] = useState<FlagFilter>("all");
-  const [data, setData] = useState<Dashboard | null>(null);
+  const [access, setAccess] = useState<{ teams: { id: string; name: string }[]; canSeeAll: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [level, setLevel] = useState<Level | null>(null);
+  const [team, setTeam] = useState<string | null>(null);
   const visible = me ? canSeeDashboard(me) : false;
 
+  // Which teams the user may look at (all of them with dashboard.all, otherwise their own).
   useEffect(() => {
     if (!visible) return;
     let cancelled = false;
-    const params = new URLSearchParams({ from: period.from, to: period.to });
-    if (view === "all") params.set("scope", "all");
-    else if (view !== "me") {
-      params.set("scope", "team");
-      params.set("target", view);
-    }
-    orgFetch<Dashboard>(`/dashboard?${params}`)
+    orgFetch<Dashboard>(`/dashboard?${new URLSearchParams({ from: period.to, to: period.to })}`)
       .then((d) => {
         if (cancelled) return;
-        setData(d);
+        setAccess({ teams: d.teams, canSeeAll: d.canSeeAll });
         setError(null);
       })
       .catch((e: Error) => !cancelled && setError(e.message));
     return () => {
       cancelled = true;
     };
-  }, [view, period.from, period.to, visible]);
+  }, [visible, period.to]);
 
-  if (data && !chosen && view === "me" && (data.canSeeAll || data.teams.length === 1)) {
-    setChosen(true);
-    setView(data.canSeeAll ? "all" : data.teams[0]!.id);
+  const teams = access?.teams ?? [];
+  const canSeeAll = access?.canSeeAll ?? false;
+  const levels: { key: Level; label: string }[] = [{ key: "me", label: "Meg" }];
+  if (teams.length) levels.push({ key: "team", label: teams.length === 1 && !canSeeAll ? `Team ${teams[0]!.name}` : "Teamet" });
+  if (canSeeAll) levels.push({ key: "all", label: "Callsenteret" });
+
+  // The first time: the highest level the user has. Later: the last one chosen on this device.
+  if (access && level === null) {
+    const saved = storedLevel();
+    const allowed = (l: Level) => levels.some((x) => x.key === l);
+    setLevel(saved && allowed(saved) ? saved : canSeeAll ? "all" : teams.length ? "team" : "me");
   }
+  if (teams.length && (team === null || !teams.some((t) => t.id === team))) setTeam(teams[0]!.id);
+
+  const choose = (next: Level) => {
+    setLevel(next);
+    setFlag("all");
+    try {
+      localStorage.setItem(LEVEL_KEY, next);
+    } catch {
+      // Not remembered; the choice still applies on this page.
+    }
+  };
+
+  // A flag chosen in a chart lists those calls below it.
+  const pickFlag = (f: FlagFilter) => {
+    setFlag(f);
+    document.getElementById("samtaler-i-perioden")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   if (!visible) return <NoAccess text="Dashboard og coaching er ikke slått på for callsenteret." />;
-  const choices = (data?.teams ?? []).map((t) => ({ value: t.id, label: `Team ${t.name}` }));
+
+  const shown: Level = level && levels.some((l) => l.key === level) ? level : "me";
+  const teamName = teams.find((t) => t.id === team)?.name;
+  const scope = shown === "me" ? { userId: me!.user.id } : shown === "team" ? { teamId: team ?? undefined } : {};
 
   return (
     <section className="flex flex-col gap-8">
@@ -60,60 +97,63 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">Oversikt</h1>
           <p className="mt-2 text-muted">
-            {data ? `${data.from === data.to ? formatDate(data.from) : `${formatDate(data.from)}–${formatDate(data.to)}`}. ` : ""}
-            Tallene viser antall, ikke innhold: samtalene åpnes bare med tilgang til dem.
+            {period.from === period.to ? formatDate(period.from) : `${formatDate(period.from)}–${formatDate(period.to)}`}.{" "}
+            {shown === "me" ? "Dine egne tall." : shown === "team" ? `Team ${teamName ?? ""}.` : "Hele callsenteret."} Tallene viser
+            antall, ikke innhold.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          {(choices.length > 0 || data?.canSeeAll) && (
-            <Field label="Vis">
-              <select
-                className={inputClass}
-                value={view}
-                onChange={(e) => {
-                  setChosen(true);
-                  setView(e.target.value);
-                }}
-              >
-                <option value="me">Meg</option>
-                {choices.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
+        <div className="flex flex-wrap items-end gap-3">
+          {shown === "team" && teams.length > 1 && (
+            <Field label="Team">
+              <select className={inputClass} value={team ?? ""} onChange={(e) => setTeam(e.target.value)}>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
                   </option>
                 ))}
-                {data?.canSeeAll && <option value="all">Hele callsenteret</option>}
               </select>
             </Field>
           )}
           <PeriodPicker value={period} onChange={setPeriod} />
         </div>
       </div>
-      <ErrorMessage message={error} />
-      {!data ? (
-        !error && <p className="text-muted">Laster …</p>
-      ) : (
-        <DashboardView
-          data={data}
-          sellerLinks
-          flagFilter={flag}
-          onFlag={(f) => {
-            setFlag(f);
-            document.getElementById("samtaler-i-perioden")?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }}
-        />
-      )}
-      {me && data && canSeeCalls(me) && (
-        <div id="samtaler-i-perioden" className="scroll-mt-4">
-          <PeriodCalls
-            from={data.from}
-            to={data.to}
-            scope={view === "me" ? { userId: me.user.id } : view === "all" ? {} : { teamId: view }}
-            filter={flag}
-            onFilter={setFlag}
-          />
+
+      {levels.length > 1 && (
+        <div role="tablist" aria-label="Nivå" className="-mt-4 flex gap-1 overflow-x-auto border-b border-line [scrollbar-width:none]">
+          {levels.map((l) => (
+            <button
+              key={l.key}
+              type="button"
+              role="tab"
+              aria-selected={shown === l.key}
+              onClick={() => choose(l.key)}
+              className={`min-h-11 shrink-0 border-b-2 px-4 font-semibold whitespace-nowrap ${
+                shown === l.key ? "border-brand text-fg" : "border-transparent text-muted hover:text-fg"
+              }`}
+            >
+              {l.label}
+            </button>
+          ))}
         </div>
       )}
-      {me && view === "me" && <Coaching sellerId={me.user.id} title="Tilbakemeldinger til deg" />}
+
+      <ErrorMessage message={error} />
+      {!access ? (
+        !error && <p className="text-muted">Laster …</p>
+      ) : shown === "me" ? (
+        <MyDashboard from={period.from} to={period.to} flag={flag} onFlag={pickFlag} />
+      ) : shown === "team" && team ? (
+        <TeamLevel key={team} team={team} from={period.from} to={period.to} flag={flag} onFlag={pickFlag} />
+      ) : (
+        <TeamLevel key="all" team={null} from={period.from} to={period.to} flag={flag} onFlag={pickFlag} />
+      )}
+
+      {me && access && canSeeCalls(me) && (
+        <div id="samtaler-i-perioden" className="scroll-mt-4">
+          <PeriodCalls from={period.from} to={period.to} scope={scope} filter={flag} onFilter={setFlag} />
+        </div>
+      )}
+      {me && shown === "me" && <Coaching sellerId={me.user.id} title="Tilbakemeldinger til deg" />}
     </section>
   );
 }

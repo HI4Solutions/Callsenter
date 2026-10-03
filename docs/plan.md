@@ -348,8 +348,6 @@ Beslutninger 2. oktober (til godkjenning):
 - **Ingen AI-generert coaching ennå.** «Hyppigste avvik» bygger på funnene fra AI-kontrollen, og lederen skriver tilbakemeldingen selv. Forslag fra Claude basert på selgerens siste samtaler kan komme senere (krever Bedrock-tilgang for API-Lambdaen).
 - **Modulen «Dashboard og coaching»** slås på per callsenter.
 
-| Del | Innhold |
-|---|---|
 **Utvidet 3. oktober (Nadeems ønske):** ledere ser dagens samtaler og AI-flaggene med en gang.
 
 - **Periode:** I dag (standard), I går, Denne uken, Forrige uke (uker fra mandag), Denne måneden, Forrige måned, Siste 30 og 90 dager, Hittil i år, eller to datoer (høyst ett år). Valget huskes på enheten.
@@ -359,9 +357,18 @@ Beslutninger 2. oktober (til godkjenning):
 - **Samtaler i perioden:** tid, varighet, selger, kunde og team, flagg og om det er behandlet, filtrert på Alle, Brudd, Avvik, Ikke behandlet, Godkjent eller Ikke kontrollert. Listen følger samtaletilgangen (`calls.read.*`), og et klikk åpner samtalen.
 - **Logg på samtalesiden** (`audit.read`): hvem som har åpnet, spilt av og søkt i samtalen, og hva som er gjort (statusendringer, AI-kontroll, behandling av flagg, notater og justeringer). Aldri teksten.
 
-| Database | `0016_dashboard_coaching.sql`: `coaching_notes` med RLS, `app.can_coach` og `app.dashboard`; `0024_dashboard_flags.sql`: flagg per dag og time, og indekser for samtaleloggen |
-| API | `GET /org/dashboard` (`scope` = me, seller, team eller all, `target`, `from`, `to`), `GET`/`POST /org/coaching` og `POST /org/coaching/{id}/read` |
-| Web | `/oversikt` (Meg, team og hele callsenteret), `/oversikt/selgere/[id]` og tilbakemelding på samtalesiden |
+**Et dashboard per nivå (Nadeems ønske 3. oktober):** hver bruker får sitt eget dashboard. Hvem som ser hva, styres av rettighetene, ikke rollenavnene. `/oversikt` har fanene Meg, Teamet og Callsenteret, og Kvalitet kommer i neste PR. Administrasjon og Superadmin får hver sin Oversikt-fane i senere PR-er. Første gang lander man på det høyeste nivået man har. Senere husker enheten valget.
+
+- **Meg (alle):** samtaler, salg, andel bekreftet, snittlengde og andel godkjent av AI. Tallene sammenlignes med perioden av samme lengde rett før: «Opp 12 % fra forrige periode (181)», med pil og tekst, aldri i grønt eller rødt. Mens perioden pågår (den tar med i dag), vises bare tallet fra forrige periode, fordi en prosent ville sammenligne en halv dag med en hel. Snittet per selger i teamet vises uten navn, og bare når minst tre i teamet har vært aktive i perioden. Med færre kunne man regne ut hva en kollega har gjort. I tillegg vises AI-kontrollen, utvikling, «Det du oftest glemmer», samtalene og tilbakemeldingene.
+- **Teamet (`dashboard.team`, eller `dashboard.all` med valg av team):** nøkkeltall med utvikling (salg, bekreftet, samtaler, andel brudd og ubehandlede flagg). «Selgerne» sammenligner selgerne på salg, samtaler, andel brudd eller ubehandlede flagg. «Trenger oppfølging» viser de som har flagg som venter, brudd i minst 20 % av samtalene (minst to brudd), ingen tilbakemelding på over 30 dager eller ingen aktivitet. «Aktivitet per dag» er et varmekart med selger mot dag (per uke over 31 dager), og tallet står i hver rute.
+- **Callsenteret (`dashboard.all`):** det samme for hele callsenteret.
+- **Database:** `0030_role_dashboards.sql` med `app.dashboard_benchmark` og `app.dashboard_team`, begge `security definer` med egne rettighetssjekker som `app.dashboard`. API: `GET /org/dashboard/benchmark` og `GET /org/dashboard/team`.
+
+| Del | Innhold |
+|---|---|
+| Database | `0016_dashboard_coaching.sql`: `coaching_notes` med RLS, `app.can_coach` og `app.dashboard`; `0024_dashboard_flags.sql`: flagg per dag og time, og indekser for samtaleloggen; `0030_role_dashboards.sql`: `app.dashboard_benchmark` og `app.dashboard_team` |
+| API | `GET /org/dashboard` (`scope` = me, seller, team eller all, `target`, `from`, `to`), `GET /org/dashboard/benchmark` og `GET /org/dashboard/team` (`team`, `from`, `to`), `GET`/`POST /org/coaching` og `POST /org/coaching/{id}/read` |
+| Web | `/oversikt` med fanene Meg, Teamet og Callsenteret, `/oversikt/selgere/[id]` og tilbakemelding på samtalesiden |
 
 ## 16. Økonomi og fakturering
 
