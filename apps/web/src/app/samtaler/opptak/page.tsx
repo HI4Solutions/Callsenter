@@ -29,12 +29,12 @@ import { WarningLamps } from "@/components/calls/warning-lamps";
 import { CustomerPicker } from "@/components/work/customer-picker";
 import { NoAccess, useWorkMe } from "@/components/work/work-shell";
 import {
-  CALL_STATUS,
   type CreatedCall,
   formatDuration,
   type RequiredPoint,
   recordingMime,
 } from "@/lib/calls";
+import { formatTagNow } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 import {
   type Capture,
@@ -138,6 +138,9 @@ function writeTabNotes(ids: string[]) {
 export default function StudioPage() {
   const me = useWorkMe();
   const tl = useTranslations("languages");
+  const t = useTranslations("calls");
+  const td = useTranslations("domain");
+  const tc = useTranslations("common");
   const [products, setProducts] = useState<ProductSummary[] | null>(null);
   const [productId, setProductId] = useState("");
   const [starred, setStarred] = useState<string | null>(null);
@@ -268,7 +271,21 @@ export default function StudioPage() {
 
   if (!me) return null;
   if (!me.permissions.includes("calls.upload"))
-    return <NoAccess text="Du har ikke tilgang til å ta opp samtaler." />;
+    return <NoAccess text={t("studio.noAccess")} />;
+
+  // A recorder error in the page's language (the API's own messages are shown as they are).
+  const recorderText = (e: RecorderError) => {
+    switch (e.key) {
+      case "incompleteUpload":
+        return t("recorder.incompleteUpload", {
+          detail: e.detail ?? t("recorder.signedOut"),
+        });
+      default:
+        return t(`recorder.${e.key}`);
+    }
+  };
+  const errorText = (e: unknown) =>
+    e instanceof RecorderError ? recorderText(e) : (e as Error).message;
 
   const activeId =
     state.step === "recording" || state.step === "stopping"
@@ -283,8 +300,7 @@ export default function StudioPage() {
     saleId: saleId || null,
     productId: saleId ? null : productId || null,
     noteTemplateIds: chosenNotes,
-    // A locked call centre writes every note in its own language.
-    outputLocale: me.contentLocaleLocked ? null : languages.outputLocale,
+    outputLocale: languages.outputLocale,
     spokenLanguages: languages.spokenLanguages,
   });
 
@@ -383,26 +399,24 @@ export default function StudioPage() {
       rec = await CallRecorder.open(capture, mime, {
         onLiveText: (final, partial) => setLiveText({ final, partial }),
         onRealtimeLost: () => {
-          setNotice(
-            "Sanntidsteksten falt ut. Opptaket fortsetter, og teksten kommer nå bitvis, omtrent hvert 15. sekund.",
-          );
+          setNotice(t("studio.realtimeLost"));
           setState((s) => (s.step === "recording" ? { ...s, live: false } : s));
         },
         onUploads: setUploads,
         onUploadFatal: (message) =>
           setError(
-            `${message} Opptaket stoppes ikke, men nye deler lagres ikke.`,
+            t("studio.uploadFatal", {
+              message: message ?? t("recorder.signedOut"),
+            }),
           ),
         onTabEnded: () => {
           setTabShared(false);
-          setNotice(
-            "Fanedelingen ble avsluttet. Stopp opptaket, eller fortsett med bare mikrofonen.",
-          );
+          setNotice(t("studio.tabEnded"));
         },
       });
     } catch (e) {
       setError(
-        e instanceof RecorderError ? e.message : "Kunne ikke starte opptaket.",
+        e instanceof RecorderError ? recorderText(e) : t("studio.startFailed"),
       );
       setState({ step: "idle" });
       return;
@@ -438,9 +452,7 @@ export default function StudioPage() {
       await recorder.current.stop();
       setDoneId(callId);
     } catch (e) {
-      setError(
-        `${(e as Error).message} Opptaket er lagret; du kan fullføre det fra samtalesiden.`,
-      );
+      setError(t("studio.stopFailed", { message: errorText(e) }));
       setDoneId(callId);
     }
     setState({ step: "idle" });
@@ -448,11 +460,11 @@ export default function StudioPage() {
 
   async function upload(file: File) {
     if (!file.type.startsWith("audio/")) {
-      setError("Velg en lydfil (for eksempel mp3, m4a, wav eller webm).");
+      setError(t("studio.chooseAudio"));
       return;
     }
     if (file.size > MAX_CHUNK_BYTES) {
-      setError("Lydfilen er for stor. Den kan være høyst 200 MB.");
+      setError(t("studio.tooLarge"));
       return;
     }
     reset();
@@ -466,7 +478,7 @@ export default function StudioPage() {
       await uploadFile(created.id, file);
       setDoneId(created.id);
     } catch (e) {
-      setError((e as Error).message);
+      setError(errorText(e));
     }
     setState({ step: "idle" });
   }
@@ -482,9 +494,11 @@ export default function StudioPage() {
   const statusText = !call
     ? undefined
     : call.status === "failed"
-      ? (call.error ?? "Behandlingen feilet.")
+      ? (call.error ?? t("studio.processingFailed"))
       : call.status === "processing" || call.status === "recording"
-        ? `${CALL_STATUS[call.status]}. Siden oppdateres av seg selv.`
+        ? t("studio.statusUpdating", {
+            status: td(`callStatus.${call.status}`),
+          })
         : undefined;
 
   return (
@@ -494,21 +508,18 @@ export default function StudioPage() {
           href="/samtaler"
           className="inline-flex min-h-11 items-center text-sm font-semibold text-brand"
         >
-          ← Alle samtaler
+          {t("back")}
         </Link>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight">
-          Samtalestudio
+          {t("studio.title")}
         </h1>
-        <p className="mt-2 text-muted">
-          Kunden skal vite at samtalen tas opp. Velg malen samtalen skal sjekkes
-          mot før du starter.
-        </p>
+        <p className="mt-2 text-muted">{t("studio.intro")}</p>
       </div>
 
       <div className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-6">
         <div className="flex min-w-0 items-end gap-2">
           <div className="min-w-0 flex-1 sm:max-w-md">
-            <Field label="Mal">
+            <Field label={t("studio.template")}>
               <select
                 className={`${inputClass} w-full`}
                 value={sale ? sale.productId : productId}
@@ -516,7 +527,7 @@ export default function StudioPage() {
                 onChange={(e) => void chooseProduct(e.target.value)}
               >
                 <option value="">
-                  {products ? "Ingen mal (ingen AI-kontroll)" : "Laster …"}
+                  {products ? t("studio.noTemplate") : tc("loading")}
                 </option>
                 {products?.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -534,18 +545,14 @@ export default function StudioPage() {
               aria-pressed={starred === productId}
               onClick={toggleStar}
               title={
-                starred === productId
-                  ? "Fjern som standardmal"
-                  : "Sett som standardmal for Samtalestudio"
+                starred === productId ? t("studio.unstar") : t("studio.star")
               }
             >
               <span aria-hidden="true">
                 {starred === productId ? "★" : "☆"}
               </span>
               <span className="sr-only">
-                {starred === productId
-                  ? "Fjern som standardmal"
-                  : "Sett som standardmal for Samtalestudio"}
+                {starred === productId ? t("studio.unstar") : t("studio.star")}
               </span>
             </button>
           )}
@@ -560,7 +567,7 @@ export default function StudioPage() {
         {!recording && (
           <fieldset className="flex min-w-0 flex-wrap gap-x-6 gap-y-2">
             <legend className="mb-1 text-sm font-semibold">
-              Hvor går samtalen?
+              {t("studio.where")}
             </legend>
             <label className="flex min-h-11 items-center gap-2">
               <input
@@ -569,7 +576,7 @@ export default function StudioPage() {
                 checked={capture === "microphone"}
                 onChange={() => setCapture("microphone")}
               />
-              Mikrofon
+              {t("studio.microphone")}
             </label>
             <label className="flex min-h-11 items-center gap-2">
               <input
@@ -579,29 +586,20 @@ export default function StudioPage() {
                 checked={capture === "tab"}
                 onChange={() => setCapture("tab")}
               />
-              Ekstern løsning (fanelyd)
+              {t("studio.tab")}
             </label>
           </fieldset>
         )}
         {!recording && capture === "tab" && (
           <ol className="list-decimal space-y-1 rounded-lg bg-bg p-3 pl-8 text-sm">
             {tabShared ? (
-              <li>Fanen deles allerede, og brukes på nytt uten ny dialog.</li>
+              <li>{t("studio.tabShared")}</li>
             ) : (
               <>
-                <li>
-                  Start samtalen i nettleserfanen (nettbasert telefoni, Teams,
-                  Zoom o.l.). Bare Chrome og Edge på PC og Mac.
-                </li>
-                <li>Trykk «Start opptak» og velg fanen der samtalen går.</li>
-                <li>
-                  Huk av for «Del fanelyd». Uten den kommer det ingen lyd fra
-                  fanen.
-                </li>
-                <li>
-                  Trykk «Del». Bruk hodetelefoner, så kommer kunden bare inn via
-                  fanelyden.
-                </li>
+                <li>{t("studio.tabStep1")}</li>
+                <li>{t("studio.tabStep2")}</li>
+                <li>{t("studio.tabStep3")}</li>
+                <li>{t("studio.tabStep4")}</li>
               </>
             )}
           </ol>
@@ -622,8 +620,8 @@ export default function StudioPage() {
               onClick={stop}
             >
               {state.step === "stopping"
-                ? "Laster opp resten …"
-                : "Stopp og send"}
+                ? t("studio.stopping")
+                : t("studio.stop")}
             </button>
           ) : (
             <button
@@ -632,7 +630,9 @@ export default function StudioPage() {
               disabled={busy}
               onClick={start}
             >
-              {state.step === "starting" ? "Starter …" : "Start opptak"}
+              {state.step === "starting"
+                ? t("studio.starting")
+                : t("studio.start")}
             </button>
           )}
           {recording ? (
@@ -641,7 +641,9 @@ export default function StudioPage() {
             </span>
           ) : (
             <label className={`${secondaryButton} cursor-pointer`}>
-              {state.step === "uploading" ? "Laster opp …" : "Last opp lydfil"}
+              {state.step === "uploading"
+                ? t("studio.uploading")
+                : t("studio.upload")}
               <input
                 type="file"
                 accept="audio/*"
@@ -661,13 +663,16 @@ export default function StudioPage() {
           <p className="text-sm text-muted" role="status">
             {capture === "tab"
               ? tabShared
-                ? "Deler fane og mikrofon. "
-                : "Bare mikrofon. "
-              : "Mikrofon. "}
-            {uploads.uploaded} {uploads.uploaded === 1 ? "del" : "deler"} lagret
-            {uploads.pending > 0 && `, ${uploads.pending} venter`}.
-            {uploads.failing &&
-              " Får ikke lastet opp akkurat nå; prøver igjen. Ikke lukk siden."}
+                ? t("studio.captureTabMic")
+                : t("studio.captureMicOnly")
+              : t("studio.captureMic")}{" "}
+            {uploads.pending > 0
+              ? t("studio.uploadsPending", {
+                  uploaded: uploads.uploaded,
+                  pending: uploads.pending,
+                })
+              : t("studio.uploads", { uploaded: uploads.uploaded })}
+            {uploads.failing && ` ${t("studio.uploadsFailing")}`}
           </p>
         )}
         {notice && (
@@ -678,7 +683,9 @@ export default function StudioPage() {
         {!activeId && (
           <details className="rounded-lg border border-line p-3">
             <summary className="min-h-11 cursor-pointer content-center font-semibold">
-              Kunde, salg og tittel{customer ? `: ${customer.name}` : ""}
+              {customer
+                ? t("studio.detailsCustomer", { customer: customer.name })
+                : t("studio.details")}
             </summary>
             <div className="mt-3 flex flex-col gap-4">
               <CustomerPicker
@@ -688,29 +695,26 @@ export default function StudioPage() {
                   setSaleId("");
                   setSales([]);
                 }}
-                hint="Valgfritt. Kan også kobles etterpå."
+                hint={t("studio.customerHint")}
               />
               {customer && sales.length > 0 && (
-                <Field
-                  label="Salg"
-                  hint="Velg salget samtalen gjelder, så brukes malversjonen salget ble gjort på."
-                >
+                <Field label={t("studio.sale")} hint={t("studio.saleHint")}>
                   <select
                     className={`${inputClass} sm:max-w-md`}
                     value={saleId}
                     onChange={(e) => setSaleId(e.target.value)}
                   >
-                    <option value="">Ikke koblet til et salg</option>
+                    <option value="">{t("studio.noSale")}</option>
                     {sales.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.productName},{" "}
-                        {new Date(s.soldAt).toLocaleDateString("nb-NO")}
+                        {new Date(s.soldAt).toLocaleDateString(formatTagNow())}
                       </option>
                     ))}
                   </select>
                 </Field>
               )}
-              <Field label="Tittel" hint="Valgfritt.">
+              <Field label={t("studio.titleLabel")} hint={t("studio.optional")}>
                 <input
                   maxLength={200}
                   className={`${inputClass} sm:max-w-md`}
@@ -744,23 +748,20 @@ export default function StudioPage() {
         {doneId && !busy && call && (
           <div className="flex flex-col gap-1">
             <CallReference reference={call.reference} />
-            <p className="text-sm text-muted">
-              Lim referansen inn der salget registreres. Den finner samtalen
-              igjen ved klage eller kontroll.
-            </p>
+            <p className="text-sm text-muted">{t("studio.referenceHint")}</p>
           </div>
         )}
         {doneId && !busy && (
           <div className="flex flex-wrap gap-2">
             <Link href={`/samtaler/${doneId}`} className={secondaryButton}>
-              Åpne samtalen
+              {t("studio.openCall")}
             </Link>
             <button
               type="button"
               className={secondaryButton}
               onClick={() => reset(true)}
             >
-              Ny samtale
+              {t("studio.newCall")}
             </button>
           </div>
         )}
@@ -768,7 +769,7 @@ export default function StudioPage() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-6">
-          <Card title="Varsellamper">
+          <Card title={t("studio.lamps")}>
             <WarningLamps
               points={lampPoints}
               analysis={call?.analyses[0]}
@@ -783,8 +784,7 @@ export default function StudioPage() {
                 : null
             }
             status={
-              statusText ??
-              (call ? undefined : "Start opptaket, så kommer teksten her.")
+              statusText ?? (call ? undefined : t("studio.transcriptEmpty"))
             }
           />
           <AdditionalInfo
@@ -804,7 +804,7 @@ export default function StudioPage() {
             }
             hint={
               call?.reports.some((r) => r.status === "done")
-                ? "Brukes når et notat lages. Har du endret den, trykk «Regenerer» for et nytt notat. AI-kontrollen bruker bare det som ble sagt."
+                ? t("studio.infoHintRegenerate")
                 : undefined
             }
           />
@@ -813,11 +813,8 @@ export default function StudioPage() {
           {call ? (
             <NotesPanel call={call} onChanged={load} chosen={chosenNotes} />
           ) : (
-            <Card title="Notater">
-              <p className="text-muted">
-                Notatet lages av AI når samtalen er transkribert, ut fra
-                transkripsjonen og malen.
-              </p>
+            <Card title={t("studio.notes")}>
+              <p className="text-muted">{t("studio.notesBefore")}</p>
             </Card>
           )}
         </div>

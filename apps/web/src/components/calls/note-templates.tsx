@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { orgFetch } from "@/lib/org";
 
@@ -17,7 +18,9 @@ export function useNoteTemplates(enabled = true) {
     if (!enabled) return;
     let cancelled = false;
     orgFetch<NoteTemplate[]>("/report-templates")
-      .then((rows) => !cancelled && setTemplates(rows.filter((t) => !t.archivedAt)))
+      .then(
+        (rows) => !cancelled && setTemplates(rows.filter((t) => !t.archivedAt)),
+      )
       .catch(() => !cancelled && setTemplates([]));
     return () => {
       cancelled = true;
@@ -39,35 +42,46 @@ export function NoteTemplatePicker({
   onChange: (ids: string[]) => void;
   disabled?: boolean;
 }) {
-  if (!templates) return <p className="text-sm text-muted">Laster notatmaler …</p>;
-  if (!templates.length) return <p className="text-sm text-muted">Notatet skrives etter VeriQalls standardnotat.</p>;
+  const t = useTranslations("calls.notes.picker");
+  if (!templates) return <p className="text-sm text-muted">{t("loading")}</p>;
+  if (!templates.length)
+    return <p className="text-sm text-muted">{t("standardOnly")}</p>;
   return (
     <fieldset className="flex min-w-0 flex-col gap-2">
-      <legend className="mb-1 text-sm font-semibold">Notatmaler</legend>
+      <legend className="mb-1 text-sm font-semibold">{t("legend")}</legend>
       <div className="flex flex-wrap gap-2">
-        {templates.map((t) => {
-          const on = chosen.includes(t.id);
+        {templates.map((x) => {
+          const on = chosen.includes(x.id);
           return (
             <button
-              key={t.id}
+              key={x.id}
               type="button"
               aria-pressed={on}
               disabled={disabled || (!on && chosen.length >= 5)}
-              onClick={() => onChange(on ? chosen.filter((id) => id !== t.id) : [...chosen, t.id])}
+              onClick={() =>
+                onChange(
+                  on ? chosen.filter((id) => id !== x.id) : [...chosen, x.id],
+                )
+              }
               className={`min-h-11 rounded-full border px-4 text-sm font-semibold disabled:opacity-50 ${
-                on ? "border-brand bg-brand text-on-brand" : "border-line bg-surface hover:bg-bg"
+                on
+                  ? "border-brand bg-brand text-on-brand"
+                  : "border-line bg-surface hover:bg-bg"
               }`}
             >
               {on && <span aria-hidden="true">✓ </span>}
-              {t.name}
+              {x.name}
             </button>
           );
         })}
       </div>
       <p className="text-sm text-muted">
         {chosen.length
-          ? `Gir ${chosen.length === 1 ? "ett notat" : `${chosen.length} notater`} fra samtalen.`
-          : `Ingen valgt: notatet skrives etter ${templates.find((t) => t.isDefault)?.name ?? "standardnotatet"}.`}
+          ? t("gives", { count: chosen.length })
+          : t("noneChosen", {
+              name:
+                templates.find((x) => x.isDefault)?.name ?? t("standardNote"),
+            })}
       </p>
     </fieldset>
   );

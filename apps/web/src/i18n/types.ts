@@ -1,6 +1,7 @@
 // The Norwegian texts give the keys their types: t("login.title") is checked when it compiles.
 import type { Locale } from "@veriqall/shared";
 import type account from "../../messages/nb/account.json";
+import type calls from "../../messages/nb/calls.json";
 import type common from "../../messages/nb/common.json";
 import type confirm from "../../messages/nb/confirm.json";
 import type domain from "../../messages/nb/domain.json";
@@ -20,6 +21,7 @@ export interface Messages {
   domain: typeof domain;
   org: typeof org;
   threads: typeof threads;
+  calls: typeof calls;
 }
 
 declare module "next-intl" {
