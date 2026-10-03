@@ -3,7 +3,7 @@ import path from "node:path";
 import { parse, TYPE, type MessageFormatElement } from "@formatjs/icu-messageformat-parser";
 import { LOCALE_CODES } from "@veriqall/shared";
 import { describe, expect, it } from "vitest";
-import { ALL_NAMESPACES } from "./messages";
+import { NAMESPACES } from "./messages";
 
 const ROOT = path.join(import.meta.dirname, "../../messages");
 
@@ -20,7 +20,7 @@ function flatten(value: unknown, prefix: string, out: Map<string, string>) {
 
 function texts(locale: string): Map<string, string> {
   const out = new Map<string, string>();
-  for (const ns of ALL_NAMESPACES) flatten(read(locale, ns), ns, out);
+  for (const ns of NAMESPACES) flatten(read(locale, ns), ns, out);
   return out;
 }
 
@@ -46,7 +46,7 @@ describe("the pages' texts", () => {
   it("has a file for every namespace in every language, and no others", () => {
     for (const locale of LOCALE_CODES) {
       const files = readdirSync(path.join(ROOT, locale)).filter((f) => f.endsWith(".json")).map((f) => f.replace(/\.json$/, ""));
-      expect(files.sort(), locale).toEqual([...ALL_NAMESPACES].sort());
+      expect(files.sort(), locale).toEqual([...NAMESPACES].sort());
     }
   });
 

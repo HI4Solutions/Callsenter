@@ -1,3 +1,5 @@
+"use client";
+
 import { LOCALE_CODES, LOCALES } from "@veriqall/shared";
 import Image from "next/image";
 import Link from "next/link";
@@ -15,7 +17,8 @@ const card = "rounded-xl border border-line bg-surface p-5";
 // A soft tint of the brand colour, for the hero, the languages and the closing call to action.
 const tint = "bg-[color-mix(in_srgb,var(--brand)_7%,var(--surface))]";
 
-// The public front page (docs/plan.md, section 20). Everything a visitor sees comes from the
+// The public front page (docs/plan.md, section 20). A client component, so the superadmin preview
+// can render it only after access is confirmed. Everything a visitor sees comes from the
 // landing namespace; the product mock in the hero is built from the app's own Flag component, so
 // green, yellow and red mean what they mean in the app.
 export function LandingPage() {

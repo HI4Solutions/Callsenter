@@ -588,7 +588,7 @@ Superadmin setter callsenterets språk under Callsentre. Med «Lås språket for
 
 Påbegynt 3. oktober 2026 (Nadeems ønske). Siden skal ikke være synlig for noen før den er ferdig; vi fortsetter å jobbe med den.
 
-**Slik er den gjemt:** siden ligger som `apps/web/src/app/landingsside/page.dev.tsx`, og `next.config.ts` bygger `.dev.tsx`-sider bare i utvikling (som `/design`). I staging og produksjon finnes ikke adressen, og tekstene (navnerommet `landing`, som står i `DEV_NAMESPACES` i `src/i18n/messages.ts`) lastes ikke der. Koden ligger i repoet, som er offentlig, men ingen side viser den. Vil vi se den i staging før lansering, kan den legges bak en superadmin-sjekk.
+**Slik er den gjemt:** i staging ser superadmin siden på `/forhandsvisning/landingsside` (besluttet av Nadeem 3. oktober). Siden tegnes i nettleseren først etter at `/me` har bekreftet superadmin, med samme sjekk som superadminportalen (`apps/web/src/components/landing/superadmin-preview.tsx`); utloggede sendes til innlogging, og andre får avslag. Tekstene (navnerommet `landing`) ligger likevel i sidens kilde som alle andre tekster, så en som kjenner adressen og leser kildekoden, kan finne dem; det er ingen lenker til siden. Lokalt, uten API, finnes den også som `apps/web/src/app/landingsside/page.dev.tsx` (bare i utvikling, som `/design`). Koden ligger i repoet, som er offentlig.
 
 **Innhold** (`apps/web/src/components/landing/landing-page.tsx`, tekstene i `apps/web/messages/<språk>/landing.json` på alle fem språk):
 
@@ -608,4 +608,4 @@ Siden bruker appens design: samme tokens, lys og mørk modus, og grønn, gul og 
 - Ingen kundesitater eller tall, siden vi ikke har noen å vise til ennå.
 - Personvernerklæring og vilkår finnes ikke som sider ennå, så bunnteksten lenker ikke til dem.
 
-**Slik publiseres den:** `src/app/page.tsx` viser `<LandingPage />` i stedet for å sende til `/logg-inn` (innloggede brukere bør fortsatt sendes videre til portalen sin, slik `/logg-inn` gjør i dag), `landing` flyttes fra `DEV_NAMESPACES` til `NAMESPACES`, og `noindex` for `/` fjernes (`next.config.ts` og `layout.tsx` sier i dag noindex for hele appen).
+**Slik publiseres den:** `src/app/page.tsx` viser `<LandingPage />` i stedet for å sende til `/logg-inn` (innloggede brukere bør fortsatt sendes videre til portalen sin, slik `/logg-inn` gjør i dag), forhåndsvisningen fjernes, og `noindex` for `/` fjernes (`next.config.ts` og `layout.tsx` sier i dag noindex for hele appen).
