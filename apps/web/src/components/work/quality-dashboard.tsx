@@ -36,22 +36,19 @@ function useBoth(from: string, to: string) {
   return result?.key === key ? result : null;
 }
 
-// Horizontal bars in the brand colour, with the figure written at the end.
+// Horizontal bars in the brand colour, with the figure to the right. The bar has its own track,
+// so a long figure never pushes the row wider than the card.
 function Bars({ rows }: { rows: { label: string; value: number; text?: string }[] }) {
   const max = Math.max(1, ...rows.map((r) => r.value));
   return (
     <ul className="flex flex-col gap-2">
       {rows.map((r) => (
-        <li key={r.label} className="grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)]">
+        <li key={r.label} className="grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)_auto]">
           <span className="text-sm">{r.label}</span>
-          <span className="flex min-w-0 items-center gap-2">
-            <span
-              className="h-3.5 shrink-0 rounded-r bg-brand"
-              style={{ width: `${(r.value / max) * 75}%`, minWidth: r.value > 0 ? "3px" : "0" }}
-              aria-hidden="true"
-            />
-            <span className="text-sm whitespace-nowrap">{r.text ?? fmt.format(r.value)}</span>
+          <span className="min-w-0" aria-hidden="true">
+            <span className="block h-3.5 rounded-r bg-brand" style={{ width: `${(r.value / max) * 100}%`, minWidth: r.value > 0 ? "3px" : "0" }} />
           </span>
+          <span className="text-right text-sm whitespace-nowrap">{r.text ?? fmt.format(r.value)}</span>
         </li>
       ))}
     </ul>

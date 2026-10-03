@@ -357,7 +357,7 @@ Beslutninger 2. oktober (til godkjenning):
 - **Samtaler i perioden:** tid, varighet, selger, kunde og team, flagg og om det er behandlet, filtrert på Alle, Brudd, Avvik, Ikke behandlet, Godkjent eller Ikke kontrollert. Listen følger samtaletilgangen (`calls.read.*`), og et klikk åpner samtalen.
 - **Logg på samtalesiden** (`audit.read`): hvem som har åpnet, spilt av og søkt i samtalen, og hva som er gjort (statusendringer, AI-kontroll, behandling av flagg, notater og justeringer). Aldri teksten.
 
-**Et dashboard per nivå (Nadeems ønske 3. oktober):** hver bruker får sitt eget dashboard. Hvem som ser hva, styres av rettighetene, ikke rollenavnene. `/oversikt` har fanene Meg, Teamet, Callsenteret og Kvalitet. Administrasjon og Superadmin får hver sin Oversikt-fane i senere PR-er. Første gang lander man på det høyeste nivået man har. Senere husker enheten valget.
+**Et dashboard per nivå (Nadeems ønske 3. oktober):** hver bruker får sitt eget dashboard. Hvem som ser hva, styres av rettighetene, ikke rollenavnene. `/oversikt` har fanene Meg, Teamet, Callsenteret og Kvalitet. Administrasjon og Superadmin har hver sin Oversikt-fane (seksjon 11 og 10). Første gang lander man på det høyeste nivået man har. Senere husker enheten valget.
 
 - **Meg (alle):** samtaler, salg, andel bekreftet, snittlengde og andel godkjent av AI. Tallene sammenlignes med perioden av samme lengde rett før: «Opp 12 % fra forrige periode (181)», med pil og tekst, aldri i grønt eller rødt. Mens perioden pågår (den tar med i dag), vises bare tallet fra forrige periode, fordi en prosent ville sammenligne en halv dag med en hel. Snittet per selger i teamet vises uten navn, og bare når minst tre i teamet har vært aktive i perioden. Med færre kunne man regne ut hva en kollega har gjort. I tillegg vises AI-kontrollen, utvikling, «Det du oftest glemmer», samtalene og tilbakemeldingene.
 - **Teamet (`dashboard.team`, eller `dashboard.all` med valg av team):** nøkkeltall med utvikling (salg, bekreftet, samtaler, andel brudd og ubehandlede flagg). «Selgerne» sammenligner selgerne på salg, samtaler, andel brudd eller ubehandlede flagg. «Trenger oppfølging» viser de som har flagg som venter, brudd i minst 20 % av samtalene (minst to brudd), ingen tilbakemelding på over 30 dager eller ingen aktivitet. «Aktivitet per dag» er et varmekart med selger mot dag (per uke over 31 dager), og tallet står i hver rute.
@@ -369,12 +369,12 @@ Beslutninger 2. oktober (til godkjenning):
   - **Klager** (med klagemodulen): per status og kanal, per uke, og median tid til avslutning.
   - **Kundeaksept** (med salgsverifisering): godtatt med BankID eller Vipps, avvist, venter, utløpt og trukket tilbake, og hvor mange som ble godtatt av en person som ikke stemte med kunden.
   - **Tilgang** (`audit.read`): hvem som har åpnet, spilt av og søkt i opptak og transkripsjoner.
-  - Databasefunksjonen er `app.dashboard_quality` (`0031_quality_dashboard.sql`), og endepunktet er `GET /org/dashboard/quality`.
+  - Databasefunksjonen er `app.dashboard_quality` (`0033_quality_dashboard.sql`), og endepunktet er `GET /org/dashboard/quality`.
 - **Database:** `0030_role_dashboards.sql` med `app.dashboard_benchmark` og `app.dashboard_team`, begge `security definer` med egne rettighetssjekker som `app.dashboard`. API: `GET /org/dashboard/benchmark` og `GET /org/dashboard/team`.
 
 | Del | Innhold |
 |---|---|
-| Database | `0016_dashboard_coaching.sql`: `coaching_notes` med RLS, `app.can_coach` og `app.dashboard`; `0024_dashboard_flags.sql`: flagg per dag og time, og indekser for samtaleloggen; `0030_role_dashboards.sql`: `app.dashboard_benchmark` og `app.dashboard_team`; `0031_quality_dashboard.sql`: `app.dashboard_quality` |
+| Database | `0016_dashboard_coaching.sql`: `coaching_notes` med RLS, `app.can_coach` og `app.dashboard`; `0024_dashboard_flags.sql`: flagg per dag og time, og indekser for samtaleloggen; `0030_role_dashboards.sql`: `app.dashboard_benchmark` og `app.dashboard_team`; `0033_quality_dashboard.sql`: `app.dashboard_quality` |
 | API | `GET /org/dashboard` (`scope` = me, seller, team eller all, `target`, `from`, `to`), `GET /org/dashboard/benchmark`, `GET /org/dashboard/team` (`team`, `from`, `to`) og `GET /org/dashboard/quality`, `GET`/`POST /org/coaching` og `POST /org/coaching/{id}/read` |
 | Web | `/oversikt` med fanene Meg, Teamet, Callsenteret og Kvalitet, `/oversikt/selgere/[id]` og tilbakemelding på samtalesiden |
 
