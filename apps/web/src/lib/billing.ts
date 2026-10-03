@@ -1,6 +1,6 @@
 import { API_URL } from "./auth";
 
-// Invoicing (apps/api/src/admin/billing.ts): MedInnova invoices the call centres.
+// Invoicing (apps/api/src/admin/billing.ts): Hi4 Solutions AS invoices the call centres.
 
 export type InvoiceStatus = "draft" | "scheduled" | "sent" | "paid" | "credited" | "payment_missed";
 
