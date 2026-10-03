@@ -19,7 +19,9 @@ Parameters:
   AlertEmail:
     Type: String
     Default: ""
-    Description: Optional address that gets an e-mail when the NAT instance is down.
+    Description: >-
+      Optional address for the environment's alarms (NAT instance, Lambda, API and database). It
+      gets an e-mail from AWS to confirm the subscription first.
   NatInstanceImage:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
@@ -27,7 +29,7 @@ Parameters:
 Conditions:
   UseNatInstance: !Equals [!Ref NatMode, instance]
   UseNatGateway: !Equals [!Ref NatMode, gateway]
-  HasAlertEmail: !And [!Condition UseNatInstance, !Not [!Equals [!Ref AlertEmail, ""]]]
+  HasAlertEmail: !Not [!Equals [!Ref AlertEmail, ""]]
 
 Resources:
   Vpc:
@@ -345,13 +347,20 @@ Resources:
         MinInstancesInService: 0
         MaxBatchSize: 1
 
-  NatAlertTopic:
+  # Every alarm in the environment goes here (the data and app stacks import it). Without
+  # AlertEmail the alarms still show in CloudWatch, but nobody is told.
+  AlertTopic:
     Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub veriqall-${Environment}-alerts
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
     Condition: HasAlertEmail
     Properties:
-      Subscription:
-        - Protocol: email
-          Endpoint: !Ref AlertEmail
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
 
   NatInstanceDownAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -369,7 +378,8 @@ Resources:
       Threshold: 1
       ComparisonOperator: LessThanThreshold
       TreatMissingData: breaching
-      AlarmActions: !If [HasAlertEmail, [!Ref NatAlertTopic], !Ref AWS::NoValue]
+      AlarmActions: [!Ref AlertTopic]
+      OKActions: [!Ref AlertTopic]
 
 Outputs:
   VpcId:
@@ -384,3 +394,7 @@ Outputs:
     Value: !Ref LambdaSecurityGroup
     Export:
       Name: !Sub veriqall-${Environment}-lambda-sg
+  AlertTopicArn:
+    Value: !Ref AlertTopic
+    Export:
+      Name: !Sub veriqall-${Environment}-alert-topic

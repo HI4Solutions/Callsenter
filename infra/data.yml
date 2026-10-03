@@ -28,6 +28,16 @@ Parameters:
     Type: String
     Default: ""
     Description: Origin of the web app; the only origin allowed to upload and play audio (bucket CORS).
+  LogRetentionDays:
+    Type: Number
+    Default: 365
+    Description: How long the database's log (pgAudit and connections) is kept in CloudWatch.
+  DbConnectionsAlarmThreshold:
+    Type: Number
+    Default: 60
+    Description: >-
+      Connections that raise an alarm. db.t4g.micro allows about 80; raise this with the
+      instance class.
 
 Conditions:
   HasAppOrigin: !Not [!Equals [!Ref AppOrigin, ""]]
@@ -51,6 +61,7 @@ Resources:
               AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
             Action: kms:*
             Resource: "*"
+          # The Lambda and API log groups (veriqall-<env>-*), and the database's own log.
           - Sid: CloudWatchLogs
             Effect: Allow
             Principal:
@@ -64,7 +75,9 @@ Resources:
             Resource: "*"
             Condition:
               ArnLike:
-                kms:EncryptionContext:aws:logs:arn: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/*/veriqall-${Environment}-*
+                kms:EncryptionContext:aws:logs:arn:
+                  - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/*/veriqall-${Environment}-*
+                  - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/rds/instance/veriqall-${Environment}/*
       Tags:
         - Key: project
           Value: veriqall
@@ -155,6 +168,164 @@ Resources:
           Value: veriqall
         - Key: environment
           Value: !Ref Environment
+
+  # --- The database's log ---------------------------------------------------------------------
+  # RDS creates /aws/rds/instance/veriqall-<env>/postgresql itself when it first exports its log,
+  # without a retention or the environment's key, so CloudFormation cannot own the group. This
+  # small function gives it both, whether the group exists yet or not, and leaves it in place
+  # when the stack is deleted.
+
+  DbLogSettingsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /veriqall/
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: db-log-settings
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:PutRetentionPolicy
+                  - logs:AssociateKmsKey
+                Resource:
+                  - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/rds/instance/veriqall-${Environment}/postgresql
+                  - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/rds/instance/veriqall-${Environment}/postgresql:*
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/veriqall-${Environment}-db-log-settings:*
+
+  DbLogSettingsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/veriqall-${Environment}-db-log-settings
+      RetentionInDays: 30
+      KmsKeyId: !GetAtt Key.Arn
+
+  DbLogSettingsFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: DbLogSettingsLogGroup
+    Properties:
+      FunctionName: !Sub veriqall-${Environment}-db-log-settings
+      Description: Sets retention and the environment's key on the database's CloudWatch log
+      Runtime: python3.12
+      Architectures: [arm64]
+      Handler: index.handler
+      Role: !GetAtt DbLogSettingsRole.Arn
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import time
+
+          import boto3
+          import cfnresponse
+
+          logs = boto3.client("logs")
+
+          def associate_key(name, key):
+              # A key policy changed in the same deploy can take a little while to apply.
+              for attempt in range(6):
+                  try:
+                      return logs.associate_kms_key(logGroupName=name, kmsKeyId=key)
+                  except logs.exceptions.InvalidParameterException:
+                      if attempt == 5:
+                          raise
+                      time.sleep(5)
+
+          def handler(event, context):
+              props = event["ResourceProperties"]
+              name = props["LogGroupName"]
+              status, reason = cfnresponse.SUCCESS, None
+              try:
+                  if event["RequestType"] in ("Create", "Update"):
+                      try:
+                          logs.create_log_group(logGroupName=name)
+                      except logs.exceptions.ResourceAlreadyExistsException:
+                          pass
+                      logs.put_retention_policy(logGroupName=name, retentionInDays=int(props["RetentionInDays"]))
+                      associate_key(name, props["KmsKeyArn"])
+              except Exception as error:
+                  print(error)
+                  status, reason = cfnresponse.FAILED, str(error)[:200]
+              cfnresponse.send(event, context, status, {}, physicalResourceId=name, reason=reason)
+
+  DbLogSettings:
+    Type: Custom::DbLogSettings
+    Properties:
+      ServiceToken: !GetAtt DbLogSettingsFunction.Arn
+      LogGroupName: !Sub /aws/rds/instance/veriqall-${Environment}/postgresql
+      RetentionInDays: !Ref LogRetentionDays
+      KmsKeyArn: !GetAtt Key.Arn
+
+  # --- Alarms ---------------------------------------------------------------------------------
+  # To the environment's alert topic (infra/network.yml).
+
+  DbCpuAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub veriqall-${Environment}-db-cpu
+      AlarmDescription: !Sub The veriqall-${Environment} database has used more than 80 % CPU for 15 minutes.
+      Namespace: AWS/RDS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref Database
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: missing
+      AlarmActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+      OKActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+
+  DbStorageAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub veriqall-${Environment}-db-storage
+      AlarmDescription: !Sub The veriqall-${Environment} database has less than 2 GB free storage.
+      Namespace: AWS/RDS
+      MetricName: FreeStorageSpace
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref Database
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 2147483648
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: missing
+      AlarmActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+      OKActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+
+  DbConnectionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub veriqall-${Environment}-db-connections
+      AlarmDescription: !Sub The veriqall-${Environment} database is close to its connection limit.
+      Namespace: AWS/RDS
+      MetricName: DatabaseConnections
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref Database
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: !Ref DbConnectionsAlarmThreshold
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: missing
+      AlarmActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+      OKActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
 
   # Values for Vipps, Idura and Soniox, filled in by hand in the console. CloudFormation only
   # writes the empty template at creation and never overwrites what is put there later.

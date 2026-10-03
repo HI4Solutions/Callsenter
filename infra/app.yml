@@ -405,11 +405,11 @@ Resources:
       MaximumEventAgeInSeconds: 3600
 
   # The morning run (src/worker.ts): scheduled invoices, fixed agreements that are due, missed
-  # payments, then the usual housekeeping. 04:00 UTC is 05:00 or 06:00 in Norway. Comes with
-  # EMAIL_DOMAIN, since both need the updated bootstrap stack (events and SES).
+  # payments, the USD/NOK rate, then the usual housekeeping, which also deletes calls whose
+  # retention has ended in call centres that no longer record. 04:00 UTC is 05:00 or 06:00 in
+  # Norway. Runs with or without e-mail; without it, invoices are only not e-mailed.
   DailyRule:
     Type: AWS::Events::Rule
-    Condition: HasEmail
     Properties:
       Name: !Sub veriqall-${Environment}-daily
       Description: VeriQall morning run (invoicing and housekeeping)
@@ -422,7 +422,6 @@ Resources:
 
   DailyRulePermission:
     Type: AWS::Lambda::Permission
-    Condition: HasEmail
     Properties:
       FunctionName: !Ref WorkerFunction
       Action: lambda:InvokeFunction
@@ -506,6 +505,151 @@ Resources:
       DomainName: !Ref ApiDomain
       ApiId: !Ref HttpApi
       Stage: $default
+
+  # --- Alarms -------------------------------------------------------------------------------
+  # To the environment's alert topic (infra/network.yml), which e-mails ALERT_EMAIL. Each alarm
+  # also says when it is back to normal.
+
+  ApiErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub veriqall-${Environment}-api-errors
+      AlarmDescription: !Sub The veriqall-${Environment} API Lambda failed five times or more in five minutes.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ApiFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+      OKActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+
+  ApiThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub veriqall-${Environment}-api-throttles
+      AlarmDescription: !Sub The veriqall-${Environment} API Lambda was throttled (no room in the account's Lambda quota).
+      Namespace: AWS/Lambda
+      MetricName: Throttles
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ApiFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+      OKActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+
+  Api5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub veriqall-${Environment}-api-5xx
+      AlarmDescription: !Sub The veriqall-${Environment} HTTP API answered with 5xx ten times or more in five minutes.
+      Namespace: AWS/ApiGateway
+      MetricName: 5xx
+      Dimensions:
+        - Name: ApiId
+          Value: !Ref HttpApi
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 10
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+      OKActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+
+  WorkerErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub veriqall-${Environment}-worker-errors
+      AlarmDescription: !Sub The veriqall-${Environment} worker failed five times or more in five minutes (pieces, calls, notes).
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref WorkerFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+      OKActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+
+  WorkerThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub veriqall-${Environment}-worker-throttles
+      AlarmDescription: !Sub The veriqall-${Environment} worker reached its concurrency (WorkerConcurrency); pieces wait.
+      Namespace: AWS/Lambda
+      MetricName: Throttles
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref WorkerFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+      OKActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+
+  DailyRunFailedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub veriqall-${Environment}-daily-run
+      AlarmDescription: !Sub EventBridge could not start the veriqall-${Environment} morning run.
+      Namespace: AWS/Events
+      MetricName: FailedInvocations
+      Dimensions:
+        - Name: RuleName
+          Value: !Ref DailyRule
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+      OKActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+
+  # The morning run logs these instead of failing, so the rest of it still runs (src/worker.ts).
+  BillingFailedMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref WorkerLogGroup
+      FilterPattern: '?"billing failed" ?"invoice e-mail failed"'
+      MetricTransformations:
+        - MetricNamespace: !Sub VeriQall/${Environment}
+          MetricName: BillingFailures
+          MetricValue: "1"
+
+  BillingFailedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub veriqall-${Environment}-billing
+      AlarmDescription: !Sub The veriqall-${Environment} invoicing in the morning run, or an invoice e-mail, failed. See the worker log.
+      Namespace: !Sub VeriQall/${Environment}
+      MetricName: BillingFailures
+      Statistic: Sum
+      Period: 3600
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
+      OKActions: [!ImportValue {"Fn::Sub": "veriqall-${Environment}-alert-topic"}]
 
 Outputs:
   ApiUrl:

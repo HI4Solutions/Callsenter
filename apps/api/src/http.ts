@@ -2,10 +2,13 @@ import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "
 
 export type Result = APIGatewayProxyStructuredResultV2;
 
+// On every answer: HTTPS only, and the content type is not to be guessed.
+const SECURITY = { "strict-transport-security": "max-age=63072000; includeSubDomains", "x-content-type-options": "nosniff" };
+
 export function json(statusCode: number, body: unknown, headers: Record<string, string> = {}): Result {
   return {
     statusCode,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers },
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...SECURITY, ...headers },
     body: JSON.stringify(body),
   };
 }
@@ -18,6 +21,7 @@ export function binary(bytes: Uint8Array, contentType: string, headers: Record<s
     headers: {
       "content-type": contentType,
       "cache-control": "no-store",
+      ...SECURITY,
       ...(filename ? { "content-disposition": `inline; filename="${filename}"` } : {}),
       ...headers,
     },
@@ -26,7 +30,7 @@ export function binary(bytes: Uint8Array, contentType: string, headers: Record<s
 }
 
 export function redirect(location: string, cookies: string[] = []): Result {
-  return { statusCode: 302, headers: { location, "cache-control": "no-store" }, cookies };
+  return { statusCode: 302, headers: { location, "cache-control": "no-store", ...SECURITY }, cookies };
 }
 
 export function readCookie(event: APIGatewayProxyEventV2, name: string): string | undefined {

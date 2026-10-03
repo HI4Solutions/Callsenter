@@ -32,13 +32,17 @@ Resources:
           - ObjectOwnership: BucketOwnerEnforced
       VersioningConfiguration:
         Status: Enabled
+      # The zip a stack runs must stay as long as the stack does: a deploy that fails months
+      # later rolls back to it. Each commit has its own key and a zip is under 2 MB, so they are
+      # kept; only overwritten or deleted versions go.
       LifecycleConfiguration:
         Rules:
-          - Id: expire-old-artifacts
+          - Id: expire-replaced-artifacts
             Status: Enabled
-            ExpirationInDays: 90
             NoncurrentVersionExpiration:
               NoncurrentDays: 30
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
       Tags:
         - Key: project
           Value: veriqall
