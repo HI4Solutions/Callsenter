@@ -48,3 +48,6 @@ tools/brand/*.png
 
 # Test and coverage output
 coverage/
+
+# Worktrees made by Claude Code agents
+.claude/worktrees/
