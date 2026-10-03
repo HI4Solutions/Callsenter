@@ -1,30 +1,67 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { MODULES, isModuleKey } from "@veriqall/shared";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
-import { StatusBadge } from "@/components/admin/status-badge";
+import { LoadState } from "@/components/admin/field";
 import { useMe } from "@/components/org/org-shell";
-import { formatDateTime, invitationState, toCsv } from "@/lib/format";
-import { memberState, orgFetch, type OrgOverview } from "@/lib/org";
+import { formatDate } from "@/lib/format";
+import { orgFetch, type OrgSummary } from "@/lib/org";
 
-export default function MembersPage() {
-  const me = useMe();
-  const [data, setData] = useState<OrgOverview | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
+// The call centre admin's overview (docs/plan.md, section 11): users and how they log in, teams,
+// this month's activity and usage, invoices and modules. Counts only.
 
-  const reload = useCallback(
-    () =>
-      orgFetch<OrgOverview>("/overview")
-        .then(setData)
-        .catch((e: Error) => setError(e.message)),
-    [],
+const fmt = new Intl.NumberFormat("nb-NO");
+const decimal = new Intl.NumberFormat("nb-NO", { maximumFractionDigits: 1 });
+const kroner = new Intl.NumberFormat("nb-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function Stat({ label, value, note }: { label: string; value: string; note?: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-line bg-surface p-4">
+      <p className="text-sm text-muted">{label}</p>
+      <p className="text-3xl font-semibold">{value}</p>
+      {note && <div className="mt-1 text-sm text-muted">{note}</div>}
+    </div>
   );
+}
+
+// Horizontal bars in the brand colour, with the figure to the right. The bar has its own track,
+// so a long figure never pushes the row wider than the card.
+function Bars({ rows }: { rows: { label: string; value: number; text?: string }[] }) {
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  return (
+    <ul className="flex flex-col gap-2">
+      {rows.map((r) => (
+        <li key={r.label} className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)_auto]">
+          <span className="truncate text-sm" title={r.label}>
+            {r.label}
+          </span>
+          <span className="min-w-0" aria-hidden="true">
+            <span className="block h-3.5 rounded-r bg-brand" style={{ width: `${(r.value / max) * 100}%`, minWidth: r.value > 0 ? "3px" : "0" }} />
+          </span>
+          <span className="text-right text-sm whitespace-nowrap">{r.text ?? fmt.format(r.value)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function subscription(o: OrgSummary["organization"]): string {
+  if (o.status === "suspended") return "Callsenteret er stengt. Ta kontakt med VeriQall.";
+  if (o.accessUntil) return `Tilgang til ${formatDate(o.accessUntil)}.`;
+  if (o.trialEndsAt) return `Prøveperiode til ${formatDate(o.trialEndsAt)}.`;
+  return "Aktivt.";
+}
+
+export default function OrgOverviewPage() {
+  const me = useMe();
+  const [data, setData] = useState<OrgSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    orgFetch<OrgOverview>("/overview")
+    orgFetch<OrgSummary>("/summary")
       .then((d) => !cancelled && setData(d))
       .catch((e: Error) => !cancelled && setError(e.message));
     return () => {
@@ -33,332 +70,193 @@ export default function MembersPage() {
   }, []);
 
   if (!data) return <LoadState error={error} />;
-
-  const q = query.trim().toLowerCase();
-  const shown = q
-    ? data.members.filter(
-        (m) => m.name.toLowerCase().includes(q) || m.phone?.includes(q.replace(/\s/g, "")) || m.email?.toLowerCase().includes(q),
-      )
-    : data.members;
-
-  function exportCsv() {
-    if (!data) return;
-    const csv = toCsv(
-      ["Navn", "Mobil", "E-post", "Rolle", "Team", "Status", "Sist innlogget"],
-      data.members.map((m) => [
-        m.name,
-        m.phone,
-        m.email,
-        m.roleName,
-        m.teamName,
-        memberState(m).label,
-        m.lastLoginAt ? formatDateTime(m.lastLoginAt) : "",
-      ]),
-    );
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `brukere-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
+  const m = data.members;
+  const share = (n: number) => (m.active ? `${fmt.format(n)} av ${fmt.format(m.active)}` : fmt.format(n));
+  const month = new Intl.DateTimeFormat("nb-NO", { month: "long" }).format(new Date());
 
   return (
     <section className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Brukere</h1>
-          <p className="mt-2 text-muted">Inviter brukere, gi dem rolle og team, og deaktiver dem som slutter.</p>
-        </div>
-        <button type="button" className={secondaryButton} onClick={exportCsv}>
-          Eksporter CSV
-        </button>
-      </div>
-
-      <Invite data={data} onInvited={reload} />
-
       <div>
-        <Field label="Søk">
-          <input
-            type="search"
-            className={`${inputClass} w-full sm:max-w-sm`}
-            placeholder="Navn, mobil eller e-post"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+        <h1 className="text-3xl font-extrabold tracking-tight">Oversikt</h1>
+        <p className="mt-2 text-muted">
+          {data.organization.name}. {subscription(data.organization)}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <Stat label="Aktive brukere" value={fmt.format(m.active)} note={`${fmt.format(m.loggedIn7)} innlogget siste 7 dager`} />
+        <Stat
+          label="Venter på første innlogging"
+          value={fmt.format(m.invited)}
+          note={
+            m.invitationsExpired
+              ? `${fmt.format(m.invitationsExpired)} med utløpt invitasjon`
+              : `${fmt.format(m.invitationsPending)} gyldige invitasjoner`
+          }
+        />
+        <Stat label="Ikke innlogget på 30 dager" value={fmt.format(m.inactive30)} note={m.disabled ? `${fmt.format(m.disabled)} deaktivert` : undefined} />
+        {data.invoices ? (
+          <Stat
+            label="Ubetalt"
+            value={`${kroner.format(data.invoices.unpaidAmount)} kr`}
+            note={
+              data.invoices.overdue
+                ? `${fmt.format(data.invoices.overdue)} ${data.invoices.overdue === 1 ? "faktura" : "fakturaer"} forfalt`
+                : data.invoices.nextDue
+                  ? `Neste forfall ${formatDate(data.invoices.nextDue)}`
+                  : "Ingenting forfalt"
+            }
           />
-        </Field>
-        <ErrorMessage message={error} />
-        <ul className="mt-4 divide-y divide-line rounded-xl border border-line bg-surface">
-          {shown.map((m) => (
-            <MemberRow key={m.userId} member={m} data={data} self={m.userId === me?.user.id} onChanged={reload} />
-          ))}
-          {shown.length === 0 && <li className="p-4 text-muted">Ingen brukere passer søket.</li>}
-        </ul>
+        ) : (
+          <Stat label={`Transkribert i ${month}`} value={`${decimal.format(data.usage.month.hours)} t`} />
+        )}
       </div>
 
-      <Invitations data={data} onChanged={reload} />
-    </section>
-  );
-}
-
-function MemberRow({
-  member,
-  data,
-  self,
-  onChanged,
-}: {
-  member: OrgOverview["members"][number];
-  data: OrgOverview;
-  self: boolean;
-  onChanged: () => Promise<void>;
-}) {
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const state = memberState(member);
-
-  async function update(body: Record<string, unknown>, confirmText?: string) {
-    if (confirmText && !window.confirm(confirmText)) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await orgFetch(`/members/${member.userId}`, { method: "PATCH", body });
-      await onChanged();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const activeTeams = data.teams.filter((t) => !t.archivedAt);
-  return (
-    <li className="flex flex-col gap-3 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="font-semibold">
-            {member.name}
-            {self && <span className="ml-2 text-sm font-medium text-muted">(deg)</span>}
-          </p>
-          <p className="text-sm text-muted">
-            {[member.phone, member.email].filter(Boolean).join(" · ") || "Ingen kontaktinfo"} · sist innlogget{" "}
-            {formatDateTime(member.lastLoginAt)}
-          </p>
-        </div>
-        <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
-      </div>
-      {self ? (
-        <p className="text-sm">
-          {member.roleName}
-          {member.teamName && ` · ${member.teamName}`}
-        </p>
-      ) : (
-        <div className="flex flex-wrap items-end gap-3">
-          <Field label="Rolle">
-            <select
-              className={inputClass}
-              value={member.roleId}
-              disabled={busy}
-              onChange={(e) => update({ roleId: e.target.value })}
-            >
-              {data.roles.map((r) => (
-                <option key={r.id} value={r.id} disabled={!r.assignable && r.id !== member.roleId}>
-                  {r.name}
-                  {!r.assignable ? " (krever rettigheter du ikke har)" : ""}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Team">
-            <select
-              className={inputClass}
-              value={member.teamId ?? ""}
-              disabled={busy}
-              onChange={(e) => update({ teamId: e.target.value || null })}
-            >
-              <option value="">Uten team</option>
-              {activeTeams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <button
-            type="button"
-            className={secondaryButton}
-            disabled={busy}
-            onClick={() =>
-              member.status === "active"
-                ? update({ status: "disabled" }, `Deaktivere ${member.name}? Brukeren mister tilgangen til callsenteret.`)
-                : update({ status: "active" })
-            }
-          >
-            {member.status === "active" ? "Deaktiver" : "Aktiver igjen"}
-          </button>
-        </div>
-      )}
-      <ErrorMessage message={error} />
-    </li>
-  );
-}
-
-function Invite({ data, onInvited }: { data: OrgOverview; onInvited: () => Promise<void> }) {
-  const assignable = data.roles.filter((r) => r.assignable);
-  const defaultRole = assignable.find((r) => r.key === "seller") ?? assignable[0];
-  const [form, setForm] = useState({ fullName: "", phone: "", email: "", roleId: defaultRole?.id ?? "", teamId: "" });
-  const [error, setError] = useState<string | null>(null);
-  const [link, setLink] = useState<{ url: string; expiresAt: string; emailedTo: string | null } | null>(null);
-  // The person already has a login elsewhere: added without a link.
-  const [added, setAdded] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    setSaving(true);
-    setError(null);
-    setLink(null);
-    setAdded(false);
-    setCopied(false);
-    try {
-      const result = await orgFetch<{ link: string | null; expiresAt: string | null; emailed: boolean }>("/invitations", {
-        method: "POST",
-        body: { ...form, teamId: form.teamId || null },
-      });
-      if (result.link && result.expiresAt) {
-        setLink({ url: result.link, expiresAt: result.expiresAt, emailedTo: result.emailed ? form.email.trim() : null });
-      } else {
-        setAdded(true);
-      }
-      setForm({ ...form, fullName: "", phone: "", email: "" });
-      await onInvited();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm({ ...form, [key]: e.target.value });
-
-  return (
-    <Card title="Inviter bruker">
-      <form onSubmit={submit} className="flex flex-col gap-4">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Navn">
-            <input required className={inputClass} value={form.fullName} onChange={set("fullName")} />
-          </Field>
-          <Field label="Mobilnummer" hint="Med Vipps kobles brukeren via mobilnummeret.">
-            <input type="tel" className={inputClass} value={form.phone} onChange={set("phone")} />
-          </Field>
-          <Field label="E-post">
-            <input type="email" className={inputClass} value={form.email} onChange={set("email")} />
-          </Field>
-          <Field label="Rolle">
-            <select required className={inputClass} value={form.roleId} onChange={set("roleId")}>
-              {assignable.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Team">
-            <select className={inputClass} value={form.teamId} onChange={set("teamId")}>
-              <option value="">Uten team</option>
-              {data.teams
-                .filter((t) => !t.archivedAt)
-                .map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-            </select>
-          </Field>
-        </div>
-        <ErrorMessage message={error} />
-        <div>
-          <button type="submit" className={primaryButton} disabled={saving}>
-            {saving ? "Lager invitasjon …" : "Lag invitasjon"}
-          </button>
-        </div>
-      </form>
-      {added && (
-        <p role="status" className="mt-6 rounded-lg border border-line p-4">
-          Personen er allerede bruker av VeriQall og er lagt til. Av sikkerhetshensyn lages det ingen lenke: callsenteret vises
-          når hen logger inn med sin egen BankID, Vipps eller passkey.
-        </p>
-      )}
-      {link && (
-        <div className="mt-6 rounded-lg border border-line p-4">
-          <p className="font-semibold">Invitasjonslenke</p>
-          {link.emailedTo && (
-            <p className="mt-1" role="status">
-              Sendt på e-post til {link.emailedTo}.
+      <div className="grid gap-4 xl:grid-cols-2 [&>*]:min-w-0">
+        <Card title="Innlogging" actions={<Link href="/administrasjon/brukere" className="font-semibold text-brand">Brukere</Link>}>
+          <div className="flex flex-col gap-4">
+            <Bars
+              rows={[
+                { label: "BankID", value: m.bankid, text: share(m.bankid) },
+                { label: "Vipps", value: m.vipps, text: share(m.vipps) },
+                { label: "Passkey", value: m.passkey, text: share(m.passkey) },
+              ]}
+            />
+            <p className="text-sm text-muted">
+              Av de aktive brukerne, etter hvilke innloggingsmåter de har koblet til. Administrasjon og innsyn i alle samtaler krever BankID eller
+              passkey.
             </p>
+          </div>
+        </Card>
+        <Card title="Team" actions={<Link href="/administrasjon/team" className="font-semibold text-brand">Team</Link>}>
+          {data.teams.teams.length ? (
+            <div className="flex flex-col gap-4">
+              <Bars rows={data.teams.teams.map((t) => ({ label: t.name, value: t.members }))} />
+              <p className="text-sm text-muted">Medlemmer per team, også de som ikke har logget inn ennå.</p>
+              {data.teams.withoutTeam > 0 && <p className="text-sm text-muted">{fmt.format(data.teams.withoutTeam)} er ikke med i noe team.</p>}
+            </div>
+          ) : (
+            <p className="text-muted">Ingen team ennå. Team trengs for teamledere og tallene per team.</p>
           )}
-          <p className="mt-1 text-sm text-muted">
-            {link.emailedTo ? "Du kan også sende lenken selv, for eksempel på SMS." : "Send lenken til personen."} Den kan brukes én gang og gjelder til {formatDateTime(link.expiresAt)}. Den vises bare nå.
-          </p>
-          <p className="mt-3 break-all rounded-lg bg-bg p-3 font-mono text-sm">{link.url}</p>
-          <button
-            type="button"
-            className={`${secondaryButton} mt-3`}
-            onClick={() =>
-              navigator.clipboard
-                .writeText(link.url)
-                .then(() => setCopied(true))
-                .catch(() => setCopied(false))
-            }
-          >
-            {copied ? "Kopiert" : "Kopier lenke"}
-          </button>
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function Invitations({ data, onChanged }: { data: OrgOverview; onChanged: () => Promise<void> }) {
-  const [error, setError] = useState<string | null>(null);
-  if (data.invitations.length === 0) return null;
-
-  async function revoke(id: string) {
-    setError(null);
-    try {
-      await orgFetch(`/invitations/${id}`, { method: "DELETE" });
-      await onChanged();
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }
-
-  return (
-    <Card title="Invitasjoner">
-      <ul className="divide-y divide-line">
-        {data.invitations.map((inv) => {
-          const state = invitationState(inv);
-          return (
-            <li key={inv.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-semibold">{inv.name}</p>
-                <p className="text-sm text-muted">
-                  Laget {formatDateTime(inv.createdAt)} · {state}
-                </p>
-              </div>
-              {state === "Venter" && (
-                <button type="button" className={secondaryButton} onClick={() => revoke(inv.id)}>
-                  Trekk tilbake
-                </button>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      <div className="mt-3">
-        <ErrorMessage message={error} />
+        </Card>
       </div>
-    </Card>
+
+      {data.activity && data.activity.length > 0 && (
+        <Card title={`Aktivitet i ${month}`}>
+          <div className="-mx-2 overflow-x-auto">
+            <table className="w-full min-w-[26rem] text-left">
+              <thead className="text-sm text-muted">
+                <tr>
+                  <th className="px-2 py-2 font-semibold">Team</th>
+                  <th className="px-2 py-2 text-right font-semibold">Samtaler</th>
+                  <th className="px-2 py-2 text-right font-semibold">Salg</th>
+                  <th className="px-2 py-2 text-right font-semibold">Bekreftet</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {data.activity.map((a) => (
+                  <tr key={a.teamId ?? "none"}>
+                    <td className="px-2 py-3">{a.name ?? "Uten team"}</td>
+                    <td className="px-2 py-3 text-right">{fmt.format(a.calls)}</td>
+                    <td className="px-2 py-3 text-right">{fmt.format(a.sales)}</td>
+                    <td className="px-2 py-3 text-right">{fmt.format(a.confirmed)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-sm text-muted">
+            Tallene per selger og per dag står under{" "}
+            <Link href="/oversikt" className="font-semibold text-brand">
+              Callsenter → Oversikt
+            </Link>
+            .
+          </p>
+        </Card>
+      )}
+
+      <div className="grid gap-4 xl:grid-cols-2 [&>*]:min-w-0">
+        <Card title="Forbruk">
+          <div className="-mx-2 overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="text-sm text-muted">
+                <tr>
+                  <th className="px-2 py-2 font-semibold" />
+                  <th className="px-2 py-2 text-right font-semibold">Denne måneden</th>
+                  <th className="px-2 py-2 text-right font-semibold">Forrige måned</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                <tr>
+                  <td className="px-2 py-3">Timer transkribert</td>
+                  <td className="px-2 py-3 text-right">{decimal.format(data.usage.month.hours)}</td>
+                  <td className="px-2 py-3 text-right">{decimal.format(data.usage.previous.hours)}</td>
+                </tr>
+                <tr>
+                  <td className="px-2 py-3">AI-kontroller</td>
+                  <td className="px-2 py-3 text-right">{fmt.format(data.usage.month.controls)}</td>
+                  <td className="px-2 py-3 text-right">{fmt.format(data.usage.previous.controls)}</td>
+                </tr>
+                <tr>
+                  <td className="px-2 py-3">Notater</td>
+                  <td className="px-2 py-3 text-right">{fmt.format(data.usage.month.notes)}</td>
+                  <td className="px-2 py-3 text-right">{fmt.format(data.usage.previous.notes)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-sm text-muted">Talt som på fakturaen: hver samtale én gang.</p>
+        </Card>
+        <Card title="Roller" actions={me?.permissions.includes("roles.manage") ? <Link href="/administrasjon/roller" className="font-semibold text-brand">Roller</Link> : undefined}>
+          <ul className="divide-y divide-line">
+            {data.roles.map((r) => (
+              <li key={r.name} className="flex items-center justify-between gap-4 py-2">
+                <span>{r.name}</span>
+                <span className="text-muted">{fmt.format(r.members)}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2 [&>*]:min-w-0">
+        {data.invoices && (
+          <Card title="Fakturaer" actions={<Link href="/administrasjon/fakturaer" className="font-semibold text-brand">Alle fakturaer</Link>}>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
+              <div>
+                <dt className="text-sm text-muted">Ubetalte</dt>
+                <dd className="text-xl font-semibold">{fmt.format(data.invoices.unpaid)}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted">Forfalt</dt>
+                <dd className="text-xl font-semibold">{fmt.format(data.invoices.overdue)}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted">Neste forfall</dt>
+                <dd className="text-xl font-semibold">{data.invoices.nextDue ? formatDate(data.invoices.nextDue) : "–"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted">Siste betaling</dt>
+                <dd className="text-xl font-semibold">{data.invoices.lastPaidAt ? formatDate(data.invoices.lastPaidAt) : "–"}</dd>
+              </div>
+            </dl>
+          </Card>
+        )}
+        <Card title="Moduler">
+          {data.modules.length ? (
+            <ul className="flex flex-wrap gap-2">
+              {data.modules.map((key) => (
+                <li key={key} className="rounded-full border border-line px-3 py-1 text-sm">
+                  {isModuleKey(key) ? MODULES[key].name : key}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted">Ingen moduler er slått på.</p>
+          )}
+          <p className="mt-3 text-sm text-muted">Moduler slås på og av av VeriQall. Send en melding under Meldinger hvis dere trenger flere.</p>
+        </Card>
+      </div>
+    </section>
   );
 }

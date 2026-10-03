@@ -7,7 +7,8 @@ import { API_URL, fetchMe, loginPathFor, type Me } from "@/lib/auth";
 import { usePageTitle } from "@/lib/use-page-title";
 
 const TABS: (Omit<Tab, "active" | "href"> & { href: string; permission?: string })[] = [
-  { label: "Brukere", icon: "users", href: "/administrasjon" },
+  { label: "Oversikt", icon: "growth", href: "/administrasjon" },
+  { label: "Brukere", icon: "users", href: "/administrasjon/brukere" },
   { label: "Team", icon: "team", href: "/administrasjon/team" },
   { label: "Roller", icon: "roles", href: "/administrasjon/roller", permission: "roles.manage" },
   { label: "Meldinger", icon: "message", href: "/administrasjon/meldinger" },

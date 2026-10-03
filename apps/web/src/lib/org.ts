@@ -35,3 +35,27 @@ export function memberState(m: { status: string; userStatus: string }) {
   if (m.userStatus === "invited") return { label: "Invitert", tone: "warning" as const };
   return { label: "Aktiv", tone: "ok" as const };
 }
+
+// The admin's overview (app.org_summary). Parts without the permission are null: activity needs
+// dashboard.all, invoices billing.read.
+export interface OrgSummary {
+  organization: { name: string; status: "active" | "suspended"; trialEndsAt: string | null; accessUntil: string | null };
+  members: {
+    active: number;
+    invited: number;
+    disabled: number;
+    loggedIn7: number;
+    inactive30: number;
+    bankid: number;
+    vipps: number;
+    passkey: number;
+    invitationsPending: number;
+    invitationsExpired: number;
+  };
+  teams: { teams: { id: string; name: string; members: number }[]; withoutTeam: number };
+  roles: { name: string; members: number }[];
+  usage: Record<"month" | "previous", { hours: number; controls: number; notes: number }>;
+  activity: { teamId: string | null; name: string | null; calls: number; sales: number; confirmed: number }[] | null;
+  invoices: { unpaid: number; unpaidAmount: number; overdue: number; nextDue: string | null; lastPaidAt: string | null } | null;
+  modules: string[];
+}

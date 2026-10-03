@@ -55,6 +55,16 @@ describe("call centre admin: access", () => {
     expect((await call(passkey.cookie, "GET", "/org/overview")).status).toBe(200);
   });
 
+  it("gives the admin an overview of users, teams, usage and invoices", async () => {
+    const org = await createOrg();
+    const admin = await adminOf(org);
+    const res = await call(admin.cookie, "GET", "/org/summary");
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ members: { active: 1, invited: 0 }, usage: { month: { hours: 0, controls: 0, notes: 0 } }, modules: [] });
+    const seller = await member(org, "seller");
+    expect((await call(await sessionFor(seller, org), "GET", "/org/summary")).status).toBe(403);
+  });
+
   it("sees only its own call centre", async () => {
     const orgA = await createOrg();
     const orgB = await createOrg();
