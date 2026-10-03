@@ -7,6 +7,10 @@ const RESULTS: Record<string, { title: string; text: string }> = {
   godtatt: { title: "Takk! Avtalen er bekreftet", text: "Du har godtatt tilbudet. Du kan lukke denne siden." },
   avslatt: { title: "Tilbudet er avslått", text: "Avtalen blir ikke inngått. Du kan lukke denne siden." },
   avbrutt: { title: "Identifiseringen ble avbrutt", text: "Ingenting er godtatt. Åpne lenken på nytt hvis du vil godta tilbudet." },
+  feil_person: {
+    title: "Tilbudet må godtas av kjøperen",
+    text: "Navnet eller mobilnummeret ditt stemmer ikke med kjøperen, så ingenting er godtatt. Tilbudet må godtas av kjøperen selv med BankID eller Vipps. Ta kontakt med selgeren hvis opplysningene om deg er feil.",
+  },
   utlopt: { title: "Fristen har gått ut", text: "Ta kontakt med selgeren hvis du fortsatt ønsker avtalen." },
   avgjort: { title: "Tilbudet er allerede besvart", text: "Det er ikke mulig å svare på det samme tilbudet to ganger." },
   trukket: { title: "Tilbudet gjelder ikke lenger", text: "Selgeren har trukket tilbake eller endret tilbudet. Ta kontakt med selgeren hvis du har spørsmål." },

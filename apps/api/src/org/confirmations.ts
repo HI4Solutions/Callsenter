@@ -26,6 +26,7 @@ interface SaleForDocument {
   product: string;
   kind: string;
   customer: string | null;
+  contact_name: string | null;
   org_number: string | null;
   birth_date: string | null;
   phone: string | null;
@@ -43,7 +44,7 @@ export async function createConfirmation(db: pg.Pool, session: Session, appOrigi
     const { rows } = await c.query<SaleForDocument>(
       `select s.status, s.sold_at, s.price_once::text, s.price_monthly::text, s.binding_months, s.withdrawal_days,
               tv.notice_months, tv.terms, tv.version, s.template_version_id, p.name as product,
-              cu.kind, cu.name as customer, cu.org_number, cu.birth_date::text, cu.phone, cu.email,
+              cu.kind, cu.name as customer, cu.contact_name, cu.org_number, cu.birth_date::text, cu.phone, cu.email,
               cu.address_line, cu.postal_code, cu.city,
               o.name as company, o.org_number as company_org_number, u.full_name as seller
        from sales s
@@ -59,6 +60,11 @@ export async function createConfirmation(db: pg.Pool, session: Session, appOrigi
     if (!s) throw new NotFound();
     // The offer names the customer, so it needs access to customers.
     if (s.customer === null) throw new BadRequest("Du trenger tilgang til kunder for å sende tilbudet til kunden.");
+    // Only the buyer can accept (app.confirmation_decide): for a business, the contact person,
+    // recognised by name or by the verified mobile number.
+    if (s.kind === "business" && !s.contact_name && !s.phone) {
+      throw new BadRequest("Legg inn kontaktperson eller mobilnummer på kunden. Bare kontaktpersonen kan godta tilbudet for bedriften.");
+    }
     if (s.status !== "registered" && s.status !== "awaiting_confirmation") {
       throw new BadRequest("Salget kan ikke sendes til bekreftelse nå.");
     }

@@ -83,6 +83,53 @@ describe("sale confirmations", () => {
     await expect(decide((await confirmation(await setup())).id, "accepted", "none")).rejects.toThrow(/verified identity/);
   });
 
+  it("is accepted only by the buyer: someone else leaves the link open and the sale waiting", async () => {
+    const s = await setup();
+    const c = await confirmation(s);
+    // Another person's BankID: neither the name nor a phone number matches.
+    expect((await decide(c.id, "accepted", "bankid", "Per Annen", null)).rows[0].r).toBe("wrong_person");
+    expect((await owner.query("select status, decided_at from sale_confirmations where id = $1", [c.id])).rows[0]).toEqual({
+      status: "pending",
+      decided_at: null,
+    });
+    expect((await owner.query("select status from sales where id = $1", [s.sale])).rows[0].status).toBe("awaiting_confirmation");
+    const attempt = (await owner.query("select from_status, to_status, note from sale_events where sale_id = $1 order by id desc limit 1", [s.sale]))
+      .rows[0];
+    expect(attempt).toMatchObject({ from_status: "awaiting_confirmation", to_status: "awaiting_confirmation" });
+    expect(attempt.note).toMatch(/^Forsøk på å godta med BankID av en annen enn kjøperen/);
+    expect(attempt.note).not.toContain("Per Annen");
+    // Vipps with another number and another name is refused too.
+    expect((await decide(c.id, "accepted", "vipps", "Per Annen", "+4799999999")).rows[0].r).toBe("wrong_person");
+    // The buyer's BankID, with a middle name and without the accent she was registered with.
+    await owner.query("update customers set name = 'Kåri Kunde' where id = $1", [s.customer]);
+    expect((await decide(c.id, "accepted", "bankid", "KARI MARIE KUNDE", null)).rows[0].r).toBe("accepted");
+    expect((await owner.query("select identity_match from sale_confirmations where id = $1", [c.id])).rows[0].identity_match).toBe("name");
+    expect((await owner.query("select status from sales where id = $1", [s.sale])).rows[0].status).toBe("confirmed");
+  });
+
+  it("is accepted for a business by its contact person", async () => {
+    const s = await setup();
+    await owner.query("update customers set kind = 'business', name = 'Kunde AS', contact_name = 'Kari Kunde', phone = null where id = $1", [
+      s.customer,
+    ]);
+    const c = await confirmation(s);
+    // The company's name is not a person.
+    expect((await decide(c.id, "accepted", "bankid", "Kunde AS", null)).rows[0].r).toBe("wrong_person");
+    expect((await decide(c.id, "accepted", "bankid", "Kari Kunde", null)).rows[0].r).toBe("accepted");
+  });
+
+  it("compares names by first and last name, without case or accents", async () => {
+    const same = async (a: string | null, b: string) => (await owner.query("select app.same_person_name($1, $2) as r", [a, b])).rows[0].r;
+    expect(await same("Øyvind Ærlig", "øyvind ærlig")).toBe(true);
+    expect(await same("Ola Nordmann", "Ola Johan Nordmann")).toBe(true);
+    expect(await same("Ola Johan Nordmann", "Ola Nordmann")).toBe(true);
+    expect(await same("Nordmann Ola", "Ola Nordmann")).toBe(true);
+    expect(await same("Ola", "Ola Nordmann")).toBe(false);
+    expect(await same("Kari Nordmann", "Ola Nordmann")).toBe(false);
+    expect(await same("", "Ola Nordmann")).toBe(false);
+    expect(await same(null, "Ola Nordmann")).toBe(false);
+  });
+
   it("cannot be answered when the sale no longer waits for it", async () => {
     const s = await setup();
     const c = await confirmation(s);

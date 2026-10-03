@@ -206,7 +206,7 @@ Logoen kan genereres på nytt med `tools/brand/`: last ned fonten til `tools/bra
 Besluttet 2. oktober 2026:
 
 - **AWS med RDS, ikke Supabase.** Point-in-time recovery er et krav i produksjon, siden data skal brukes som bevis i klagesaker. På RDS er det inkludert; på Supabase koster det rundt 100 USD i måneden per prosjekt. AWS gir i tillegg egen KMS-nøkkel, privat database og logger i egen konto.
-- **Nettverk:** NAT-instans i staging, NAT Gateway i produksjon (seksjon 3). Ikke delte Lambdaer, ikke Aurora.
+- **Nettverk:** NAT-instans i staging, NAT Gateway i produksjon (seksjon 3). Ikke delte Lambdaer, ikke Aurora. NAT-instansen i staging følger nyeste Amazon Linux og byttes ved deploy når det kommer en ny versjon, med noen minutter uten nett ut (besluttet 3. oktober: beholdes slik).
 - **Produksjon opprettes først ved lansering.** Fram til da betales bare staging.
 - **Domene:** `veriqall.no` hos one.com, DNS blir der.
 - **IaC:** CloudFormation i YAML (`infra/`), én stack per lag og miljø. Se `infra/README.md`.
@@ -283,7 +283,7 @@ Beslutninger 2. oktober:
 
 ## 13. Samtalen: opptak, transkribering, AI-kontroll og rapporter
 
-Påbegynt 2. oktober 2026 (modul 5, 6 og 7), i én PR. Oppsettet følger MedSide-transkripsjonen, med ett unntak: VeriQall lagrer lyden, fordi avspilling og klagedokumentasjon er formålet.
+Påbegynt 2. oktober 2026 (modul 5, 6 og 7), i én PR. Godkjent av Nadeem 3. oktober slik det står, og justeres etter full testing i staging. Oppsettet følger MedSide-transkripsjonen, med ett unntak: VeriQall lagrer lyden, fordi avspilling og klagedokumentasjon er formålet.
 
 Beslutninger 2. oktober:
 
@@ -312,11 +312,11 @@ Før det virker i staging: Soniox-nøkkelen i `callsenter/staging/app` må komme
 
 ## 14. Salgsverifisering, dokumentasjon og klager
 
-Bygget 2. oktober 2026 (modul 8, 9 og 10), i én PR. Claude tok beslutningene under alene, og de venter på Nadeems godkjenning.
+Bygget 2. oktober 2026 (modul 8, 9 og 10), i én PR. Godkjent av Nadeem 3. oktober slik det står, og justeres etter full testing i staging.
 
 **Tilleggsmodul (Nadeem, 3. oktober).** De fleste callsentre har allerede sitt eget system for bekreftelse og kundelenker. Salgsverifisering (`sale_verification`) er derfor en egen modul som slås på per callsenter og faktureres ekstra, fordi hver aksept med BankID eller Vipps koster oss penger. Callsentre uten modulen kobler samtalen til salget i sitt eget system med samtalens referanse (seksjon 13).
 
-Beslutninger 2. oktober (til godkjenning):
+Beslutninger 2. oktober:
 
 - **Skriftlig aksept via lenke.** Ved telefonsalg er forbrukeren bare bundet når hen godtar tilbudet skriftlig etter samtalen (angrerettloven § 10). Selgeren lager en lenke på salgssiden (`sales.manage`). Kunden åpner den uten å logge inn, ser tilbudet med pris, binding, angrefrist og vilkår fra malversjonen salget peker på, og **godtar med BankID eller Vipps**, eller avslår (uten identifisering). Salget går til «bekreftet» eller «avvist» av seg selv.
 - **Lenken gjelder i 7 dager** og vises bare når den lages (bare hashen lagres). En ny lenke trekker tilbake den forrige. Lenken kan trekkes tilbake fra salgssiden, og trekkes tilbake av seg selv hvis salget kanselleres eller settes til bekreftet for hånd mens det venter.
@@ -325,7 +325,7 @@ Beslutninger 2. oktober (til godkjenning):
 - **Etter at lenken er besvart, trukket tilbake eller utløpt, vises bare status**, ikke selve tilbudet med kundens opplysninger.
 - **SMS kommer senere.** Til leverandøren er valgt (seksjon 8), kopierer selgeren lenken og sender den selv på SMS eller e-post. `sent_via` står klar for SMS.
 - **Bevis:** dokumentet kunden så, lagres som kanonisk JSON med SHA-256 (dokument-ID), sammen med malversjonen, metode, navn fra BankID eller Vipps, verifisert mobilnummer (Vipps), en hash av innloggings-ID-en (ikke selve ID-en), sikkerhetsnivå, tidspunkt, IP og nettleser. En avgjort bekreftelse kan aldri endres (trigger).
-- **Samsvar med kunden:** stemmer Vipps-nummeret med kundens mobilnummer, eller navnet fra BankID eller Vipps med kundens navn, merkes det. Ellers får selgeren beskjed om å sjekke at riktig person har godtatt. Aksepten stoppes ikke, siden en bedrift kan godta ved en annen person enn kontaktpersonen.
+- **Bare kjøperen kan godta (Nadeem, 3. oktober).** Kjøperen er kunden, og for en bedrift kontaktpersonen. Aksepten godtas når Vipps-nummeret stemmer med kundens mobilnummer, eller når for- og etternavnet fra BankID eller Vipps står i navnet callsenteret har registrert (mellomnavn, store og små bokstaver og aksenter spiller ingen rolle). Ellers blir ingenting godtatt: personen får beskjed om at tilbudet må godtas av kjøperen selv, lenken står åpen for kjøperen, salget venter fortsatt, og forsøket står i salgets historikk uten navnet til den som forsøkte. En bedriftskunde må ha kontaktperson eller mobilnummer før tilbudet kan sendes. Migrasjonen `0035_buyer_must_accept.sql`. (Før 3. oktober ble aksepten godtatt med en advarsel til selgeren.)
 - **Identifiseringen gir ingen innlogging.** Den bruker samme OIDC-flyt som innloggingen, men tilstanden er knyttet til bekreftelsen, og ingen økt opprettes. De offentlige sidene går gjennom den smale rollen `app_auth` og to `security definer`-funksjoner.
 - **Dokumentasjon per salg** (modul 9) på `/salg/[id]/dokumentasjon`: salget, tilbudet og vilkårene, kundens aksept, samtalene med transkripsjon, AI-kontroll og rapport, og historikken. Kan skrives ut eller lagres som PDF fra nettleseren. Hver visning logges i `access_log`, og hver samtale som vises, logges i tillegg på samtalen.
 - **Klager** (modul 10) på `/klager` med `complaints.manage`: kunde, valgfritt salg, kanal, dato, beskrivelse, saksbehandler, status (ny, under behandling, løst, avvist) og utfall, som må fylles ut før saken lukkes. Historikk og notater er append-only. Gjelder klagen et salg, vises salgets dokumentasjon i saken og logges som `complaint_documentation`. Er salget ikke synlig for saksbehandleren (andres salg krever tilgang til alle samtaler og sterk innlogging), vises en melding i stedet.
@@ -344,9 +344,9 @@ Må sjekkes hvis modulen tas i bruk: at lenke med BankID- eller Vipps-aksept opp
 
 ## 15. Dashboard og coaching
 
-Bygget 2. oktober 2026 (modul 11) som fase 4A, oppå fase 3. Claude tok beslutningene alene, og de venter på Nadeems godkjenning. Fakturamodulen (modul 15) kommer i en egen PR (fase 4B).
+Bygget 2. oktober 2026 (modul 11) som fase 4A, oppå fase 3. Godkjent av Nadeem 3. oktober slik det står, og justeres etter full testing i staging. Fakturamodulen (modul 15) kommer i en egen PR (fase 4B).
 
-Beslutninger 2. oktober (til godkjenning):
+Beslutninger 2. oktober:
 
 - **Alle ser sine egne tall.** `/oversikt` viser salg, andel bekreftet, bekreftet verdi per måned, samtaler og timer opptak, AI-flagg (godkjent, avvik, brudd og ubehandlede), klager, utvikling per dag (per uke over 45 dager) og de ti hyppigste avvikene. `dashboard.team` gir teamets tall og en liste over selgerne i teamet, `dashboard.all` hele callsenteret og hvert team.
 - **Tallene er antall, ikke innhold.** De kommer fra én `security definer`-funksjon (`app.dashboard`) som sjekker rettighetene selv. En leder ser dermed teamets tall uten å kunne lese samtalene. For å åpne en samtale gjelder fortsatt `calls.read.*`. Salg og samtaler telles i teamet de ble gjort i, som for synlighet. Dager regnes i norsk tid, og perioden er høyst ett år.
@@ -387,7 +387,7 @@ Beslutninger 2. oktober (til godkjenning):
 
 ## 16. Økonomi og fakturering
 
-Første versjon ble bygget 2. oktober 2026 (modul 15). Samme dag ble den lagt om etter Nadeems beskrivelse av Økonomi-fanen i MedSide, tilpasset VeriQall: **kunden er callsenteret**, ikke en enkeltbruker.
+Første versjon ble bygget 2. oktober 2026 (modul 15). Godkjent av Nadeem 3. oktober slik det står, og justeres etter full testing i staging. Samme dag ble den lagt om etter Nadeems beskrivelse av Økonomi-fanen i MedSide, tilpasset VeriQall: **kunden er callsenteret**, ikke en enkeltbruker.
 
 **Økonomi** i superadminportalen har fire underfaner. Den siste du brukte, huskes til neste besøk:
 
