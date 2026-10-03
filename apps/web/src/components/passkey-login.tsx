@@ -32,7 +32,7 @@ export function PasskeyLogin({ next }: { next?: string }) {
         type="button"
         onClick={login}
         disabled={busy}
-        className={`${LOGIN_BUTTON} border border-line bg-surface disabled:opacity-60`}
+        className={`${LOGIN_BUTTON} bg-brand text-on-brand disabled:opacity-60`}
       >
         <LoginButtonContent icon={<FingerprintIcon />}>
           {busy ? "Venter på passkey …" : "Logg inn med passkey"}
