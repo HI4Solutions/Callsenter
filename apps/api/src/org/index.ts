@@ -41,7 +41,7 @@ import {
 import { addComplaintNote, createComplaint, getComplaint, listComplaints, updateComplaint } from "./complaints.ts";
 import { createConfirmation, revokeConfirmation } from "./confirmations.ts";
 import { createCustomer, getCustomer, listCustomers, updateCustomer } from "./customers.ts";
-import { createCoaching, getDashboard, listCoaching, readCoaching } from "./dashboard.ts";
+import { createCoaching, getBenchmark, getDashboard, getTeamDashboard, listCoaching, readCoaching } from "./dashboard.ts";
 import { getSaleDocumentation } from "./documentation.ts";
 import { listOrgInvoices } from "./invoices.ts";
 import {
@@ -388,11 +388,17 @@ export async function handleOrg(
       return reply(200, await listOrgInvoices(deps.appDb, session));
     }
     // Everyone sees their own numbers and feedback; the database checks the rest.
-    if (path === "/org/dashboard" || path === "/org/coaching" || COACHING_READ.test(path)) {
+    if (path === "/org/dashboard" || path.startsWith("/org/dashboard/") || path === "/org/coaching" || COACHING_READ.test(path)) {
       await requireModule(deps.appDb, session, "dashboard");
     }
     if (method === "GET" && path === "/org/dashboard") {
       return reply(200, await getDashboard(deps.appDb, session, event.queryStringParameters ?? {}));
+    }
+    if (method === "GET" && path === "/org/dashboard/benchmark") {
+      return reply(200, await getBenchmark(deps.appDb, session, event.queryStringParameters ?? {}));
+    }
+    if (method === "GET" && path === "/org/dashboard/team") {
+      return reply(200, await getTeamDashboard(deps.appDb, session, event.queryStringParameters ?? {}));
     }
     if (path === "/org/coaching") {
       if (method === "GET") return reply(200, await listCoaching(deps.appDb, session, event.queryStringParameters ?? {}));

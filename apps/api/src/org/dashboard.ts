@@ -18,17 +18,26 @@ function isoDay(date: Date): string {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo" }).format(date);
 }
 
-// Numbers for a period of whole days in Norwegian time, from and to inclusive (default the last
-// 30 days). Also returns what the user may choose between: teams and the whole call centre.
-export async function getDashboard(db: pg.Pool, session: Session, query: Record<string, string | undefined>) {
-  const scope = SCOPES.includes(query.scope as (typeof SCOPES)[number]) ? query.scope! : "me";
-  const target = scope === "seller" || scope === "team" ? query.target : undefined;
-  if ((scope === "seller" || scope === "team") && (!target || !isUuid(target))) throw new BadRequest("Velg en selger eller et team.");
+// A period of whole days in Norwegian time, from and to inclusive (default the last 30 days).
+function period(query: Record<string, string | undefined>) {
   const today = isoDay(new Date());
   const to = day(query.to, today);
   const from = day(query.from, isoDay(new Date(Date.parse(`${to}T12:00:00Z`) - 29 * 86_400_000)));
   if (from > to) throw new BadRequest("Fra-datoen må være før til-datoen.");
   if (Date.parse(to) - Date.parse(from) > 366 * 86_400_000) throw new BadRequest("Perioden kan være høyst ett år.");
+  return { from, to };
+}
+
+// The period's bounds as timestamps for the database functions ($1 and $2 are the days).
+const BOUNDS = "$1::date::timestamp at time zone 'Europe/Oslo', ($2::date + 1)::timestamp at time zone 'Europe/Oslo'";
+
+// Numbers for a period. Also returns what the user may choose between: teams and the whole
+// call centre.
+export async function getDashboard(db: pg.Pool, session: Session, query: Record<string, string | undefined>) {
+  const scope = SCOPES.includes(query.scope as (typeof SCOPES)[number]) ? query.scope! : "me";
+  const target = scope === "seller" || scope === "team" ? query.target : undefined;
+  if ((scope === "seller" || scope === "team") && (!target || !isUuid(target))) throw new BadRequest("Velg en selger eller et team.");
+  const { from, to } = period(query);
   return withSession(db, session, async (c) => {
     const { rows } = await c.query<{ d: Record<string, unknown> }>(
       `select app.dashboard($1, $2, $3::date::timestamp at time zone 'Europe/Oslo',
@@ -52,6 +61,28 @@ export async function getDashboard(db: pg.Pool, session: Session, query: Record<
       target_name = (await c.query<{ name: string }>("select name from teams where id = $1", [target])).rows[0]?.name ?? null;
     }
     return { scope, target: target ?? null, targetName: target_name, from, to, canSeeAll: all, teams: teams.rows, ...rows[0]!.d };
+  });
+}
+
+// The average per seller in one's own team, without names (null outside a team, and only
+// figures when at least three were active).
+export async function getBenchmark(db: pg.Pool, session: Session, query: Record<string, string | undefined>) {
+  const { from, to } = period(query);
+  return withSession(db, session, async (c) => {
+    const { rows } = await c.query<{ b: Record<string, unknown> | null }>(`select app.dashboard_benchmark(${BOUNDS}) as b`, [from, to]);
+    return { from, to, benchmark: rows[0]!.b };
+  });
+}
+
+// Each seller in a team (or the whole call centre without team) day by day, with open flags
+// and feedback given. The database checks dashboard.team and dashboard.all.
+export async function getTeamDashboard(db: pg.Pool, session: Session, query: Record<string, string | undefined>) {
+  const team = query.team || null;
+  if (team !== null && !isUuid(team)) throw new BadRequest("Ukjent team.");
+  const { from, to } = period(query);
+  return withSession(db, session, async (c) => {
+    const { rows } = await c.query<{ t: Record<string, unknown> }>(`select app.dashboard_team($3, ${BOUNDS}) as t`, [from, to, team]);
+    return { from, to, team, ...rows[0]!.t };
   });
 }
 

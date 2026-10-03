@@ -249,7 +249,8 @@ export async function listPieces(
 
 export async function completeCall(db: pg.Pool, session: Session, services: CallServices, callId: string, body: Body) {
   const durationMs = body.durationMs;
-  if (durationMs !== undefined && (typeof durationMs !== "number" || !Number.isInteger(durationMs) || durationMs < 0)) {
+  // At most a day: the column is an int, and no call lasts longer.
+  if (durationMs !== undefined && (typeof durationMs !== "number" || !Number.isInteger(durationMs) || durationMs < 0 || durationMs > 24 * 3600_000)) {
     throw new BadRequest("Ugyldig varighet.");
   }
   // How many pieces the browser made for transcription while recording (none for a file).
