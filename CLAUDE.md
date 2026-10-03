@@ -64,6 +64,7 @@ Ikke gjort:
 - Kobling av BankID (3. oktober): navnet fra BankID må stemme med brukerens navn (`sameName` i `apps/api/src/auth/flow.ts`, `docs/auth.md`).
 - Kapasitet (3. oktober): workeren har tak på 200 samtidige kjøringer, og API-et tåler 200 kall i sekundet (topper 500), se `infra/README.md` under Kapasitet.
 - RLS-ytelse (3. oktober): policyene på `calls` og `sales` henter rettigheter og team én gang per spørring i stedet for per rad (migrasjonen `0027_visibility_performance.sql`). Med 100 000 samtaler gikk en selgers liste fra 25 sekunder til 17 ms, og en telling fra 10 minutter til under 40 ms. Ytelsestest i `packages/db/test/visibility-performance.test.ts`.
+- Vern mot sterkere brukere (3. oktober): ingen kan endre, deaktivere eller invitere på nytt et medlem med rettigheter de ikke har selv, eller endre rettighetene til en rolle som har det (`holdsMoreThanMe` i `apps/api/src/admin/organizations.ts`).
 - Revisjonslogg for samtaler (3. oktober): `calls` logges bare når status, koblinger, feil, varighet eller notatmaler endres, og tilleggsinformasjon og tittel bare som «endret», aldri teksten (migrasjonen `0028_call_audit.sql`). Rader som allerede var skrevet, ble redusert på samme måte.
 - Fase 1, PR F1 (grunndata): kunder (privat og bedrift, ingen fødselsnumre) og produkter med versjonerte produktmaler, migrasjonen `0011_customers_products.sql`, API under `/org/customers` og `/org/products`, og sidene `/kunder` og `/produkter` (`docs/plan.md`, seksjon 12).
 

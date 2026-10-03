@@ -92,8 +92,21 @@ describe("roles", () => {
     const res = await call(leadCookie, "POST", "/org/roles", { name: "Revisor", permissions: ["audit.read"] });
     expect(res.status).toBe(403);
     expect(res.body.error).toBe("Du kan ikke gi en rolle rettigheter du ikke har selv.");
-    // Sellers cannot manage roles at all.
+    // Nor take rights away from a stronger role, or disable, demote or re-invite its members.
+    const weaken = await call(leadCookie, "PATCH", `/org/roles/${adminRole}`, { permissions: ["calls.read.own"] });
+    expect(weaken.body.error).toBe("Rollen har rettigheter du ikke har selv, og kan ikke endres av deg.");
+    const demote = await call(leadCookie, "PATCH", `/org/members/${admin}`, { status: "disabled" });
+    expect(demote.body.error).toBe("Du kan ikke endre en bruker som har rettigheter du ikke har selv.");
+    const adminPhone = `+479${String(randomBytes(4).readUInt32BE() % 10_000_000).padStart(7, "0")}`;
+    await owner.query("update users set phone = $2 where id = $1", [admin, adminPhone]);
+    const reinvite = await call(leadCookie, "POST", "/org/invitations", { fullName: "Admin", phone: adminPhone, roleId: await roleId(org, "seller") });
+    expect(reinvite.body.error).toBe("Brukeren har rettigheter du ikke har selv.");
+    const state = await owner.query("select m.status, r.key from memberships m join roles r on r.id = m.role_id where m.user_id = $1", [admin]);
+    expect(state.rows).toEqual([{ status: "active", key: "admin" }]);
+    // A seller is within the leader's rights.
     const seller = await member(org, "seller");
+    expect((await call(leadCookie, "PATCH", `/org/members/${seller}`, { status: "disabled" })).status).toBe(200);
+    // Sellers cannot manage roles at all.
     expect((await call(await sessionFor(seller, org), "GET", "/org/roles")).status).toBe(403);
   });
 });
