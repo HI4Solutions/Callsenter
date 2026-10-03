@@ -243,3 +243,32 @@ describe("superadmin API: invitations", () => {
     );
   });
 });
+
+describe("superadmin API: overview", () => {
+  it("shows the platform at a glance, with this month's money", async () => {
+    const { cookie } = await superadmin();
+    const org = await createOrg();
+    await member(org, "seller");
+    const res = await call(cookie, "GET", "/admin/overview");
+    expect(res.status).toBe(200);
+    expect(res.body.organizations.total).toBeGreaterThanOrEqual(1);
+    expect(res.body.users.active).toBeGreaterThanOrEqual(2);
+    expect(res.body.days).toHaveLength(30);
+    expect(res.body.days[29].day).toBe(res.body.today);
+    expect(res.body.money).toEqual({
+      mrr: expect.any(Number),
+      arr: expect.any(Number),
+      revenue: expect.any(Number),
+      costs: expect.any(Number),
+      result: expect.any(Number),
+      outstanding: expect.any(Number),
+      overdue: expect.any(Number),
+      missed: expect.any(Number),
+      drafts: expect.any(Number),
+      scheduled: expect.any(Number),
+    });
+
+    const admin = await sessionFor(await member(org, "admin"));
+    expect((await call(admin, "GET", "/admin/overview")).status).toBe(403);
+  });
+});

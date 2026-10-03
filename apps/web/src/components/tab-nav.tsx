@@ -23,10 +23,11 @@ const BREAKPOINT = {
     link: "flex-col gap-0.5 px-2 text-[11px] sm:flex-row sm:gap-2 sm:px-3 sm:text-base",
     icon: "size-5 sm:size-6",
   },
+  // Tighter, for portals with many tabs (superadmin has nine).
   lg: {
     later: "hidden lg:flex",
-    row: "lg:gap-0.5",
-    link: "flex-col gap-0.5 px-2 text-[11px] lg:flex-row lg:gap-1.5 lg:px-2 lg:text-base",
+    row: "",
+    link: "flex-col gap-0.5 px-2 text-[11px] lg:flex-row lg:gap-1 lg:px-1.5 lg:text-[15px]",
     icon: "size-5",
   },
 } as const;
