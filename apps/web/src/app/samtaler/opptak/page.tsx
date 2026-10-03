@@ -300,7 +300,8 @@ export default function StudioPage() {
     saleId: saleId || null,
     productId: saleId ? null : productId || null,
     noteTemplateIds: chosenNotes,
-    outputLocale: languages.outputLocale,
+    // A locked call centre writes every note in its own language.
+    outputLocale: me.contentLocaleLocked ? null : languages.outputLocale,
     spokenLanguages: languages.spokenLanguages,
   });
 
