@@ -1,5 +1,7 @@
 "use client";
 
+import { LOCALES } from "@veriqall/shared";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
 // Single-series charts for Vekst and Oversikt: one hue (the brand color), hairline grid, 2px line,
@@ -50,7 +52,10 @@ function ticks(max: number): number[] {
   return [0, max / 4, max / 2, (3 * max) / 4, max];
 }
 
-const fmt = new Intl.NumberFormat("nb-NO");
+// Numbers in the page's language.
+function useFmt() {
+  return new Intl.NumberFormat(LOCALES[useLocale()].tag);
+}
 
 function Frame({
   title,
@@ -73,6 +78,8 @@ function Frame({
   frameRef: React.RefObject<HTMLDivElement | null>;
   labelHeading: string;
 }) {
+  const t = useTranslations("admin.charts");
+  const fmt = useFmt();
   const plotH = H - PAD.top - PAD.bottom;
   const band = (W - PAD.left - PAD.right) / Math.max(points.length, 1);
   // Month labels need about 48px each; skip some when the bands are narrower.
@@ -81,13 +88,34 @@ function Frame({
     <figure className="flex flex-col gap-2">
       <figcaption className="font-semibold">{title}</figcaption>
       <div className="relative" ref={frameRef}>
-        <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block max-w-full overflow-visible" role="img" aria-label={title}>
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          width={W}
+          height={H}
+          className="block max-w-full overflow-visible"
+          role="img"
+          aria-label={title}
+        >
           {ticks(max).map((t) => {
             const y = PAD.top + plotH - (t / max) * plotH;
             return (
               <g key={t}>
-                <line x1={PAD.left} x2={W - PAD.right} y1={y} y2={y} stroke="var(--border)" strokeWidth={1} />
-                <text x={PAD.left - 6} y={y} dy="0.32em" textAnchor="end" fontSize={11} fill="var(--muted)">
+                <line
+                  x1={PAD.left}
+                  x2={W - PAD.right}
+                  y1={y}
+                  y2={y}
+                  stroke="var(--border)"
+                  strokeWidth={1}
+                />
+                <text
+                  x={PAD.left - 6}
+                  y={y}
+                  dy="0.32em"
+                  textAnchor="end"
+                  fontSize={11}
+                  fill="var(--muted)"
+                >
                   {fmt.format(t)}
                 </text>
               </g>
@@ -113,14 +141,18 @@ function Frame({
           <div
             role="status"
             className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 rounded-lg border border-line bg-surface px-3 py-2 text-sm shadow"
-            style={{ left: `${((PAD.left + band * active + band / 2) / W) * 100}%` }}
+            style={{
+              left: `${((PAD.left + band * active + band / 2) / W) * 100}%`,
+            }}
           >
             {tooltip}
           </div>
         )}
       </div>
       <details className="text-sm">
-        <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold">Vis som tabell</summary>
+        <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold">
+          {t("showTable")}
+        </summary>
         <table className="mt-2 w-full border-collapse">
           <thead>
             <tr className="border-b border-line text-left">
@@ -128,7 +160,7 @@ function Frame({
                 {labelHeading}
               </th>
               <th scope="col" className="py-1 text-right font-semibold">
-                Antall
+                {t("count")}
               </th>
             </tr>
           </thead>
@@ -147,7 +179,16 @@ function Frame({
 }
 
 // Hit targets span the whole month band, larger than the mark; keyboard users tab through them.
-function HitTargets({ points, onActive, W }: { points: Point[]; onActive: (i: number | null) => void; W: number }) {
+function HitTargets({
+  points,
+  onActive,
+  W,
+}: {
+  points: Point[];
+  onActive: (i: number | null) => void;
+  W: number;
+}) {
+  const fmt = useFmt();
   const band = (W - PAD.left - PAD.right) / Math.max(points.length, 1);
   return (
     <g>
@@ -171,16 +212,43 @@ function HitTargets({ points, onActive, W }: { points: Point[]; onActive: (i: nu
   );
 }
 
-function MarkerLines({ markers, count, active, W }: { markers: Marker[]; count: number; active: number | null; W: number }) {
+function MarkerLines({
+  markers,
+  count,
+  active,
+  W,
+}: {
+  markers: Marker[];
+  count: number;
+  active: number | null;
+  W: number;
+}) {
   const band = (W - PAD.left - PAD.right) / Math.max(count, 1);
   return (
     <g>
       {markers.map((m) => {
         const x = PAD.left + band * m.index + band / 2;
         return (
-          <g key={`${m.index}-${m.title}`} opacity={active === null || active === m.index ? 1 : 0.5}>
-            <line x1={x} x2={x} y1={PAD.top} y2={H - PAD.bottom} stroke="var(--muted)" strokeWidth={1} />
-            <circle cx={x} cy={PAD.top} r={4} fill="var(--muted)" stroke="var(--surface)" strokeWidth={2} />
+          <g
+            key={`${m.index}-${m.title}`}
+            opacity={active === null || active === m.index ? 1 : 0.5}
+          >
+            <line
+              x1={x}
+              x2={x}
+              y1={PAD.top}
+              y2={H - PAD.bottom}
+              stroke="var(--muted)"
+              strokeWidth={1}
+            />
+            <circle
+              cx={x}
+              cy={PAD.top}
+              r={4}
+              fill="var(--muted)"
+              stroke="var(--surface)"
+              strokeWidth={2}
+            />
           </g>
         );
       })}
@@ -190,7 +258,9 @@ function MarkerLines({ markers, count, active, W }: { markers: Marker[]; count: 
 
 function markerText(markers: Marker[], index: number) {
   const here = markers.filter((m) => m.index === index);
-  return here.length ? <p className="text-muted">{here.map((m) => m.title).join(", ")}</p> : null;
+  return here.length ? (
+    <p className="text-muted">{here.map((m) => m.title).join(", ")}</p>
+  ) : null;
 }
 
 export function ColumnChart({
@@ -198,7 +268,7 @@ export function ColumnChart({
   points,
   unit,
   markers = [],
-  labelHeading = "Måned",
+  labelHeading,
 }: {
   title: string;
   points: Point[];
@@ -206,6 +276,8 @@ export function ColumnChart({
   markers?: Marker[];
   labelHeading?: string;
 }) {
+  const t = useTranslations("admin.charts");
+  const fmt = useFmt();
   const [active, setActive] = useState<number | null>(null);
   const { ref, width: W } = useWidth();
   const max = niceMax(Math.max(0, ...points.map((p) => p.value)));
@@ -221,11 +293,13 @@ export function ColumnChart({
       active={active}
       W={W}
       frameRef={ref}
-      labelHeading={labelHeading}
+      labelHeading={labelHeading ?? t("month")}
       tooltip={
         active !== null && (
           <>
-            <p className="font-semibold">{points[active]!.title ?? points[active]!.label}</p>
+            <p className="font-semibold">
+              {points[active]!.title ?? points[active]!.label}
+            </p>
             <p>
               {fmt.format(points[active]!.value)} {unit}
             </p>
@@ -234,7 +308,12 @@ export function ColumnChart({
         )
       }
     >
-      <MarkerLines markers={markers} count={points.length} active={active} W={W} />
+      <MarkerLines
+        markers={markers}
+        count={points.length}
+        active={active}
+        W={W}
+      />
       {points.map((p, i) => {
         const h = (p.value / max) * plotH;
         if (h <= 0) return null;
@@ -242,7 +321,14 @@ export function ColumnChart({
         const r = Math.min(4, h, width / 2);
         // Rounded at the data end, square at the baseline.
         const d = `M${x},${base} V${base - h + r} Q${x},${base - h} ${x + r},${base - h} H${x + width - r} Q${x + width},${base - h} ${x + width},${base - h + r} V${base} Z`;
-        return <path key={p.label} d={d} fill="var(--brand)" opacity={active === null || active === i ? 1 : 0.55} />;
+        return (
+          <path
+            key={p.label}
+            d={d}
+            fill="var(--brand)"
+            opacity={active === null || active === i ? 1 : 0.55}
+          />
+        );
       })}
       <HitTargets points={points} onActive={setActive} W={W} />
     </Frame>
@@ -254,7 +340,7 @@ export function LineChart({
   points,
   unit,
   markers = [],
-  labelHeading = "Måned",
+  labelHeading,
 }: {
   title: string;
   points: Point[];
@@ -262,12 +348,20 @@ export function LineChart({
   markers?: Marker[];
   labelHeading?: string;
 }) {
+  const t = useTranslations("admin.charts");
+  const fmt = useFmt();
   const [active, setActive] = useState<number | null>(null);
   const { ref, width: W } = useWidth();
   const max = niceMax(Math.max(0, ...points.map((p) => p.value)));
   const plotH = H - PAD.top - PAD.bottom;
   const band = (W - PAD.left - PAD.right) / Math.max(points.length, 1);
-  const xy = points.map((p, i) => [PAD.left + band * i + band / 2, PAD.top + plotH - (p.value / max) * plotH] as const);
+  const xy = points.map(
+    (p, i) =>
+      [
+        PAD.left + band * i + band / 2,
+        PAD.top + plotH - (p.value / max) * plotH,
+      ] as const,
+  );
   const line = xy.map(([x, y], i) => `${i ? "L" : "M"}${x},${y}`).join(" ");
   const last = xy[xy.length - 1];
   return (
@@ -278,11 +372,13 @@ export function LineChart({
       active={active}
       W={W}
       frameRef={ref}
-      labelHeading={labelHeading}
+      labelHeading={labelHeading ?? t("month")}
       tooltip={
         active !== null && (
           <>
-            <p className="font-semibold">{points[active]!.title ?? points[active]!.label}</p>
+            <p className="font-semibold">
+              {points[active]!.title ?? points[active]!.label}
+            </p>
             <p>
               {fmt.format(points[active]!.value)} {unit}
             </p>
@@ -291,7 +387,12 @@ export function LineChart({
         )
       }
     >
-      <MarkerLines markers={markers} count={points.length} active={active} W={W} />
+      <MarkerLines
+        markers={markers}
+        count={points.length}
+        active={active}
+        W={W}
+      />
       {xy.length > 0 && (
         <path
           d={`${line} L${last![0]},${PAD.top + plotH} L${xy[0]![0]},${PAD.top + plotH} Z`}
@@ -299,17 +400,52 @@ export function LineChart({
           opacity={0.1}
         />
       )}
-      <path d={line} fill="none" stroke="var(--brand)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      <path
+        d={line}
+        fill="none"
+        stroke="var(--brand)"
+        strokeWidth={2}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
       {active !== null && xy[active] && (
         <>
-          <line x1={xy[active][0]} x2={xy[active][0]} y1={PAD.top} y2={PAD.top + plotH} stroke="var(--border)" strokeWidth={1} />
-          <circle cx={xy[active][0]} cy={xy[active][1]} r={5} fill="var(--brand)" stroke="var(--surface)" strokeWidth={2} />
+          <line
+            x1={xy[active][0]}
+            x2={xy[active][0]}
+            y1={PAD.top}
+            y2={PAD.top + plotH}
+            stroke="var(--border)"
+            strokeWidth={1}
+          />
+          <circle
+            cx={xy[active][0]}
+            cy={xy[active][1]}
+            r={5}
+            fill="var(--brand)"
+            stroke="var(--surface)"
+            strokeWidth={2}
+          />
         </>
       )}
       {last && active === null && (
         <>
-          <circle cx={last[0]} cy={last[1]} r={4} fill="var(--brand)" stroke="var(--surface)" strokeWidth={2} />
-          <text x={last[0]} y={last[1] - 10} textAnchor="end" fontSize={12} fontWeight={600} fill="var(--fg)">
+          <circle
+            cx={last[0]}
+            cy={last[1]}
+            r={4}
+            fill="var(--brand)"
+            stroke="var(--surface)"
+            strokeWidth={2}
+          />
+          <text
+            x={last[0]}
+            y={last[1] - 10}
+            textAnchor="end"
+            fontSize={12}
+            fontWeight={600}
+            fill="var(--fg)"
+          >
             {fmt.format(points[points.length - 1]!.value)}
           </text>
         </>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { ErrorMessage, Field, inputClass } from "@/components/admin/field";
 import { Coaching } from "@/components/work/coaching";
@@ -32,6 +33,8 @@ function storedLevel(): Level | null {
 }
 
 export default function DashboardPage() {
+  const t = useTranslations("dashboard");
+  const tc = useTranslations("common");
   const me = useWorkMe();
   const [period, setPeriod] = useStoredPeriod();
   const [flag, setFlag] = useState<FlagFilter>("all");
@@ -65,12 +68,13 @@ export default function DashboardPage() {
 
   const teams = access?.teams ?? [];
   const canSeeAll = access?.canSeeAll ?? false;
-  const levels: { key: Level; label: string }[] = [{ key: "me", label: "Meg" }];
-  if (teams.length) levels.push({ key: "team", label: teams.length === 1 && !canSeeAll ? `Team ${teams[0]!.name}` : "Teamet" });
-  if (canSeeAll) levels.push({ key: "all", label: "Callsenteret" });
+  const levels: { key: Level; label: string }[] = [{ key: "me", label: t("tabs.me") }];
+  if (teams.length)
+    levels.push({ key: "team", label: teams.length === 1 && !canSeeAll ? t("tabs.teamNamed", { name: teams[0]!.name }) : t("tabs.team") });
+  if (canSeeAll) levels.push({ key: "all", label: t("tabs.all") });
   const permissions = me?.permissions ?? [];
   const quality = canSeeAll && canSeeQuality(permissions);
-  if (quality) levels.push({ key: "quality", label: "Kvalitet" });
+  if (quality) levels.push({ key: "quality", label: t("tabs.quality") });
 
   // The first time: the highest level the user has, and Kvalitet for those who neither sell nor
   // manage users (compliance). Later: the last one chosen on this device.
@@ -98,7 +102,7 @@ export default function DashboardPage() {
     document.getElementById("samtaler-i-perioden")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  if (!visible) return <NoAccess text="Dashboard og coaching er ikke slått på for callsenteret." />;
+  if (!visible) return <NoAccess text={t("page.notEnabled")} />;
 
   const shown: Level = level && levels.some((l) => l.key === level) ? level : "me";
   const teamName = teams.find((t) => t.id === team)?.name;
@@ -108,22 +112,22 @@ export default function DashboardPage() {
     <section className="flex flex-col gap-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Oversikt</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight">{t("page.title")}</h1>
           <p className="mt-2 text-muted">
             {period.from === period.to ? formatDate(period.from) : `${formatDate(period.from)}–${formatDate(period.to)}`}.{" "}
             {shown === "me"
-              ? "Dine egne tall."
+              ? t("page.intro.me")
               : shown === "team"
-                ? `Team ${teamName ?? ""}.`
+                ? t("page.intro.team", { name: teamName ?? "" })
                 : shown === "quality"
-                  ? "Kvalitet og etterlevelse i hele callsenteret."
-                  : "Hele callsenteret."}{" "}
-            Tallene viser antall, ikke innhold.
+                  ? t("page.intro.quality")
+                  : t("page.intro.all")}{" "}
+            {t("page.countsOnly")}
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           {shown === "team" && teams.length > 1 && (
-            <Field label="Team">
+            <Field label={t("page.teamField")}>
               <select className={inputClass} value={team ?? ""} onChange={(e) => setTeam(e.target.value)}>
                 {teams.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -138,7 +142,11 @@ export default function DashboardPage() {
       </div>
 
       {levels.length > 1 && (
-        <div role="tablist" aria-label="Nivå" className="-mt-4 flex gap-1 overflow-x-auto border-b border-line [scrollbar-width:none]">
+        <div
+          role="tablist"
+          aria-label={t("tabs.label")}
+          className="-mt-4 flex gap-1 overflow-x-auto border-b border-line [scrollbar-width:none]"
+        >
           {levels.map((l) => (
             <button
               key={l.key}
@@ -159,7 +167,7 @@ export default function DashboardPage() {
 
       <ErrorMessage message={error} />
       {!access ? (
-        !error && <p className="text-muted">Laster …</p>
+        !error && <p className="text-muted">{tc("loading")}</p>
       ) : shown === "me" ? (
         <MyDashboard from={period.from} to={period.to} flag={flag} onFlag={pickFlag} />
       ) : shown === "team" && team ? (
@@ -175,7 +183,7 @@ export default function DashboardPage() {
           <PeriodCalls from={period.from} to={period.to} scope={scope} filter={flag} onFilter={setFlag} />
         </div>
       )}
-      {me && shown === "me" && <Coaching sellerId={me.user.id} title="Tilbakemeldinger til deg" />}
+      {me && shown === "me" && <Coaching sellerId={me.user.id} title={t("page.feedbackToYou")} />}
     </section>
   );
 }

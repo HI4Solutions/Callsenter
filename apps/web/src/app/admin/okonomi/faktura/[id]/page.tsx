@@ -2,16 +2,33 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
+import {
+  ErrorMessage,
+  Field,
+  inputClass,
+  primaryButton,
+  secondaryButton,
+  LoadState,
+} from "@/components/admin/field";
 import { EconomyNav } from "@/components/billing/economy-nav";
-import { InvoiceStatusBadge } from "@/components/billing/invoice-status";
+import {
+  InvoiceStatusBadge,
+  useInvoiceTitle,
+} from "@/components/billing/invoice-status";
 import { InvoiceView } from "@/components/billing/invoice-view";
-import { type EditableLine, LinesEditor } from "@/components/billing/lines-editor";
-import { osloToday, useInvoiceForm } from "@/components/billing/use-invoice-form";
+import {
+  type EditableLine,
+  LinesEditor,
+} from "@/components/billing/lines-editor";
+import {
+  osloToday,
+  useInvoiceForm,
+} from "@/components/billing/use-invoice-form";
 import { adminFetch, formatDate, formatDateTime } from "@/lib/admin";
-import { type InvoiceDetail, invoiceTitle, kr, openPdf, PAYMENT_METHOD } from "@/lib/billing";
+import { type InvoiceDetail, kr, openPdf, PAYMENT_METHOD } from "@/lib/billing";
 
 function lastMonth() {
   const [y, m] = osloToday().split("-").map(Number);
@@ -19,6 +36,8 @@ function lastMonth() {
 }
 
 export default function InvoicePage() {
+  const t = useTranslations("economy");
+  const invoiceTitle = useInvoiceTitle();
   const { id } = useParams<{ id: string }>();
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +56,10 @@ export default function InvoicePage() {
   if (!invoice) return <LoadState error={error} />;
   const editable = invoice.status === "draft" || invoice.status === "scheduled";
 
-  function changed(next: InvoiceDetail & { emailed?: boolean }, message?: string) {
+  function changed(
+    next: InvoiceDetail & { emailed?: boolean },
+    message?: string,
+  ) {
     setInvoice(next);
     setNotice(message ?? null);
   }
@@ -45,28 +67,41 @@ export default function InvoicePage() {
   return (
     <section className="flex flex-col gap-8">
       <div className="flex flex-col gap-6 print:hidden">
-        <h1 className="text-3xl font-extrabold tracking-tight">Økonomi</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight">{t("title")}</h1>
         <EconomyNav />
       </div>
       <div className="flex flex-wrap items-end justify-between gap-4 print:hidden">
         <div>
-          <Link href="/admin/okonomi/faktura" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">
-            ← Alle fakturaer
+          <Link
+            href="/admin/okonomi/faktura"
+            className="inline-flex min-h-11 items-center text-sm font-semibold text-brand"
+          >
+            {t("invoice.allInvoices")}
           </Link>
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <h2 className="text-2xl font-extrabold tracking-tight">{invoiceTitle(invoice)}</h2>
+            <h2 className="text-2xl font-extrabold tracking-tight">
+              {invoiceTitle(invoice)}
+            </h2>
             <InvoiceStatusBadge invoice={invoice} />
           </div>
           <p className="mt-1 text-muted">
-            {invoice.organizationName}, kunde {invoice.customerNumber}
+            {t("invoice.customerLine", {
+              name: invoice.organizationName,
+              number: invoice.customerNumber,
+            })}
           </p>
         </div>
         <button
           type="button"
           className={secondaryButton}
-          onClick={() => openPdf(`/admin/invoices/${invoice.id}/pdf`).catch((e: Error) => setError(e.message))}
+          onClick={() =>
+            openPdf(
+              `/admin/invoices/${invoice.id}/pdf`,
+              t("shared.pdfFailed"),
+            ).catch((e: Error) => setError(e.message))
+          }
         >
-          {editable ? "Forhåndsvis PDF" : "Last ned PDF"}
+          {editable ? t("invoice.previewPdf") : t("invoice.downloadPdf")}
         </button>
       </div>
       {notice && (
@@ -76,7 +111,11 @@ export default function InvoicePage() {
       )}
       <ErrorMessage message={error} />
       {editable ? (
-        <Draft key={`${invoice.status}-${invoice.lines.map((l) => l.id).join()}`} invoice={invoice} onChanged={changed} />
+        <Draft
+          key={`${invoice.status}-${invoice.lines.map((l) => l.id).join()}`}
+          invoice={invoice}
+          onChanged={changed}
+        />
       ) : (
         <Sent invoice={invoice} onChanged={changed} />
       )}
@@ -85,7 +124,17 @@ export default function InvoicePage() {
   );
 }
 
-function Draft({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: InvoiceDetail & { emailed?: boolean }, message?: string) => void }) {
+function Draft({
+  invoice,
+  onChanged,
+}: {
+  invoice: InvoiceDetail;
+  onChanged: (
+    i: InvoiceDetail & { emailed?: boolean },
+    message?: string,
+  ) => void;
+}) {
+  const t = useTranslations("economy");
   const router = useRouter();
   const { packages, settings } = useInvoiceForm();
   const [lines, setLines] = useState<EditableLine[]>(() =>
@@ -98,7 +147,16 @@ function Draft({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: 
           unitPrice: l.unitPrice,
           vatRate: l.vatRate,
         }))
-      : [{ kind: "text", packageId: null, description: "", quantity: "1", unitPrice: "", vatRate: 0.25 }],
+      : [
+          {
+            kind: "text",
+            packageId: null,
+            description: "",
+            quantity: "1",
+            unitPrice: "",
+            vatRate: 0.25,
+          },
+        ],
   );
   const [note, setNote] = useState(invoice.note ?? "");
   const [issueDate, setIssueDate] = useState(invoice.issueDate ?? osloToday());
@@ -137,44 +195,96 @@ function Draft({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: 
     });
 
   return (
-    <Card title={invoice.status === "scheduled" ? `Planlagt: sendes ${formatDate(invoice.issueDate)}` : "Utkast"}>
+    <Card
+      title={
+        invoice.status === "scheduled"
+          ? t("invoice.scheduledTitle", { date: formatDate(invoice.issueDate) })
+          : t("invoice.draft")
+      }
+    >
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          void run(async () => onChanged(await save(), "Lagret."));
+          void run(async () => onChanged(await save(), t("shared.saved")));
         }}
         className="flex flex-col gap-4"
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Fakturadato" hint="I dag sendes den nå. En dato fram i tid planlegger sendingen til den morgenen.">
-            <input type="date" min={osloToday()} className={inputClass} value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
+          <Field label={t("shared.invoiceDate")} hint={t("invoice.issueHint")}>
+            <input
+              type="date"
+              min={osloToday()}
+              className={inputClass}
+              value={issueDate}
+              onChange={(e) => setIssueDate(e.target.value)}
+            />
           </Field>
-          <Field label="Forfall" hint={`Tomt: ${settings?.dueDays ?? 14} dager etter sending.`}>
-            <input type="date" min={osloToday()} className={inputClass} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          <Field
+            label={t("shared.dueDate")}
+            hint={t("shared.dueHint", { days: settings?.dueDays ?? 14 })}
+          >
+            <input
+              type="date"
+              min={osloToday()}
+              className={inputClass}
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
           </Field>
         </div>
-        <LinesEditor lines={lines} onChange={setLines} packages={packages} fee={settings?.invoiceFee} />
+        <LinesEditor
+          lines={lines}
+          onChange={setLines}
+          packages={packages}
+          fee={settings?.invoiceFee}
+        />
         <label className="inline-flex min-h-11 items-center gap-2">
-          <input type="checkbox" checked={grantAccess} onChange={(e) => setGrantAccess(e.target.checked)} />
-          Aktiver tilgang for callsenteret ut perioden, og slå på pakkenes moduler
+          <input
+            type="checkbox"
+            checked={grantAccess}
+            onChange={(e) => setGrantAccess(e.target.checked)}
+          />
+          {t("invoice.grantAccess")}
         </label>
         {grantAccess && (
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Periode fra" hint="Tomt: fakturadatoen.">
-              <input type="date" className={inputClass} value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
+            <Field
+              label={t("invoice.periodFrom")}
+              hint={t("invoice.periodFromHint")}
+            >
+              <input
+                type="date"
+                className={inputClass}
+                value={periodStart}
+                onChange={(e) => setPeriodStart(e.target.value)}
+              />
             </Field>
-            <Field label="Periode til" hint="Tomt: like mange dager som måneden har.">
-              <input type="date" className={inputClass} value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
+            <Field
+              label={t("invoice.periodTo")}
+              hint={t("invoice.periodToHint")}
+            >
+              <input
+                type="date"
+                className={inputClass}
+                value={periodEnd}
+                onChange={(e) => setPeriodEnd(e.target.value)}
+              />
             </Field>
           </div>
         )}
-        <Field label="Merknad" hint="Valgfritt. Vises på fakturaen.">
-          <textarea rows={2} maxLength={2000} className={`${inputClass} py-2`} value={note} onChange={(e) => setNote(e.target.value)} />
+        <Field label={t("shared.note")} hint={t("shared.noteHint")}>
+          <textarea
+            rows={2}
+            maxLength={2000}
+            className={`${inputClass} py-2`}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
         </Field>
         <ErrorMessage message={error} />
         <div className="flex flex-wrap gap-2">
           <button type="submit" disabled={busy} className={secondaryButton}>
-            Lagre
+            {t("shared.save")}
           </button>
           <button
             type="button"
@@ -182,33 +292,49 @@ function Draft({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: 
             className={primaryButton}
             onClick={() => {
               const question = future
-                ? `Planlegge sendingen til ${formatDate(issueDate)}? Den sendes automatisk den morgenen.`
-                : "Sende fakturaen nå? Den får neste fakturanummer, sendes på e-post og kan ikke endres etterpå.";
+                ? t("invoice.confirmSchedule", { date: formatDate(issueDate) })
+                : t("invoice.confirmSend");
               if (!window.confirm(question)) return;
               void run(async () => {
                 await save();
-                const sent = await adminFetch<InvoiceDetail & { emailed: boolean }>(`/invoices/${invoice.id}/send`, { method: "POST" });
+                const sent = await adminFetch<
+                  InvoiceDetail & { emailed: boolean }
+                >(`/invoices/${invoice.id}/send`, { method: "POST" });
                 onChanged(
                   sent,
                   sent.status === "scheduled"
-                    ? `Planlagt. Sendes ${formatDate(sent.issueDate)}.`
+                    ? t("invoice.scheduled", {
+                        date: formatDate(sent.issueDate),
+                      })
                     : sent.emailed
-                      ? `Sendt på e-post til ${sent.recipient?.email}.`
-                      : "Sendt. Den ble ikke sendt på e-post (e-post er ikke satt opp, eller callsenteret mangler faktura-e-post). Last ned PDF og send den selv.",
+                      ? t("invoice.emailedTo", {
+                          email: sent.recipient?.email ?? "",
+                        })
+                      : t("invoice.sentNoEmail"),
                 );
               });
             }}
           >
-            {future ? "Lagre og planlegg" : "Lagre og send"}
+            {future ? t("invoice.saveAndSchedule") : t("invoice.saveAndSend")}
           </button>
           {invoice.status === "scheduled" && (
             <button
               type="button"
               disabled={busy}
               className={secondaryButton}
-              onClick={() => run(async () => onChanged(await adminFetch<InvoiceDetail>(`/invoices/${invoice.id}/unschedule`, { method: "POST" }), "Ikke lenger planlagt."))}
+              onClick={() =>
+                run(async () =>
+                  onChanged(
+                    await adminFetch<InvoiceDetail>(
+                      `/invoices/${invoice.id}/unschedule`,
+                      { method: "POST" },
+                    ),
+                    t("invoice.unscheduled"),
+                  ),
+                )
+              }
             >
-              Avbryt planleggingen
+              {t("invoice.unschedule")}
             </button>
           )}
           <button
@@ -216,20 +342,31 @@ function Draft({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: 
             disabled={busy}
             className={secondaryButton}
             onClick={() => {
-              if (!window.confirm("Slette utkastet?")) return;
+              if (!window.confirm(t("invoice.confirmDelete"))) return;
               void run(async () => {
-                await adminFetch(`/invoices/${invoice.id}`, { method: "DELETE" });
+                await adminFetch(`/invoices/${invoice.id}`, {
+                  method: "DELETE",
+                });
                 router.push("/admin/okonomi/faktura");
               });
             }}
           >
-            Slett
+            {t("shared.delete")}
           </button>
         </div>
       </form>
       <div className="mt-6 flex flex-wrap items-end gap-3 border-t border-line pt-4">
-        <Field label="Legg til forbruk for måned" hint="Timer lyd og AI-kontroller, til prisene under Innstillinger.">
-          <input type="month" className={inputClass} value={month} max={osloToday().slice(0, 7)} onChange={(e) => setMonth(e.target.value)} />
+        <Field
+          label={t("invoice.usageMonth")}
+          hint={t("invoice.usageMonthHint")}
+        >
+          <input
+            type="month"
+            className={inputClass}
+            value={month}
+            max={osloToday().slice(0, 7)}
+            onChange={(e) => setMonth(e.target.value)}
+          />
         </Field>
         <button
           type="button"
@@ -238,21 +375,36 @@ function Draft({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: 
           onClick={() =>
             run(async () => {
               await save();
-              onChanged(await adminFetch<InvoiceDetail>(`/invoices/${invoice.id}/usage`, { method: "POST", body: { month } }));
+              onChanged(
+                await adminFetch<InvoiceDetail>(
+                  `/invoices/${invoice.id}/usage`,
+                  { method: "POST", body: { month } },
+                ),
+              );
             })
           }
         >
-          Legg til forbruk
+          {t("invoice.addUsage")}
         </button>
       </div>
     </Card>
   );
 }
 
-function Sent({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: InvoiceDetail, message?: string) => void }) {
+function Sent({
+  invoice,
+  onChanged,
+}: {
+  invoice: InvoiceDetail;
+  onChanged: (i: InvoiceDetail, message?: string) => void;
+}) {
+  const t = useTranslations("economy");
+  const tm = useTranslations("domain.paymentMethod");
   const router = useRouter();
   const outstanding = Number(invoice.total) - Number(invoice.paid);
-  const [amount, setAmount] = useState(outstanding > 0 ? outstanding.toFixed(2).replace(".", ",") : "");
+  const [amount, setAmount] = useState(
+    outstanding > 0 ? outstanding.toFixed(2).replace(".", ",") : "",
+  );
   const [paidOn, setPaidOn] = useState(osloToday);
   const [method, setMethod] = useState<keyof typeof PAYMENT_METHOD>("bank");
   const [reference, setReference] = useState("");
@@ -272,21 +424,30 @@ function Sent({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: I
     setBusy(false);
   }
 
-  const canPay = invoice.kind === "invoice" && (invoice.status === "sent" || invoice.status === "payment_missed");
-  const canCredit = invoice.kind === "invoice" && ["sent", "paid", "payment_missed"].includes(invoice.status);
+  const canPay =
+    invoice.kind === "invoice" &&
+    (invoice.status === "sent" || invoice.status === "payment_missed");
+  const canCredit =
+    invoice.kind === "invoice" &&
+    ["sent", "paid", "payment_missed"].includes(invoice.status);
 
   return (
-    <Card title="Betaling og utsending">
+    <Card title={t("invoice.paymentTitle")}>
       <div className="flex flex-col gap-4 print:hidden">
         {invoice.status === "payment_missed" && (
           <p>
-            <strong>Betaling uteblitt</strong> {invoice.missedAt && formatDateTime(invoice.missedAt)}. Callsenteret er stengt og de faste avtalene står på pause.
-            Registrer betalingen for å åpne igjen; avtalene fortsetter fra neste forfall.
+            {t.rich("invoice.missed", {
+              time: invoice.missedAt ? formatDateTime(invoice.missedAt) : "",
+              b: (c) => <strong>{c}</strong>,
+            })}
           </p>
         )}
         {invoice.grantAccess && invoice.periodStart && (
           <p className="text-sm text-muted">
-            Gir tilgang {formatDate(invoice.periodStart)}–{formatDate(invoice.periodEnd)}.
+            {t("invoice.grantsAccess", {
+              from: formatDate(invoice.periodStart),
+              to: formatDate(invoice.periodEnd),
+            })}
           </p>
         )}
         <div className="flex flex-wrap items-center gap-3">
@@ -296,37 +457,69 @@ function Sent({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: I
               disabled={busy}
               className={secondaryButton}
               onClick={() => {
-                if (!window.confirm(`Sende på e-post til ${invoice.recipient?.email} igjen?`)) return;
-                void run(async () => onChanged(await adminFetch<InvoiceDetail>(`/invoices/${invoice.id}/email`, { method: "POST" }), "Sendt på e-post."));
+                if (
+                  !window.confirm(
+                    t("invoice.confirmEmailAgain", {
+                      email: invoice.recipient?.email ?? "",
+                    }),
+                  )
+                )
+                  return;
+                void run(async () =>
+                  onChanged(
+                    await adminFetch<InvoiceDetail>(
+                      `/invoices/${invoice.id}/email`,
+                      { method: "POST" },
+                    ),
+                    t("invoice.emailed"),
+                  ),
+                );
               }}
             >
-              {invoice.emails.length ? "Send på e-post igjen" : "Send på e-post"}
+              {invoice.emails.length
+                ? t("invoice.emailAgain")
+                : t("invoice.email")}
             </button>
           ) : (
-            <p className="text-sm text-muted">Callsenteret hadde ingen faktura-e-post da fakturaen ble sendt. Last ned PDF og send den selv.</p>
+            <p className="text-sm text-muted">{t("invoice.noEmail")}</p>
           )}
           {invoice.emails.map((e) => (
             <span key={e.sentAt} className="text-sm text-muted">
-              Sendt til {e.sentTo} {formatDateTime(e.sentAt)}
+              {t("invoice.sentTo", {
+                email: e.sentTo,
+                time: formatDateTime(e.sentAt),
+              })}
             </span>
           ))}
         </div>
         {invoice.creditNote && (
           <p>
-            Kreditert med{" "}
-            <Link href={`/admin/okonomi/faktura/${invoice.creditNote.id}`} className="font-semibold text-brand">
-              kreditnota {invoice.creditNote.number}
-            </Link>
-            .
+            {t.rich("invoice.creditedWith", {
+              number: invoice.creditNote.number,
+              link: (c) => (
+                <Link
+                  href={`/admin/okonomi/faktura/${invoice.creditNote!.id}`}
+                  className="font-semibold text-brand"
+                >
+                  {c}
+                </Link>
+              ),
+            })}
           </p>
         )}
         {invoice.kind === "credit" && invoice.creditOf && (
           <p>
-            Krediterer{" "}
-            <Link href={`/admin/okonomi/faktura/${invoice.creditOf}`} className="font-semibold text-brand">
-              faktura {invoice.creditOfNumber}
-            </Link>
-            .
+            {t.rich("invoice.credits", {
+              number: invoice.creditOfNumber ?? "",
+              link: (c) => (
+                <Link
+                  href={`/admin/okonomi/faktura/${invoice.creditOf}`}
+                  className="font-semibold text-brand"
+                >
+                  {c}
+                </Link>
+              ),
+            })}
           </p>
         )}
         {invoice.payments.length > 0 && (
@@ -335,7 +528,7 @@ function Sent({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: I
               <li key={p.id} className="flex flex-wrap gap-3 py-2">
                 <span className="font-semibold">{kr(p.amount)}</span>
                 <span className="text-muted">
-                  {formatDate(p.paidOn)} · {PAYMENT_METHOD[p.method]}
+                  {formatDate(p.paidOn)} · {tm(p.method)}
                   {p.reference && ` · ${p.reference}`}
                 </span>
               </li>
@@ -348,37 +541,71 @@ function Sent({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: I
               e.preventDefault();
               void run(async () => {
                 onChanged(
-                  await adminFetch<InvoiceDetail>(`/invoices/${invoice.id}/payments`, {
-                    method: "POST",
-                    body: { amount, paidOn, method, reference: reference.trim() || null },
-                  }),
-                  "Betalingen er registrert.",
+                  await adminFetch<InvoiceDetail>(
+                    `/invoices/${invoice.id}/payments`,
+                    {
+                      method: "POST",
+                      body: {
+                        amount,
+                        paidOn,
+                        method,
+                        reference: reference.trim() || null,
+                      },
+                    },
+                  ),
+                  t("invoice.paymentRegistered"),
                 );
                 setReference("");
               });
             }}
             className="grid gap-3 sm:grid-cols-2 sm:items-end xl:grid-cols-[8rem_10rem_8rem_minmax(0,1fr)_auto]"
           >
-            <Field label="Beløp">
-              <input required inputMode="decimal" className={inputClass} value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <Field label={t("invoice.amount")}>
+              <input
+                required
+                inputMode="decimal"
+                className={inputClass}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
             </Field>
-            <Field label="Betalt">
-              <input required type="date" max={osloToday()} className={inputClass} value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
+            <Field label={t("invoice.paidOn")}>
+              <input
+                required
+                type="date"
+                max={osloToday()}
+                className={inputClass}
+                value={paidOn}
+                onChange={(e) => setPaidOn(e.target.value)}
+              />
             </Field>
-            <Field label="Måte">
-              <select className={inputClass} value={method} onChange={(e) => setMethod(e.target.value as keyof typeof PAYMENT_METHOD)}>
-                {Object.entries(PAYMENT_METHOD).map(([k, v]) => (
+            <Field label={t("invoice.method")}>
+              <select
+                className={inputClass}
+                value={method}
+                onChange={(e) =>
+                  setMethod(e.target.value as keyof typeof PAYMENT_METHOD)
+                }
+              >
+                {(
+                  Object.keys(PAYMENT_METHOD) as (keyof typeof PAYMENT_METHOD)[]
+                ).map((k) => (
                   <option key={k} value={k}>
-                    {v}
+                    {tm(k)}
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="Referanse">
-              <input maxLength={200} className={inputClass} value={reference} onChange={(e) => setReference(e.target.value)} />
+            <Field label={t("invoice.reference")}>
+              <input
+                maxLength={200}
+                className={inputClass}
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+              />
             </Field>
             <button type="submit" disabled={busy} className={primaryButton}>
-              Registrer betaling
+              {t("invoice.registerPayment")}
             </button>
           </form>
         )}
@@ -389,16 +616,28 @@ function Sent({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: I
               disabled={busy}
               className={secondaryButton}
               onClick={() => {
-                if (!window.confirm("Markere betalingen som uteblitt? Callsenteret stenges med en gang, og de faste avtalene settes på pause.")) return;
-                void run(async () => onChanged(await adminFetch<InvoiceDetail>(`/invoices/${invoice.id}/missed`, { method: "POST" }), "Markert som uteblitt."));
+                if (!window.confirm(t("invoice.confirmMissed"))) return;
+                void run(async () =>
+                  onChanged(
+                    await adminFetch<InvoiceDetail>(
+                      `/invoices/${invoice.id}/missed`,
+                      { method: "POST" },
+                    ),
+                    t("invoice.markedMissed"),
+                  ),
+                );
               }}
             >
-              Betaling uteblitt
+              {t("invoice.paymentMissed")}
             </button>
           )}
           {canCredit && !crediting && (
-            <button type="button" className={secondaryButton} onClick={() => setCrediting(true)}>
-              Krediter fakturaen
+            <button
+              type="button"
+              className={secondaryButton}
+              onClick={() => setCrediting(true)}
+            >
+              {t("invoice.credit")}
             </button>
           )}
         </div>
@@ -406,23 +645,38 @@ function Sent({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: I
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (!window.confirm("Lage kreditnota for hele fakturaen? Den får neste fakturanummer og sendes på e-post.")) return;
+              if (!window.confirm(t("invoice.confirmCredit"))) return;
               void run(async () => {
-                const { id } = await adminFetch<{ id: string }>(`/invoices/${invoice.id}/credit`, { method: "POST", body: { reason: reason.trim() || null } });
+                const { id } = await adminFetch<{ id: string }>(
+                  `/invoices/${invoice.id}/credit`,
+                  { method: "POST", body: { reason: reason.trim() || null } },
+                );
                 router.push(`/admin/okonomi/faktura/${id}`);
               });
             }}
             className="flex flex-col gap-3"
           >
-            <Field label="Begrunnelse for kreditnota" hint="Vises på kreditnotaen.">
-              <input maxLength={2000} className={inputClass} value={reason} onChange={(e) => setReason(e.target.value)} />
+            <Field
+              label={t("invoice.creditReason")}
+              hint={t("invoice.creditReasonHint")}
+            >
+              <input
+                maxLength={2000}
+                className={inputClass}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
             </Field>
             <div className="flex flex-wrap gap-2">
               <button type="submit" disabled={busy} className={primaryButton}>
-                Lag kreditnota
+                {t("invoice.makeCredit")}
               </button>
-              <button type="button" className={secondaryButton} onClick={() => setCrediting(false)}>
-                Avbryt
+              <button
+                type="button"
+                className={secondaryButton}
+                onClick={() => setCrediting(false)}
+              >
+                {t("shared.cancel")}
               </button>
             </div>
           </form>

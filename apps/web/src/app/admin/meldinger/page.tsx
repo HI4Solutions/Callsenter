@@ -1,8 +1,15 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import {
+  ErrorMessage,
+  Field,
+  inputClass,
+  primaryButton,
+  secondaryButton,
+} from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { Threads } from "@/components/threads";
 import {
@@ -38,9 +45,14 @@ const EMPTY: Form = {
 };
 
 function Announcements() {
+  const t = useTranslations("admin.messages");
+  const ta = useTranslations("admin");
+  const tc = useTranslations("common");
   const [list, setList] = useState<AdminAnnouncement[] | null>(null);
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
-  const [editing, setEditing] = useState<AdminAnnouncement | "new" | null>(null);
+  const [editing, setEditing] = useState<AdminAnnouncement | "new" | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(
@@ -53,7 +65,10 @@ function Announcements() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([adminFetch<AdminAnnouncement[]>("/announcements"), adminFetch<OrganizationSummary[]>("/organizations")])
+    Promise.all([
+      adminFetch<AdminAnnouncement[]>("/announcements"),
+      adminFetch<OrganizationSummary[]>("/organizations"),
+    ])
       .then(([announcements, orgs]) => {
         if (cancelled) return;
         setList(announcements);
@@ -67,7 +82,10 @@ function Announcements() {
 
   async function toggle(a: AdminAnnouncement) {
     try {
-      await adminFetch(`/announcements/${a.id}`, { method: "PATCH", body: { active: !a.active } });
+      await adminFetch(`/announcements/${a.id}`, {
+        method: "PATCH",
+        body: { active: !a.active },
+      });
       await reload();
     } catch (e) {
       setError((e as Error).message);
@@ -75,7 +93,7 @@ function Announcements() {
   }
 
   async function remove(a: AdminAnnouncement) {
-    if (!window.confirm(`Slette «${a.title}»?`)) return;
+    if (!window.confirm(t("confirmDelete", { title: a.title }))) return;
     try {
       await adminFetch(`/announcements/${a.id}`, { method: "DELETE" });
       await reload();
@@ -88,12 +106,16 @@ function Announcements() {
     <section className="flex flex-col gap-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Kunngjøringer</h2>
-          <p className="mt-2 text-muted">Vises øverst for innloggede brukere.</p>
+          <h2 className="text-2xl font-bold">{t("announcements")}</h2>
+          <p className="mt-2 text-muted">{t("announcementsIntro")}</p>
         </div>
         {editing === null && (
-          <button type="button" className={primaryButton} onClick={() => setEditing("new")}>
-            Ny kunngjøring
+          <button
+            type="button"
+            className={primaryButton}
+            onClick={() => setEditing("new")}
+          >
+            {t("new")}
           </button>
         )}
       </div>
@@ -112,38 +134,69 @@ function Announcements() {
       )}
 
       <ErrorMessage message={error} />
-      {!list && !error && <p className="text-muted">Laster …</p>}
-      {list && list.length === 0 && <p className="text-muted">Ingen kunngjøringer ennå.</p>}
+      {!list && !error && <p className="text-muted">{tc("loading")}</p>}
+      {list && list.length === 0 && <p className="text-muted">{t("none")}</p>}
       {list && list.length > 0 && (
         <ul className="flex flex-col gap-4">
           {list.map((a) => {
             const state = announcementState(a);
             return (
-              <li key={a.id} className="rounded-xl border border-line bg-surface p-4 sm:p-6">
+              <li
+                key={a.id}
+                className="rounded-xl border border-line bg-surface p-4 sm:p-6"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h2 className="text-lg font-bold">{a.title}</h2>
-                  <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
+                  <StatusBadge tone={state.tone}>
+                    {ta(`announcementState.${state.key}`, { date: state.date })}
+                  </StatusBadge>
                 </div>
                 <p className="mt-2 whitespace-pre-line">{a.body}</p>
                 {a.linkUrl && (
                   <p className="mt-1 text-sm">
-                    Lenke: <span className="font-semibold">{a.linkText || "Les mer"}</span> → {a.linkUrl}
+                    {t("link")}:{" "}
+                    <span className="font-semibold">
+                      {a.linkText || t("readMore")}
+                    </span>{" "}
+                    → {a.linkUrl}
                   </p>
                 )}
                 <p className="mt-2 text-sm text-muted">
-                  {a.audience === "all" ? "Til alle" : `Til ${a.organizations.map((o) => o.name).join(", ")}`} · fra{" "}
-                  {formatDate(a.startsAt)}
-                  {a.endsAt ? ` til ${formatDate(a.endsAt)}` : ""} · {a.createdByName ?? "ukjent"}
+                  {a.audience === "all"
+                    ? t("toAll")
+                    : t("toSelected", {
+                        names: a.organizations.map((o) => o.name).join(", "),
+                      })}{" "}
+                  ·{" "}
+                  {a.endsAt
+                    ? t("fromTo", {
+                        from: formatDate(a.startsAt),
+                        to: formatDate(a.endsAt),
+                      })
+                    : t("from", { from: formatDate(a.startsAt) })}{" "}
+                  · {a.createdByName ?? t("unknown")}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <button type="button" className={secondaryButton} onClick={() => setEditing(a)}>
-                    Endre
+                  <button
+                    type="button"
+                    className={secondaryButton}
+                    onClick={() => setEditing(a)}
+                  >
+                    {t("edit")}
                   </button>
-                  <button type="button" className={secondaryButton} onClick={() => toggle(a)}>
-                    {a.active ? "Slå av" : "Slå på"}
+                  <button
+                    type="button"
+                    className={secondaryButton}
+                    onClick={() => toggle(a)}
+                  >
+                    {a.active ? t("turnOff") : t("turnOn")}
                   </button>
-                  <button type="button" className={secondaryButton} onClick={() => remove(a)}>
-                    Slett
+                  <button
+                    type="button"
+                    className={secondaryButton}
+                    onClick={() => remove(a)}
+                  >
+                    {t("delete")}
                   </button>
                 </div>
               </li>
@@ -166,6 +219,8 @@ function Editor({
   onDone: () => Promise<void>;
   onCancel: () => void;
 }) {
+  const t = useTranslations("admin.messages");
+  const ts = useTranslations("admin.shared");
   const [form, setForm] = useState<Form>(
     announcement
       ? {
@@ -195,7 +250,11 @@ function Editor({
       organizationIds: form.audience === "selected" ? form.organizationIds : [],
     };
     try {
-      if (announcement) await adminFetch(`/announcements/${announcement.id}`, { method: "PATCH", body });
+      if (announcement)
+        await adminFetch(`/announcements/${announcement.id}`, {
+          method: "PATCH",
+          body,
+        });
       else await adminFetch("/announcements", { method: "POST", body });
       await onDone();
     } catch (e) {
@@ -204,34 +263,70 @@ function Editor({
     }
   }
 
-  const set = (key: "title" | "body" | "linkUrl" | "linkText" | "startsAt" | "endsAt") =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm({ ...form, [key]: e.target.value });
+  const set =
+    (key: "title" | "body" | "linkUrl" | "linkText" | "startsAt" | "endsAt") =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm({ ...form, [key]: e.target.value });
 
   return (
-    <Card title={announcement ? "Endre kunngjøring" : "Ny kunngjøring"}>
+    <Card title={announcement ? t("editTitle") : t("new")}>
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <Field label="Tittel">
-          <input required maxLength={200} className={inputClass} value={form.title} onChange={set("title")} />
+        <Field label={t("title")}>
+          <input
+            required
+            maxLength={200}
+            className={inputClass}
+            value={form.title}
+            onChange={set("title")}
+          />
         </Field>
-        <Field label="Tekst">
-          <textarea required maxLength={2000} rows={4} className={`${inputClass} py-2`} value={form.body} onChange={set("body")} />
+        <Field label={t("body")}>
+          <textarea
+            required
+            maxLength={2000}
+            rows={4}
+            className={`${inputClass} py-2`}
+            value={form.body}
+            onChange={set("body")}
+          />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Lenke" hint="Valgfri. Må begynne med https://.">
-            <input type="url" className={inputClass} value={form.linkUrl} onChange={set("linkUrl")} />
+          <Field label={t("link")} hint={t("linkHint")}>
+            <input
+              type="url"
+              className={inputClass}
+              value={form.linkUrl}
+              onChange={set("linkUrl")}
+            />
           </Field>
-          <Field label="Lenketekst">
-            <input maxLength={100} className={inputClass} value={form.linkText} placeholder="Les mer" onChange={set("linkText")} />
+          <Field label={t("linkText")}>
+            <input
+              maxLength={100}
+              className={inputClass}
+              value={form.linkText}
+              placeholder={t("readMore")}
+              onChange={set("linkText")}
+            />
           </Field>
-          <Field label="Vises fra" hint="Tom = med en gang.">
-            <input type="date" className={inputClass} value={form.startsAt} onChange={set("startsAt")} />
+          <Field label={t("startsAt")} hint={t("startsAtHint")}>
+            <input
+              type="date"
+              className={inputClass}
+              value={form.startsAt}
+              onChange={set("startsAt")}
+            />
           </Field>
-          <Field label="Vises til" hint="Tom = til den slås av.">
-            <input type="date" className={inputClass} value={form.endsAt} onChange={set("endsAt")} />
+          <Field label={t("endsAt")} hint={t("endsAtHint")}>
+            <input
+              type="date"
+              className={inputClass}
+              value={form.endsAt}
+              onChange={set("endsAt")}
+            />
           </Field>
         </div>
         <fieldset>
-          <legend className="text-sm font-semibold">Mottakere</legend>
+          <legend className="text-sm font-semibold">{t("audience")}</legend>
           <div className="mt-2 flex flex-wrap gap-4">
             <label className="flex min-h-11 items-center gap-2">
               <input
@@ -241,7 +336,7 @@ function Editor({
                 checked={form.audience === "all"}
                 onChange={() => setForm({ ...form, audience: "all" })}
               />
-              Alle brukere
+              {t("allUsers")}
             </label>
             <label className="flex min-h-11 items-center gap-2">
               <input
@@ -251,7 +346,7 @@ function Editor({
                 checked={form.audience === "selected"}
                 onChange={() => setForm({ ...form, audience: "selected" })}
               />
-              Valgte callsentre
+              {t("selectedOrganizations")}
             </label>
           </div>
           {form.audience === "selected" && (
@@ -274,7 +369,9 @@ function Editor({
                   {o.name}
                 </label>
               ))}
-              {organizations.length === 0 && <p className="text-muted">Ingen callsentre ennå.</p>}
+              {organizations.length === 0 && (
+                <p className="text-muted">{t("noOrganizations")}</p>
+              )}
             </div>
           )}
         </fieldset>
@@ -285,15 +382,15 @@ function Editor({
             checked={form.active}
             onChange={(e) => setForm({ ...form, active: e.target.checked })}
           />
-          Aktiv
+          {t("active")}
         </label>
         <ErrorMessage message={error} />
         <div className="flex flex-wrap gap-3">
           <button type="submit" className={primaryButton} disabled={saving}>
-            {saving ? "Lagrer …" : announcement ? "Lagre" : "Publiser"}
+            {saving ? ts("saving") : announcement ? ts("save") : t("publish")}
           </button>
           <button type="button" className={secondaryButton} onClick={onCancel}>
-            Avbryt
+            {ts("cancel")}
           </button>
         </div>
       </form>
@@ -302,7 +399,10 @@ function Editor({
 }
 
 export default function MessagesPage() {
-  const [section, setSection] = useState<"samtaler" | "kunngjoringer">("samtaler");
+  const t = useTranslations("admin.messages");
+  const [section, setSection] = useState<"samtaler" | "kunngjoringer">(
+    "samtaler",
+  );
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
 
   useEffect(() => {
@@ -318,14 +418,20 @@ export default function MessagesPage() {
   return (
     <section className="flex flex-col gap-8">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight">Meldinger</h1>
-        <p className="mt-2 text-muted">Samtaler med admin i callsentrene, og kunngjøringer til brukerne.</p>
+        <h1 className="text-3xl font-extrabold tracking-tight">
+          {t("pageTitle")}
+        </h1>
+        <p className="mt-2 text-muted">{t("intro")}</p>
       </div>
-      <div role="tablist" aria-label="Meldinger" className="flex flex-wrap gap-2">
+      <div
+        role="tablist"
+        aria-label={t("pageTitle")}
+        className="flex flex-wrap gap-2"
+      >
         {(
           [
-            ["samtaler", "Samtaler"],
-            ["kunngjoringer", "Kunngjøringer"],
+            ["samtaler", t("threads")],
+            ["kunngjoringer", t("announcements")],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -340,7 +446,11 @@ export default function MessagesPage() {
           </button>
         ))}
       </div>
-      {section === "samtaler" ? <Threads base="/admin" organizations={organizations} /> : <Announcements />}
+      {section === "samtaler" ? (
+        <Threads base="/admin" organizations={organizations} />
+      ) : (
+        <Announcements />
+      )}
     </section>
   );
 }

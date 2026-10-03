@@ -1,7 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { niceMax } from "@/components/admin/charts";
+import { formatNumber, formatPercent } from "@/lib/dashboard";
 
 // The AI flags as charts. Green, yellow and red are the flag colours (the only place they are
 // used); calls not checked by AI are grey. Every count is also written as text, so the meaning
@@ -16,14 +18,20 @@ export interface FlagCounts {
   unchecked: number;
 }
 
-const fmt = new Intl.NumberFormat("nb-NO");
-
 export const FLAG_PARTS = [
-  { key: "red", label: "Brudd", color: "var(--flag-violation)" },
-  { key: "yellow", label: "Avvik", color: "var(--flag-deviation)" },
-  { key: "green", label: "Godkjent", color: "var(--flag-approved)" },
-  { key: "unchecked", label: "Ikke kontrollert", color: "color-mix(in srgb, var(--muted) 45%, var(--surface))" },
+  { key: "red", color: "var(--flag-violation)" },
+  { key: "yellow", color: "var(--flag-deviation)" },
+  { key: "green", color: "var(--flag-approved)" },
+  { key: "unchecked", color: "color-mix(in srgb, var(--muted) 45%, var(--surface))" },
 ] as const;
+
+// The name of each part: the flag's own word, or "not checked".
+function usePartLabel(): (key: (typeof FLAG_PARTS)[number]["key"]) => string {
+  const t = useTranslations("dashboard.charts");
+  const td = useTranslations("domain.flag");
+  return (key) =>
+    key === "red" ? td("violation") : key === "yellow" ? td("deviation") : key === "green" ? td("approved") : t("unchecked");
+}
 
 function pct(part: number, whole: number) {
   return whole ? Math.round((part / whole) * 100) : 0;
@@ -31,8 +39,10 @@ function pct(part: number, whole: number) {
 
 // One bar split by flag, with a legend. Each part can be chosen to list those calls.
 export function FlagBar({ counts, selected, onSelect }: { counts: FlagCounts; selected: FlagFilter; onSelect: (f: FlagFilter) => void }) {
+  const t = useTranslations("dashboard.charts");
+  const partLabel = usePartLabel();
   const total = counts.green + counts.yellow + counts.red + counts.unchecked;
-  if (!total) return <p className="text-muted">Ingen samtaler i perioden.</p>;
+  if (!total) return <p className="text-muted">{t("noCalls")}</p>;
   return (
     <div className="flex flex-col gap-4">
       <div className="flex h-6 w-full gap-0.5 overflow-hidden rounded-full" aria-hidden="true">
@@ -43,7 +53,7 @@ export function FlagBar({ counts, selected, onSelect }: { counts: FlagCounts; se
             tabIndex={-1}
             className="h-full transition-opacity hover:opacity-80"
             style={{ width: `${(counts[p.key] / total) * 100}%`, background: p.color, minWidth: "6px" }}
-            title={`${p.label}: ${fmt.format(counts[p.key])}`}
+            title={t("part", { label: partLabel(p.key), count: formatNumber(counts[p.key]) })}
             onClick={() => onSelect(p.key)}
           />
         ))}
@@ -61,9 +71,9 @@ export function FlagBar({ counts, selected, onSelect }: { counts: FlagCounts; se
             >
               <span className="size-3 shrink-0 rounded-full" style={{ background: p.color }} aria-hidden="true" />
               <span className="min-w-0">
-                <span className="block text-sm text-muted">{p.label}</span>
-                <span className="text-xl font-semibold tabular-nums">{fmt.format(counts[p.key])}</span>
-                <span className="ml-1 text-sm text-muted tabular-nums">{pct(counts[p.key], total)} %</span>
+                <span className="block text-sm text-muted">{partLabel(p.key)}</span>
+                <span className="text-xl font-semibold tabular-nums">{formatNumber(counts[p.key])}</span>
+                <span className="ml-1 text-sm text-muted tabular-nums">{formatPercent(pct(counts[p.key], total))}</span>
               </span>
             </button>
           </li>
@@ -88,6 +98,8 @@ const PAD = { top: 12, right: 8, bottom: 26, left: 32 };
 
 // Columns over time (days, weeks or hours), each split by flag.
 export function FlagColumns({ title, columns }: { title: string; columns: FlagColumn[] }) {
+  const t = useTranslations("dashboard.charts");
+  const partLabel = usePartLabel();
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(640);
   const [active, setActive] = useState<number | null>(null);
@@ -114,14 +126,14 @@ export function FlagColumns({ title, columns }: { title: string; columns: FlagCo
       <div className="flex flex-wrap items-center justify-between gap-2">
         <figcaption className="font-semibold">{title}</figcaption>
         <button type="button" className="min-h-11 text-sm font-semibold text-brand" onClick={() => setTable((t) => !t)}>
-          {table ? "Vis som graf" : "Vis som tabell"}
+          {table ? t("showChart") : t("showTable")}
         </button>
       </div>
       <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
         {FLAG_PARTS.map((p) => (
           <li key={p.key} className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-full" style={{ background: p.color }} aria-hidden="true" />
-            {p.label}
+            {partLabel(p.key)}
           </li>
         ))}
       </ul>
@@ -130,10 +142,10 @@ export function FlagColumns({ title, columns }: { title: string; columns: FlagCo
           <table className="w-full min-w-[28rem] text-left text-sm">
             <thead className="text-muted">
               <tr>
-                <th className="px-2 py-1 font-semibold">Tid</th>
+                <th className="px-2 py-1 font-semibold">{t("time")}</th>
                 {FLAG_PARTS.map((p) => (
                   <th key={p.key} className="px-2 py-1 text-right font-semibold">
-                    {p.label}
+                    {partLabel(p.key)}
                   </th>
                 ))}
               </tr>
@@ -144,7 +156,7 @@ export function FlagColumns({ title, columns }: { title: string; columns: FlagCo
                   <td className="px-2 py-1">{c.title}</td>
                   {FLAG_PARTS.map((p) => (
                     <td key={p.key} className="px-2 py-1 text-right tabular-nums">
-                      {fmt.format(c[p.key])}
+                      {formatNumber(c[p.key])}
                     </td>
                   ))}
                 </tr>
@@ -154,12 +166,12 @@ export function FlagColumns({ title, columns }: { title: string; columns: FlagCo
         </div>
       ) : (
         <div ref={ref} className="relative w-full">
-          <svg width={width} height={H} role="img" aria-label={`${title}. Bruk «Vis som tabell» for tallene.`}>
+          <svg width={width} height={H} role="img" aria-label={t("chartLabel", { title })}>
             {[0, max / 2, max].map((t) => (
               <g key={t}>
                 <line x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} stroke="var(--border)" strokeWidth={1} />
                 <text x={PAD.left - 6} y={y(t)} textAnchor="end" dominantBaseline="middle" fontSize={11} fill="var(--muted)">
-                  {fmt.format(t)}
+                  {formatNumber(t)}
                 </text>
               </g>
             ))}
@@ -195,7 +207,7 @@ export function FlagColumns({ title, columns }: { title: string; columns: FlagCo
               <p className="font-semibold">{columns[active].title}</p>
               {FLAG_PARTS.map((p) => (
                 <p key={p.key} className="tabular-nums">
-                  {p.label}: {fmt.format(columns[active]![p.key])}
+                  {t("part", { label: partLabel(p.key), count: formatNumber(columns[active]![p.key]) })}
                 </p>
               ))}
             </div>

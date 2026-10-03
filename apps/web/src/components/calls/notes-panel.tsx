@@ -44,6 +44,7 @@ export function NotesPanel({
   const templates = useNoteTemplates(canRequest && !chosen);
   const [picked, setPicked] = useState<string[]>([]);
   const tl = useTranslations("languages");
+  const t = useTranslations("calls.notes");
   // New notes are written in the call's language unless another is chosen here.
   const callLocale = call.outputLocale ?? call.defaultOutputLocale;
   const [locale, setLocale] = useState<Locale>(callLocale);
@@ -71,13 +72,11 @@ export function NotesPanel({
   }
 
   return (
-    <Card title="Notater">
+    <Card title={t("title")}>
       <div className="flex flex-col gap-4">
         {call.reports.length === 0 && (
           <p className="text-muted">
-            {reportsOn
-              ? "Notatet lages når samtalen er transkribert."
-              : "Rapporter er ikke slått på for callsenteret."}
+            {reportsOn ? t("whenTranscribed") : t("reportsOff")}
           </p>
         )}
         {call.reports.map((r) => (
@@ -86,10 +85,7 @@ export function NotesPanel({
         {canRequest && (
           <div className="flex flex-col gap-3 border-t border-line pt-4">
             {chosen ? (
-              <p className="text-sm text-muted">
-                Lager nye notater fra samme transkripsjon med notatmalene som er
-                valgt øverst.
-              </p>
+              <p className="text-sm text-muted">{t("regenerateChosen")}</p>
             ) : (
               <NoteTemplatePicker
                 templates={templates}
@@ -123,7 +119,7 @@ export function NotesPanel({
                 disabled={busy || pending}
                 onClick={regenerate}
               >
-                {pending ? "Lager notater …" : "Regenerer"}
+                {pending ? t("making") : t("regenerate")}
               </button>
             </div>
           </div>
@@ -142,6 +138,7 @@ function NoteCard({
   call: CallDetail;
   onChanged: () => Promise<unknown>;
 }) {
+  const t = useTranslations("calls.notes");
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(note.content ?? "");
   const [showAi, setShowAi] = useState(false);
@@ -161,7 +158,7 @@ function NoteCard({
           )}
         </h3>
         <p className="mt-1 text-muted" role="status">
-          Notatet skrives …
+          {t("writing")}
         </p>
       </article>
     );
@@ -177,7 +174,7 @@ function NoteCard({
             </span>
           )}
         </h3>
-        <p className="mt-1">{note.error ?? "Notatet kunne ikke lages."}</p>
+        <p className="mt-1">{note.error ?? t("failed")}</p>
       </article>
     );
   }
@@ -205,7 +202,7 @@ function NoteCard({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setError("Kunne ikke kopiere. Merk teksten og kopier den selv.");
+      setError(t("copyFailed"));
     }
   }
 
@@ -222,13 +219,17 @@ function NoteCard({
       </h3>
       <p className="mt-1 text-sm text-muted">
         {edited
-          ? `Justert av ${note.editedByName ?? "selgeren"} ${note.editedAt ? formatDateTime(note.editedAt) : ""}. Laget av AI ${formatDateTime(note.createdAt)}.`
-          : `AI-generert basert på transkripsjon og valgt mal, ${formatDateTime(note.createdAt)}.`}
+          ? t("edited", {
+              name: note.editedByName ?? t("seller"),
+              date: note.editedAt ? formatDateTime(note.editedAt) : "",
+              created: formatDateTime(note.createdAt),
+            })
+          : t("aiGenerated", { date: formatDateTime(note.createdAt) })}
       </p>
       {editing ? (
         <form onSubmit={save} className="mt-3 flex flex-col gap-3">
           <label className="sr-only" htmlFor={`note-${note.id}`}>
-            Notat
+            {t("label")}
           </label>
           <textarea
             id={`note-${note.id}`}
@@ -239,13 +240,11 @@ function NoteCard({
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
-          <p className="text-sm text-muted">
-            AI-versjonen beholdes, og endringen lagres med navnet ditt.
-          </p>
+          <p className="text-sm text-muted">{t("aiKept")}</p>
           <ErrorMessage message={error} />
           <div className="flex flex-wrap gap-2">
             <button type="submit" className={primaryButton} disabled={busy}>
-              Lagre
+              {t("save")}
             </button>
             <button
               type="button"
@@ -255,7 +254,7 @@ function NoteCard({
                 setEditing(false);
               }}
             >
-              Avbryt
+              {t("cancel")}
             </button>
           </div>
         </form>
@@ -266,7 +265,7 @@ function NoteCard({
           </p>
           {edited && showAi && (
             <div className="mt-3 rounded-lg bg-bg p-3">
-              <p className="text-sm font-semibold">AI-versjonen</p>
+              <p className="text-sm font-semibold">{t("aiVersion")}</p>
               <p className="mt-1 whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">
                 {note.aiContent}
               </p>
@@ -275,7 +274,7 @@ function NoteCard({
           <ErrorMessage message={error} />
           <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" className={secondaryButton} onClick={copy}>
-              {copied ? "Kopiert" : "Kopier"}
+              {copied ? t("copied") : t("copy")}
             </button>
             {call.isOwn && (
               <button
@@ -286,7 +285,7 @@ function NoteCard({
                   setEditing(true);
                 }}
               >
-                Rediger
+                {t("edit")}
               </button>
             )}
             {edited && (
@@ -295,7 +294,7 @@ function NoteCard({
                 className={secondaryButton}
                 onClick={() => setShowAi((v) => !v)}
               >
-                {showAi ? "Skjul AI-versjonen" : "Vis AI-versjonen"}
+                {showAi ? t("hideAi") : t("showAi")}
               </button>
             )}
           </div>

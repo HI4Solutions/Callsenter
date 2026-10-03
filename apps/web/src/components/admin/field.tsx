@@ -1,3 +1,5 @@
+import { useTranslations } from "next-intl";
+
 // Form building blocks for the portal.
 export function Field({
   label,
@@ -37,13 +39,21 @@ export function ErrorMessage({ message }: { message: string | null }) {
 
 // While a page's data loads, or when it could not be loaded: the error with a way to try again.
 export function LoadState({ error }: { error: string | null }) {
+  const tc = useTranslations("common");
+  const t = useTranslations("admin.shared");
   // A skeleton of a title and a card, so the page does not jump as much when it arrives.
   if (!error) {
     return (
       <div role="status" className="flex flex-col gap-6">
-        <span className="sr-only">Laster …</span>
-        <div aria-hidden="true" className="h-9 w-2/3 max-w-sm animate-pulse rounded-lg bg-line/60 motion-reduce:animate-none" />
-        <div aria-hidden="true" className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-6">
+        <span className="sr-only">{tc("loading")}</span>
+        <div
+          aria-hidden="true"
+          className="h-9 w-2/3 max-w-sm animate-pulse rounded-lg bg-line/60 motion-reduce:animate-none"
+        />
+        <div
+          aria-hidden="true"
+          className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-6"
+        >
           <div className="h-6 w-40 animate-pulse rounded bg-line/60 motion-reduce:animate-none" />
           <div className="h-4 w-full animate-pulse rounded bg-line/40 motion-reduce:animate-none" />
           <div className="h-4 w-5/6 animate-pulse rounded bg-line/40 motion-reduce:animate-none" />
@@ -53,14 +63,25 @@ export function LoadState({ error }: { error: string | null }) {
     );
   }
   return (
-    <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-line bg-surface p-4">
+    <div
+      role="alert"
+      className="flex flex-col items-start gap-3 rounded-lg border border-line bg-surface p-4"
+    >
       <p>{error}</p>
       <div className="flex flex-wrap gap-2">
-        <button type="button" className={secondaryButton} onClick={() => window.location.reload()}>
-          Prøv igjen
+        <button
+          type="button"
+          className={secondaryButton}
+          onClick={() => window.location.reload()}
+        >
+          {tc("tryAgain")}
         </button>
-        <button type="button" className={secondaryButton} onClick={() => window.history.back()}>
-          Tilbake
+        <button
+          type="button"
+          className={secondaryButton}
+          onClick={() => window.history.back()}
+        >
+          {t("back")}
         </button>
       </div>
     </div>

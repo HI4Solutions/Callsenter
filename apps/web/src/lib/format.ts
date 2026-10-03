@@ -11,11 +11,29 @@ export function invitationState(inv: { usedAt: string | null; revokedAt: string 
 // The page's language for dates and numbers (BCP 47, nb-NO by default). Set by <FormatLocale/> in
 // the layout as the page renders in the browser, so helpers called anywhere follow the language.
 let formatTag = "nb-NO";
-let neverText = "Aldri";
+type CommonText = (key: "never" | "months" | "days" | "perMonth" | "once" | "none", values?: Record<string, string | number>) => string;
+// Norwegian until <FormatLocale/> has run (and in tests).
+let commonText: CommonText = (key, values) => {
+  const n = Number(values?.count ?? 0);
+  const fallback = {
+    never: "Aldri",
+    none: "Ingen",
+    months: n === 0 ? "Ingen" : `${n} ${n === 1 ? "måned" : "måneder"}`,
+    days: n === 0 ? "Ingen" : `${n} ${n === 1 ? "dag" : "dager"}`,
+    perMonth: `${values?.amount}/mnd`,
+    once: `${values?.amount} engangs`,
+  };
+  return fallback[key];
+};
 
-export function setFormatLocale(tag: string, never: string) {
+export function setFormatLocale(tag: string, text: CommonText) {
   formatTag = tag;
-  neverText = never;
+  commonText = text;
+}
+
+// Common words for helpers outside components (months(), days(), formatPrice() in lib/work.ts).
+export function commonWord(key: Parameters<CommonText>[0], values?: Record<string, string | number>): string {
+  return commonText(key, values);
 }
 
 export function formatTagNow(): string {
@@ -30,7 +48,7 @@ export function formatDate(value: string | null): string {
 }
 
 export function formatDateTime(value: string | null): string {
-  if (!value) return neverText;
+  if (!value) return commonText("never");
   return new Intl.DateTimeFormat(formatTag, { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Oslo" }).format(new Date(value));
 }
 
@@ -44,4 +62,10 @@ export function toCsv(header: string[], rows: (string | number | boolean | null 
     return /[";\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
   };
   return `\uFEFF${[header, ...rows].map((row) => row.map(cell).join(";")).join("\r\n")}\r\n`;
+}
+
+// A permission ("calls.read.own") as its key in messages/<locale>/domain.json ("calls_read_own"):
+// next-intl reads dots as nesting.
+export function permissionKey(permission: string): "calls_read_own" {
+  return permission.replaceAll(".", "_") as "calls_read_own";
 }

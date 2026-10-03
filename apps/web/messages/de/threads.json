@@ -1,0 +1,20 @@
+{
+  "new": "Neue Unterhaltung",
+  "empty": "Noch keine Unterhaltungen.",
+  "unread": "Ungelesen",
+  "messages": "{count, plural, one {# Nachricht} other {# Nachrichten}}",
+  "closed": "geschlossen",
+  "choose": "Wählen Sie eine Unterhaltung oder beginnen Sie eine neue.",
+  "newWithOrganization": "Neue Unterhaltung mit einem Callcenter",
+  "newWithVeriqall": "Neue Unterhaltung mit VeriQall",
+  "organization": "Callcenter",
+  "chooseOrganization": "Callcenter wählen",
+  "subject": "Betreff",
+  "message": "Nachricht",
+  "sending": "Wird gesendet …",
+  "send": "Senden",
+  "close": "Unterhaltung schließen",
+  "reopen": "Wieder öffnen",
+  "reply": "Antwort",
+  "sendReply": "Antwort senden"
+}

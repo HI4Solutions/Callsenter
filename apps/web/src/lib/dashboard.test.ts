@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { followUp } from "@/components/work/team-charts";
-import { dayCount, previousPeriod, type TeamSeller } from "./dashboard";
+import { dayCount, formatPercent, previousPeriod, share, shortDay, type TeamSeller } from "./dashboard";
 
 describe("periods to compare", () => {
   it("compares with the period of the same length right before", () => {
@@ -39,9 +39,18 @@ describe("who needs follow-up", () => {
       now,
     );
     expect(list.map((r) => r.seller.name)).toEqual(["Anna", "Bo", "Cato", "Eli"]);
-    expect(list[0]!.reasons).toEqual(["Brudd i 40 % av samtalene (4 av 10)"]);
-    expect(list[1]!.reasons).toEqual(["2 flagg venter på behandling"]);
-    expect(list[2]!.reasons).toEqual(["Ingen tilbakemelding på over 30 dager"]);
-    expect(list[3]!.reasons).toEqual(["Ingen samtaler eller salg i perioden"]);
+    expect(list[0]!.reasons).toEqual([{ key: "breaches", values: { share: 40, red: 4, calls: 10 } }]);
+    expect(list[1]!.reasons).toEqual([{ key: "unreviewed", values: { count: 2 } }]);
+    expect(list[2]!.reasons).toEqual([{ key: "noFeedback30" }]);
+    expect(list[3]!.reasons).toEqual([{ key: "inactive" }]);
+  });
+});
+
+describe("numbers and days in the page's language", () => {
+  it("writes shares and short days the Norwegian way outside a page", () => {
+    expect(share(4, 10)).toBe(formatPercent(40));
+    expect(formatPercent(40)).toBe("40\u00a0%");
+    expect(share(1, 0)).toBe("–");
+    expect(shortDay("2026-10-03")).toBe("3.10.");
   });
 });

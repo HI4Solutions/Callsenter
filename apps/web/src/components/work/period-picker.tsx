@@ -1,8 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Field, inputClass } from "@/components/admin/field";
-import { addDays, osloToday, PERIOD_LABELS, type PeriodKey, periodRange } from "@/lib/dashboard";
+import { addDays, osloToday, PERIOD_KEYS, type PeriodKey, periodRange } from "@/lib/dashboard";
 
 export interface Period {
   key: PeriodKey;
@@ -18,7 +19,7 @@ export function useStoredPeriod(fallback: Exclude<PeriodKey, "custom"> = "today"
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE) ?? "null") as Period | null;
       if (saved?.key === "custom" && /^\d{4}-\d{2}-\d{2}$/.test(saved.from) && /^\d{4}-\d{2}-\d{2}$/.test(saved.to)) return saved;
-      if (saved && saved.key in PERIOD_LABELS && saved.key !== "custom") return { key: saved.key, ...periodRange(saved.key) };
+      if (saved && PERIOD_KEYS.includes(saved.key) && saved.key !== "custom") return { key: saved.key, ...periodRange(saved.key) };
     } catch {
       // Private window or no storage: start with the fallback.
     }
@@ -37,10 +38,12 @@ export function useStoredPeriod(fallback: Exclude<PeriodKey, "custom"> = "today"
 
 // The period of the overview: the usual choices, or two dates (at most a year).
 export function PeriodPicker({ value, onChange }: { value: Period; onChange: (period: Period) => void }) {
+  const t = useTranslations("dashboard.period");
+  const td = useTranslations("domain.period");
   const today = osloToday();
   return (
     <div className="flex flex-wrap items-end gap-3">
-      <Field label="Periode">
+      <Field label={t("label")}>
         <select
           className={inputClass}
           value={value.key}
@@ -49,16 +52,16 @@ export function PeriodPicker({ value, onChange }: { value: Period; onChange: (pe
             onChange(key === "custom" ? { key, from: value.from, to: value.to } : { key, ...periodRange(key) });
           }}
         >
-          {(Object.keys(PERIOD_LABELS) as PeriodKey[]).map((key) => (
+          {PERIOD_KEYS.map((key) => (
             <option key={key} value={key}>
-              {PERIOD_LABELS[key]}
+              {td(key)}
             </option>
           ))}
         </select>
       </Field>
       {value.key === "custom" && (
         <>
-          <Field label="Fra">
+          <Field label={t("from")}>
             <input
               type="date"
               className={inputClass}
@@ -68,7 +71,7 @@ export function PeriodPicker({ value, onChange }: { value: Period; onChange: (pe
               onChange={(e) => e.target.value && onChange({ ...value, from: e.target.value })}
             />
           </Field>
-          <Field label="Til">
+          <Field label={t("to")}>
             <input
               type="date"
               className={inputClass}

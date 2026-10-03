@@ -1,8 +1,13 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, inputClass, secondaryButton } from "@/components/admin/field";
+import {
+  ErrorMessage,
+  inputClass,
+  secondaryButton,
+} from "@/components/admin/field";
 
 // Tilleggsinformasjon: context that was not said in the call, such as an existing agreement or
 // what was agreed by e-mail. Used when the note is written, never by the AI control.
@@ -20,6 +25,7 @@ export function AdditionalInfo({
   hint?: string;
   onChange?: (text: string) => void;
 }) {
+  const t = useTranslations("calls");
   const [text, setText] = useState(value);
   const [saved, setSaved] = useState(value);
   const [error, setError] = useState<string | null>(null);
@@ -39,11 +45,11 @@ export function AdditionalInfo({
   }
 
   return (
-    <Card title="Tilleggsinformasjon">
+    <Card title={t("additionalInfo.title")}>
       {canEdit ? (
         <div className="flex flex-col gap-3">
           <label className="sr-only" htmlFor="additional-info">
-            Tilleggsinformasjon
+            {t("additionalInfo.title")}
           </label>
           <textarea
             id="additional-info"
@@ -56,16 +62,21 @@ export function AdditionalInfo({
               onChange?.(e.target.value);
             }}
             onBlur={() => text !== saved && void save()}
-            placeholder="Valgfritt. For eksempel en avtale kunden har fra før."
+            placeholder={t("additionalInfo.placeholder")}
           />
           <p className="text-sm text-muted">
-            {hint ?? "Tas med når notatet lages, merket som selgerens opplysning. AI-kontrollen bruker bare det som ble sagt."}
+            {hint ?? t("additionalInfo.hint")}
           </p>
           <ErrorMessage message={error} />
           {onSave && text !== saved && (
             <div>
-              <button type="button" className={secondaryButton} disabled={busy} onClick={save}>
-                Lagre
+              <button
+                type="button"
+                className={secondaryButton}
+                disabled={busy}
+                onClick={save}
+              >
+                {t("save")}
               </button>
             </div>
           )}
@@ -73,7 +84,7 @@ export function AdditionalInfo({
       ) : value ? (
         <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{value}</p>
       ) : (
-        <p className="text-muted">Ingen.</p>
+        <p className="text-muted">{t("additionalInfo.none")}</p>
       )}
     </Card>
   );

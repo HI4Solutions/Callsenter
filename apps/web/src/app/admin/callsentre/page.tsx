@@ -3,13 +3,30 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { MODULE_KEYS, MODULES } from "@veriqall/shared";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import { MODULE_KEYS } from "@veriqall/shared";
+import { useTranslations } from "next-intl";
+import {
+  ErrorMessage,
+  Field,
+  inputClass,
+  primaryButton,
+  secondaryButton,
+} from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
-import { adminFetch, formatDateTime, organizationState, type OrganizationSummary } from "@/lib/admin";
+import {
+  adminFetch,
+  formatDateTime,
+  organizationState,
+  type OrganizationSummary,
+} from "@/lib/admin";
 
 export default function CallCentresPage() {
-  const [organizations, setOrganizations] = useState<OrganizationSummary[] | null>(null);
+  const t = useTranslations("admin.organizations");
+  const ta = useTranslations("admin");
+  const tc = useTranslations("common");
+  const [organizations, setOrganizations] = useState<
+    OrganizationSummary[] | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
@@ -27,19 +44,29 @@ export default function CallCentresPage() {
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!organizations || !q) return organizations;
-    return organizations.filter((o) => o.name.toLowerCase().includes(q) || o.orgNumber?.includes(q.replace(/\s/g, "")));
+    return organizations.filter(
+      (o) =>
+        o.name.toLowerCase().includes(q) ||
+        o.orgNumber?.includes(q.replace(/\s/g, "")),
+    );
   }, [organizations, query]);
 
   return (
     <section>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Callsentre</h1>
-          <p className="mt-2 text-muted">Opprett callsentre, styr moduler og inviter admin.</p>
+          <h1 className="text-3xl font-extrabold tracking-tight">
+            {t("title")}
+          </h1>
+          <p className="mt-2 text-muted">{t("intro")}</p>
         </div>
         {!creating && (
-          <button type="button" className={primaryButton} onClick={() => setCreating(true)}>
-            Nytt callsenter
+          <button
+            type="button"
+            className={primaryButton}
+            onClick={() => setCreating(true)}
+          >
+            {t("new")}
           </button>
         )}
       </div>
@@ -47,11 +74,11 @@ export default function CallCentresPage() {
       {creating && <NewCallCentre onCancel={() => setCreating(false)} />}
 
       <div className="mt-8">
-        <Field label="Søk">
+        <Field label={t("search")}>
           <input
             type="search"
             className={`${inputClass} w-full sm:max-w-sm`}
-            placeholder="Navn eller org.nr."
+            placeholder={t("searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -60,8 +87,10 @@ export default function CallCentresPage() {
 
       <div className="mt-6">
         <ErrorMessage message={error} />
-        {!shown && !error && <p className="text-muted">Laster …</p>}
-        {shown && shown.length === 0 && <p className="text-muted">Ingen callsentre {query ? "passer søket" : "ennå"}.</p>}
+        {!shown && !error && <p className="text-muted">{tc("loading")}</p>}
+        {shown && shown.length === 0 && (
+          <p className="text-muted">{query ? t("noneMatch") : t("noneYet")}</p>
+        )}
         {shown && shown.length > 0 && (
           <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
             {shown.map((org) => {
@@ -75,12 +104,26 @@ export default function CallCentresPage() {
                     <div>
                       <p className="font-semibold">{org.name}</p>
                       <p className="text-sm text-muted">
-                        {org.orgNumber ? `Org.nr. ${org.orgNumber} · ` : ""}
-                        {org.activeMembers} aktive, {org.invitedMembers} inviterte ·{" "}
-                        {org.lastLoginAt ? `sist innlogget ${formatDateTime(org.lastLoginAt)}` : "ingen har logget inn"}
+                        {org.orgNumber
+                          ? `${t("orgNumber", { number: org.orgNumber })} · `
+                          : ""}
+                        {t("members", {
+                          active: org.activeMembers,
+                          invited: org.invitedMembers,
+                        })}{" "}
+                        ·{" "}
+                        {org.lastLoginAt
+                          ? t("lastLogin", {
+                              date: formatDateTime(org.lastLoginAt),
+                            })
+                          : t("noLogins")}
                       </p>
                     </div>
-                    <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
+                    <StatusBadge tone={state.tone}>
+                      {ta(`organizationState.${state.key}`, {
+                        date: state.date,
+                      })}
+                    </StatusBadge>
                   </Link>
                 </li>
               );
@@ -93,8 +136,18 @@ export default function CallCentresPage() {
 }
 
 function NewCallCentre({ onCancel }: { onCancel: () => void }) {
+  const t = useTranslations("admin.organizations");
+  const ts = useTranslations("admin.shared");
+  const td = useTranslations("domain");
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", orgNumber: "", contactName: "", contactEmail: "", contactPhone: "", trialEndsAt: "" });
+  const [form, setForm] = useState({
+    name: "",
+    orgNumber: "",
+    contactName: "",
+    contactEmail: "",
+    contactPhone: "",
+    trialEndsAt: "",
+  });
   const [modules, setModules] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -115,33 +168,67 @@ function NewCallCentre({ onCancel }: { onCancel: () => void }) {
     }
   }
 
-  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
+  const set =
+    (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm({ ...form, [key]: e.target.value });
 
   return (
-    <form onSubmit={submit} className="mt-6 flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-6">
-      <h2 className="text-xl font-bold">Nytt callsenter</h2>
+    <form
+      onSubmit={submit}
+      className="mt-6 flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-6"
+    >
+      <h2 className="text-xl font-bold">{t("new")}</h2>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Navn">
-          <input required className={inputClass} value={form.name} onChange={set("name")} />
+        <Field label={t("name")}>
+          <input
+            required
+            className={inputClass}
+            value={form.name}
+            onChange={set("name")}
+          />
         </Field>
-        <Field label="Organisasjonsnummer">
-          <input inputMode="numeric" className={inputClass} value={form.orgNumber} onChange={set("orgNumber")} />
+        <Field label={t("orgNumberLabel")}>
+          <input
+            inputMode="numeric"
+            className={inputClass}
+            value={form.orgNumber}
+            onChange={set("orgNumber")}
+          />
         </Field>
-        <Field label="Kontaktperson">
-          <input className={inputClass} value={form.contactName} onChange={set("contactName")} />
+        <Field label={t("contactName")}>
+          <input
+            className={inputClass}
+            value={form.contactName}
+            onChange={set("contactName")}
+          />
         </Field>
-        <Field label="E-post til kontaktperson">
-          <input type="email" className={inputClass} value={form.contactEmail} onChange={set("contactEmail")} />
+        <Field label={t("contactEmail")}>
+          <input
+            type="email"
+            className={inputClass}
+            value={form.contactEmail}
+            onChange={set("contactEmail")}
+          />
         </Field>
-        <Field label="Telefon til kontaktperson">
-          <input type="tel" className={inputClass} value={form.contactPhone} onChange={set("contactPhone")} />
+        <Field label={t("contactPhone")}>
+          <input
+            type="tel"
+            className={inputClass}
+            value={form.contactPhone}
+            onChange={set("contactPhone")}
+          />
         </Field>
-        <Field label="Prøveperiode til" hint="La stå tom for vanlig kunde.">
-          <input type="date" className={inputClass} value={form.trialEndsAt} onChange={set("trialEndsAt")} />
+        <Field label={t("trialUntil")} hint={t("trialHint")}>
+          <input
+            type="date"
+            className={inputClass}
+            value={form.trialEndsAt}
+            onChange={set("trialEndsAt")}
+          />
         </Field>
       </div>
       <fieldset>
-        <legend className="text-sm font-semibold">Moduler</legend>
+        <legend className="text-sm font-semibold">{t("modules")}</legend>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {MODULE_KEYS.map((key) => (
             <label key={key} className="flex min-h-11 items-center gap-3">
@@ -149,9 +236,11 @@ function NewCallCentre({ onCancel }: { onCancel: () => void }) {
                 type="checkbox"
                 className="size-5 accent-brand"
                 checked={modules[key] ?? false}
-                onChange={(e) => setModules({ ...modules, [key]: e.target.checked })}
+                onChange={(e) =>
+                  setModules({ ...modules, [key]: e.target.checked })
+                }
               />
-              {MODULES[key].name}
+              {td(`modules.${key}.name`)}
             </label>
           ))}
         </div>
@@ -159,10 +248,10 @@ function NewCallCentre({ onCancel }: { onCancel: () => void }) {
       <ErrorMessage message={error} />
       <div className="flex flex-wrap gap-3">
         <button type="submit" className={primaryButton} disabled={saving}>
-          {saving ? "Oppretter …" : "Opprett callsenter"}
+          {saving ? t("creating") : t("create")}
         </button>
         <button type="button" className={secondaryButton} onClick={onCancel}>
-          Avbryt
+          {ts("cancel")}
         </button>
       </div>
     </form>

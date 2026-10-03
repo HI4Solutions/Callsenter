@@ -28,11 +28,11 @@ export type Permission = keyof typeof PERMISSIONS;
 
 // The permissions by area, for showing and choosing them on the roles page. Every permission is
 // in exactly one group (tested).
-export const PERMISSION_GROUPS: readonly { name: string; permissions: readonly Permission[] }[] = [
-  { name: "Samtaler", permissions: ["calls.read.own", "calls.read.team", "calls.read.all", "calls.audio.play", "calls.upload", "report_templates.manage"] },
-  { name: "Salg og kunder", permissions: ["customers.read", "customers.manage", "sales.manage", "products.manage"] },
-  { name: "Kvalitet og coaching", permissions: ["flags.review", "complaints.manage", "coaching.give", "dashboard.team", "dashboard.all"] },
-  { name: "Administrasjon", permissions: ["users.manage", "roles.manage", "audit.read", "billing.read"] },
+export const PERMISSION_GROUPS: readonly { key: "calls" | "sales" | "quality" | "administration"; name: string; permissions: readonly Permission[] }[] = [
+  { key: "calls", name: "Samtaler", permissions: ["calls.read.own", "calls.read.team", "calls.read.all", "calls.audio.play", "calls.upload", "report_templates.manage"] },
+  { key: "sales", name: "Salg og kunder", permissions: ["customers.read", "customers.manage", "sales.manage", "products.manage"] },
+  { key: "quality", name: "Kvalitet og coaching", permissions: ["flags.review", "complaints.manage", "coaching.give", "dashboard.team", "dashboard.all"] },
+  { key: "administration", name: "Administrasjon", permissions: ["users.manage", "roles.manage", "audit.read", "billing.read"] },
 ];
 
 export const PERMISSION_KEYS = Object.keys(PERMISSIONS) as Permission[];
