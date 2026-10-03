@@ -34,6 +34,7 @@ import { loadAuthConfig } from "./config.ts";
 import { loadCallServices } from "./calls/runtime.ts";
 import { CONFIRM_COOKIE, rejectConfirmation, resultPage, startConfirmation, TOKEN, viewConfirmation } from "./confirm/index.ts";
 import { isBlocked } from "./blocklist.ts";
+import { createContactRequest } from "./contact.ts";
 import { iamPool } from "./db.ts";
 import { clearCookie, corsHeaders, json, readCookie, redirect, requestMeta, sessionCookie, type Result } from "./http.ts";
 import { LOCALE_COOKIE, requestLocale, withLocale } from "./i18n/translate.ts";
@@ -168,6 +169,17 @@ function route(deps: HandlerDeps) {
         }
       }
       return json(404, { error: "Fant ikke ressursen" }, cors);
+    }
+
+    // The landing page's contact form (no session): stored for superadmins, who are e-mailed.
+    if (method === "POST" && path === "/contact") {
+      if (event.headers?.origin !== auth.config.appOrigin) return json(403, { error: "Ikke tillatt." }, cors);
+      try {
+        return json(201, await createContactRequest(auth.authDb, parseBody(event.body, event.isBase64Encoded), requestMeta(event)), cors);
+      } catch (error) {
+        if (error instanceof BadRequest) return json(400, { error: error.message }, cors);
+        throw error;
+      }
     }
 
     if (path.startsWith("/auth/passkey/") || path.startsWith("/me/passkeys")) {

@@ -14,15 +14,7 @@ import {
   revokeInvitation,
   updateOrganization,
 } from "./organizations.ts";
-import {
-  addGrowthEvent,
-  createAnnouncement,
-  deleteAnnouncement,
-  deleteGrowthEvent,
-  growth,
-  listAnnouncements,
-  updateAnnouncement,
-} from "./messages.ts";
+import { addGrowthEvent, createAnnouncement, deleteAnnouncement, deleteGrowthEvent, growth, listAnnouncements, listContactRequests, setContactRequestHandled, updateAnnouncement } from "./messages.ts";
 import { getThread, listThreads, reply as replyThread, setThreadStatus, startThread } from "../org/threads.ts";
 import { accessLog, auditLog, blockIp, listBlockedIps, securityOverview, unblockIp } from "./security.ts";
 import {
@@ -91,6 +83,7 @@ const BLOCKED_IP = /^\/admin\/security\/blocked-ips\/([^/]+)$/;
 const THREAD = /^\/admin\/threads\/([^/]+)$/;
 const THREAD_MESSAGES = /^\/admin\/threads\/([^/]+)\/messages$/;
 const ANNOUNCEMENT = /^\/admin\/announcements\/([^/]+)$/;
+const CONTACT_REQUEST = /^\/admin\/contact-requests\/([^/]+)$/;
 const GROWTH_EVENT = /^\/admin\/growth\/events\/([^/]+)$/;
 const USER_PASSKEY = /^\/admin\/users\/([^/]+)\/passkeys\/([^/]+)$/;
 const INVOICE = /^\/admin\/invoices\/([^/]+)$/;
@@ -203,6 +196,9 @@ export async function handleAdmin(
       if (method === "PATCH") return reply(200, await updateAnnouncement(deps.appDb, session, match[1], body()));
       if (method === "DELETE") return reply(200, await deleteAnnouncement(deps.appDb, session, match[1]));
     }
+    if (method === "GET" && path === "/admin/contact-requests") return reply(200, await listContactRequests(deps.appDb, session));
+    match = CONTACT_REQUEST.exec(path);
+    if (match && isUuid(match[1]) && method === "PATCH") return reply(200, await setContactRequestHandled(deps.appDb, session, match[1], body()));
     if (path === "/admin/system") {
       if (method === "GET") return reply(200, await getSystem(deps.appDb, session));
       if (method === "PATCH") return reply(200, await updateSystem(deps.appDb, session, body()));

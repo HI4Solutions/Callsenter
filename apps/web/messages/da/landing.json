@@ -8,7 +8,6 @@
     "title": "Hver samtale dokumenteret. Hvert salg verificeret.",
     "lead": "VeriQall optager og transskriberer salgssamtalerne, kontrollerer dem mod produktskabelonen med AI, lader kunden bekræfte købet med BankID eller Vipps og samler alt som dokumentation til opfølgning, klager og coaching.",
     "demo": "Bed om en demo",
-    "demoSubject": "Demo af VeriQall",
     "login": "Log ind",
     "fact1": "Lagres og behandles i EU",
     "fact2": "Login med BankID, Vipps og passkey",
@@ -132,14 +131,21 @@
     "q6": "Hvordan kommer vi i gang?",
     "a6": "Vi opretter callcentret og inviterer jeres administrator. Admin inviterer brugerne, som logger ind med Vipps eller BankID. Ingen installation, og I kan være i gang samme dag."
   },
-  "cta": {
-    "title": "Vil du se VeriQall i brug?",
-    "text": "Send os en e-mail, så viser vi jer platformen og sætter et testcallcenter op til jer.",
-    "button": "Bed om en demo"
-  },
   "footer": {
     "provider": "VeriQall leveres af Hi4 Solutions AS.",
-    "contact": "Kontakt",
     "login": "Log ind"
+  },
+  "contact": {
+    "title": "Kontakt os",
+    "intro": "Fortæl os lidt om jeres callcenter, så kontakter vi jer og aftaler en demo.",
+    "name": "Navn",
+    "email": "E-mail",
+    "phone": "Telefon (valgfrit)",
+    "company": "Callcenter eller firma (valgfrit)",
+    "message": "Besked",
+    "send": "Send",
+    "sending": "Sender …",
+    "sent": "Tak for din henvendelse. Vi kontakter dig, så snart vi kan.",
+    "failed": "Beskeden blev ikke sendt. Prøv igen om lidt."
   }
 }

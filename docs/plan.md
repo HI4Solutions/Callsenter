@@ -596,13 +596,13 @@ Påbegynt 3. oktober 2026 (Nadeems ønske). Siden skal ikke være synlig for noe
 2. Hvorfor: kunden må godta skriftlig, klagen kommer uker senere, ingen rekker å høre alle samtalene.
 3. Slik virker det, i fem steg: opptak i nettleseren, transkripsjon, AI-kontroll, kundens bekreftelse (merket som tilleggsmodul), dokumentasjon og klager.
 4. Modulene (åtte kort), hvem siden er for (selger, leder, compliance, admin), «Bygget for å være bevis» (EU, skille per callsenter, innlogging, sporing, uforanderlige bevis, sletting), språk, pris (pakke, forbruk og salgsverifisering, uten tall), spørsmål og svar, og en avsluttende oppfordring.
-5. Bunntekst med Hi4 Solutions AS, kontaktadresse og språkvelger.
+5. Kontaktskjema nederst (`#kontakt`, dit «Be om en demo» også peker): navn, e-post, telefon, firma og melding, med et skjult felt som stopper roboter. `POST /contact` lagrer henvendelsen i `contact_requests` (migrasjonen `0037_contact_requests.sql`, høyst 10 i timen per IP-adresse) gjennom `app_auth` og en `security definer`-funksjon, og sender e-post til alle superadminer med e-postadresse når e-post er satt opp. Superadmin ser henvendelsene under Meldinger → Henvendelser og merker dem som behandlet.
+6. Bunntekst med Hi4 Solutions AS og språkvelger.
 
 Siden bruker appens design: samme tokens, lys og mørk modus, og grønn, gul og rød bare i AI-flaggene i stillbildet.
 
 **Åpne punkter før publisering:**
 
-- Kontaktadressen `kontakt@veriqall.no` er en plassholder (`CONTACT_EMAIL` i komponenten).
 - Prisene står uten tall; tilbud etter avtale.
 - Setningen om skriftlig aksept er skrevet for Norge (angrerettloven § 10). På engelsk, dansk og tysk står den generelt («i mange markeder»); svensk har samme krav og er like konkret som norsk.
 - Ingen kundesitater eller tall, siden vi ikke har noen å vise til ennå.

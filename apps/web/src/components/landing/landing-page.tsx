@@ -4,12 +4,9 @@ import { LOCALE_CODES, LOCALES } from "@veriqall/shared";
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { ContactForm } from "@/components/landing/contact-form";
 import { Flag, type FlagLevel } from "@/components/flag";
 import { LanguagePicker } from "@/components/language-picker";
-
-// Where "Be om en demo" and the footer point. A placeholder until the address exists: confirm it
-// before the page is published.
-export const CONTACT_EMAIL = "kontakt@veriqall.no";
 
 const primaryButton = "inline-flex min-h-11 items-center justify-center rounded-lg bg-brand px-5 font-semibold text-on-brand";
 const secondaryButton = "inline-flex min-h-11 items-center justify-center rounded-lg border border-line bg-surface px-5 font-semibold";
@@ -22,8 +19,8 @@ const tint = "bg-[color-mix(in_srgb,var(--brand)_7%,var(--surface))]";
 // landing namespace; the product mock in the hero is built from the app's own Flag component, so
 // green, yellow and red mean what they mean in the app.
 export function LandingPage() {
-  const t = useTranslations("landing.hero");
-  const demoHref = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(t("demoSubject"))}`;
+  // "Be om en demo" scrolls to the contact form at the bottom.
+  const demoHref = "#kontakt";
   return (
     <div className="flex flex-col gap-20 sm:gap-24">
       <Hero demoHref={demoHref} />
@@ -35,7 +32,7 @@ export function LandingPage() {
       <Languages />
       <Pricing demoHref={demoHref} />
       <Faq />
-      <CallToAction demoHref={demoHref} />
+      <Contact />
       <Footer />
     </div>
   );
@@ -286,20 +283,16 @@ function Faq() {
   );
 }
 
-function CallToAction({ demoHref }: { demoHref: string }) {
-  const t = useTranslations("landing.cta");
-  const tl = useTranslations("landing.hero");
+function Contact() {
+  const t = useTranslations("landing.contact");
   return (
-    <section className={`rounded-2xl border border-line ${tint} p-6 text-center sm:p-10`}>
-      <h2 className="text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">{t("title")}</h2>
-      <p className="mx-auto mt-3 max-w-2xl text-lg text-muted">{t("text")}</p>
-      <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <a href={demoHref} className={primaryButton}>
-          {t("button")}
-        </a>
-        <Link href="/logg-inn" className={secondaryButton}>
-          {tl("login")}
-        </Link>
+    <section id="kontakt" className={`scroll-mt-24 rounded-2xl border border-line ${tint} p-6 sm:p-10`}>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div>
+          <h2 className="text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">{t("title")}</h2>
+          <p className="mt-3 text-lg text-muted">{t("intro")}</p>
+        </div>
+        <ContactForm />
       </div>
     </section>
   );
@@ -311,12 +304,6 @@ function Footer() {
     <footer className="flex flex-col gap-4 border-t border-line pt-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-1">
         <p>{t("provider")}</p>
-        <p>
-          {t("contact")}:{" "}
-          <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold text-brand">
-            {CONTACT_EMAIL}
-          </a>
-        </p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Link href="/logg-inn" className="inline-flex min-h-11 items-center font-semibold text-fg">

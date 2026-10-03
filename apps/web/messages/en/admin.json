@@ -369,7 +369,19 @@
     "selectedOrganizations": "Selected call centres",
     "noOrganizations": "No call centres yet.",
     "active": "Active",
-    "publish": "Publish"
+    "publish": "Publish",
+    "contact": {
+      "title": "Enquiries",
+      "intro": "From the contact form on the landing page. Reply by e-mail, and mark the enquiry as handled.",
+      "none": "No enquiries yet.",
+      "open": "New",
+      "handled": "Handled {date} by {name}",
+      "markHandled": "Mark as handled",
+      "reopen": "Reopen",
+      "phone": "Phone",
+      "company": "Company",
+      "language": "Language"
+    }
   },
   "security": {
     "title": "Security",

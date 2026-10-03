@@ -8,7 +8,6 @@
     "title": "Jedes Gespräch dokumentiert. Jeder Verkauf bestätigt.",
     "lead": "VeriQall nimmt die Verkaufsgespräche auf und transkribiert sie, prüft sie mit KI gegen die Produktvorlage, lässt den Kunden den Kauf mit BankID oder Vipps bestätigen und sammelt alles als Dokumentation für Nachverfolgung, Beschwerden und Coaching.",
     "demo": "Demo anfragen",
-    "demoSubject": "Demo von VeriQall",
     "login": "Anmelden",
     "fact1": "Gespeichert und verarbeitet in der EU",
     "fact2": "Anmeldung mit BankID, Vipps und Passkey",
@@ -132,14 +131,21 @@
     "q6": "Wie fangen wir an?",
     "a6": "Wir legen das Callcenter an und laden Ihren Administrator ein. Der Admin lädt die Benutzer ein, die sich mit Vipps oder BankID anmelden. Keine Installation, und Sie können noch am selben Tag loslegen."
   },
-  "cta": {
-    "title": "Möchten Sie VeriQall im Einsatz sehen?",
-    "text": "Schreiben Sie uns eine E-Mail, dann zeigen wir Ihnen die Plattform und richten ein Test-Callcenter für Sie ein.",
-    "button": "Demo anfragen"
-  },
   "footer": {
     "provider": "VeriQall wird von Hi4 Solutions AS bereitgestellt.",
-    "contact": "Kontakt",
     "login": "Anmelden"
+  },
+  "contact": {
+    "title": "Kontakt",
+    "intro": "Erzählen Sie uns etwas über Ihr Callcenter, dann melden wir uns und vereinbaren eine Demo.",
+    "name": "Name",
+    "email": "E-Mail",
+    "phone": "Telefon (optional)",
+    "company": "Callcenter oder Firma (optional)",
+    "message": "Nachricht",
+    "send": "Senden",
+    "sending": "Wird gesendet …",
+    "sent": "Vielen Dank für Ihre Nachricht. Wir melden uns so bald wie möglich.",
+    "failed": "Die Nachricht wurde nicht gesendet. Versuchen Sie es gleich noch einmal."
   }
 }

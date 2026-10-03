@@ -508,3 +508,17 @@ export function attention(o: PlatformOverview, now: number): Attention[] {
     });
   return items;
 }
+
+// A request from the landing page's contact form (Meldinger → Henvendelser).
+export interface ContactRequest {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  company: string | null;
+  message: string;
+  locale: string | null;
+  createdAt: string;
+  handledAt: string | null;
+  handledByName: string | null;
+}
