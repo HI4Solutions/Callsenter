@@ -2,6 +2,8 @@
 // Lambda's role may only send from EMAIL_FROM on the environment's domain; there is no API key.
 // Without EMAIL_FROM (no domain set up yet), nothing is sent and callers show the link instead.
 import { SendEmailCommand, SESv2Client } from "@aws-sdk/client-sesv2";
+import { DEFAULT_LOCALE, type Locale } from "@veriqall/shared";
+import { DOCUMENT_TEXTS } from "./i18n/documents.ts";
 
 export interface Attachment {
   filename: string;
@@ -126,23 +128,31 @@ export function escapeHtml(value: string): string {
 }
 
 // A plain layout that reads well in every mail client, light and dark.
-export function emailHtml(title: string, bodyHtml: string): string {
-  return `<!doctype html><html lang="nb"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title></head>
+export function emailHtml(title: string, bodyHtml: string, locale: Locale = DEFAULT_LOCALE): string {
+  return `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title></head>
 <body style="margin:0;padding:24px;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.5;color:#1a1a1a;background:#ffffff">
 <div style="max-width:640px;margin:0 auto">${bodyHtml}
 <p style="margin-top:32px;font-size:13px;color:#666">VeriQall</p></div></body></html>`;
 }
 
-// The invitation link, sent when the invited person has an e-mail address.
-export async function sendInvitation(to: string, name: string, organization: string, link: string): Promise<boolean> {
-  const subject = `Invitasjon til ${organization} i VeriQall`;
-  const text = `Hei ${name},\n\nDu er invitert til ${organization} i VeriQall. Logg inn med BankID eller Vipps via lenken under:\n\n${link}\n\nLenken er personlig og kan bare brukes én gang.`;
+// The invitation e-mail, in the language of the call centre the person is invited to.
+export function invitationEmail(name: string, organization: string, link: string, locale: Locale = DEFAULT_LOCALE) {
+  const t = DOCUMENT_TEXTS[locale].invitation;
+  const subject = t.subject(organization);
+  const text = `${t.hello(name)}\n\n${t.invited(organization)} ${t.signInBelow}\n\n${link}\n\n${t.personal}`;
   const html = emailHtml(
     subject,
-    `<p>Hei ${escapeHtml(name)},</p><p>Du er invitert til <strong>${escapeHtml(organization)}</strong> i VeriQall. Logg inn med BankID eller Vipps:</p>
-<p><a href="${escapeHtml(link)}" style="display:inline-block;padding:12px 20px;background:#1f3b73;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600">Godta invitasjonen</a></p>
-<p style="font-size:14px;color:#666">Lenken er personlig og kan bare brukes én gang.</p>`,
+    `<p>${escapeHtml(t.hello(name))}</p><p>${t.invited(`<strong>${escapeHtml(organization)}</strong>`)} ${escapeHtml(t.signIn)}</p>
+<p><a href="${escapeHtml(link)}" style="display:inline-block;padding:12px 20px;background:#1f3b73;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600">${escapeHtml(t.accept)}</a></p>
+<p style="font-size:14px;color:#666">${escapeHtml(t.personal)}</p>`,
+    locale,
   );
+  return { subject, text, html };
+}
+
+// The invitation link, sent when the invited person has an e-mail address.
+export async function sendInvitation(to: string, name: string, organization: string, link: string, locale: Locale = DEFAULT_LOCALE): Promise<boolean> {
+  const { subject, text, html } = invitationEmail(name, organization, link, locale);
   try {
     return (await sendEmail({ to, subject, text, html })) !== null;
   } catch (error) {

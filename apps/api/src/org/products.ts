@@ -229,7 +229,8 @@ export async function publishDraft(db: pg.Pool, session: Session, productId: str
     if (!v) throw new NotFound();
     if (v.status !== "draft") throw new BadRequest("Bare utkast kan publiseres.");
     const problems = publishProblems(v);
-    if (problems.length) throw new BadRequest(`Fyll ut før publisering: ${problems.join(", ")}.`);
+    const missing = problems.join(", ");
+    if (missing) throw new BadRequest(`Fyll ut før publisering: ${missing}.`);
     await c.query("update product_template_versions set status = 'retired' where product_id = $1 and status = 'published'", [
       productId,
     ]);

@@ -252,6 +252,45 @@ describe("e-mail", () => {
   });
 });
 
+describe("e-mail in the call centre's language", () => {
+  afterEach(() => setMailer(undefined));
+
+  it("writes the invitation and the invoice in the call centre's language, whoever sends them", async () => {
+    const sent: Email[] = [];
+    setMailer(async (email) => {
+      sent.push(email);
+      return "msg-3";
+    });
+    const admin = await superadmin();
+    const org = await createOrg("North Calls");
+    await owner.query("update organizations set default_locale = 'en', invoice_email = 'invoices@example.test' where id = $1", [org]);
+
+    const invited = await call(admin.cookie, "POST", `/admin/organizations/${org}/invitations`, { fullName: "Kari North", email: "kari.north@example.test" });
+    expect(invited.body.emailed).toBe(true);
+    expect(sent[0]).toMatchObject({ to: "kari.north@example.test", subject: "Invitation to North Calls in VeriQall" });
+    expect(sent[0]!.text).toContain("You have been invited to North Calls in VeriQall.");
+
+    await call(admin.cookie, "PATCH", "/admin/billing/settings", { companyName: "Leverandør AS", orgNumber: "999999999", accountNumber: "12345678903" });
+    const id = (await call(admin.cookie, "POST", "/admin/invoices", { organizationId: org, lines: [{ description: "Licence", unitPrice: 100 }] })).body.id;
+    const sending = await call(admin.cookie, "POST", `/admin/invoices/${id}/send`);
+    expect(sending.body.emailed).toBe(true);
+    const number = sending.body.number;
+    expect(sent[1]).toMatchObject({ to: "invoices@example.test", subject: `Invoice ${number} from Leverandør AS` });
+    expect(sent[1]!.text).toContain("Amount due: NOK");
+    expect(sent[1]!.attachments?.[0]).toMatchObject({ filename: `invoice-${number}.pdf` });
+
+    // The superadmin's own language does not matter: the PDF is in English too.
+    const pdf = await handler({
+      rawPath: `/admin/invoices/${id}/pdf`,
+      requestContext: { http: { method: "GET", sourceIp: "127.0.0.1", userAgent: "vitest" } },
+      headers: { origin: ORIGIN, "accept-language": "nb-NO" },
+      cookies: [admin.cookie],
+    } as unknown as APIGatewayProxyEventV2);
+    expect(pdf.statusCode).toBe(200);
+    expect(String(pdf.headers?.["content-disposition"] ?? "")).toContain(`invoice-${number}.pdf`);
+  });
+});
+
 describe("invoicing v2", () => {
   it("manages packages, schedules invoices, makes PDFs and closes on missed payment", async () => {
     const admin = await superadmin();

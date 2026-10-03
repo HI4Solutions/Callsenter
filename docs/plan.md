@@ -580,6 +580,6 @@ Superadmin setter callsenterets språk under Callsentre. Med «Lås språket for
 
 1. En oppføring i `LOCALES` (`fi`, `fi-FI`, `Finnish`, Soniox-koden `fi`, søkekonfigurasjonen `finnish`).
 2. En migrasjon som legger `fi` i `locales` og i `app.search_config`.
-3. Mappen `apps/web/messages/fi/` med alle navnerommene, og teksten i `apps/api/src/i18n.ts`. Testene og typene sier fra om noe mangler.
+3. Mappen `apps/web/messages/fi/` med alle navnerommene, og tekstene i `apps/api/src/i18n/` (`worker.ts`, `messages.ts` og `documents.ts`). Testene og typene sier fra om noe mangler.
 
-**Status 3. oktober:** grunnmuren er på plass (PR «Flerspråklig grunnmur»): språkvalgene, AI og Soniox, søk, innlogging, Min konto, menyen, feilsider og kundens bekreftelse. De andre sidene (Superadmin, Administrasjon, Samtaler, Salg, Kunder, Produkter, Klager og Oversikt), API-meldingene, e-postene og faktura-PDF-en oversettes i egne PR-er etter hvert.
+**Status 3. oktober:** grunnmuren er på plass (PR «Flerspråklig grunnmur»): språkvalgene, AI og Soniox, søk, innlogging, Min konto, menyen, feilsider og kundens bekreftelse. De andre sidene (Superadmin, Administrasjon, Samtaler, Salg, Kunder, Produkter, Klager og Oversikt) oversettes i egne PR-er etter hvert. API-ets meldinger (feilmeldinger, arbeiderens feil og systemets merknader i salgshistorikken) oversettes til språket i forespørselen (`apps/api/src/i18n/messages.ts`, sjekket av `messages-coverage.test.ts`), og invitasjoner, faktura-e-post og faktura-PDF skrives på callsenterets språk (`organizations.default_locale`, `apps/api/src/i18n/documents.ts`).

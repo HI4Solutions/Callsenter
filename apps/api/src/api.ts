@@ -36,6 +36,7 @@ import { CONFIRM_COOKIE, rejectConfirmation, resultPage, startConfirmation, TOKE
 import { isBlocked } from "./blocklist.ts";
 import { iamPool } from "./db.ts";
 import { clearCookie, corsHeaders, json, readCookie, redirect, requestMeta, sessionCookie, type Result } from "./http.ts";
+import { LOCALE_COOKIE, requestLocale, withLocale } from "./i18n/translate.ts";
 import { loadMe, setMyLocale } from "./me.ts";
 import { isLocale, SESSION_MAX_HOURS } from "@veriqall/shared";
 
@@ -86,6 +87,14 @@ async function health(check: DatabaseCheck): Promise<Result> {
 }
 
 export function createHandler(deps: HandlerDeps) {
+  const handle = route(deps);
+  // Every answer in the request's language: the language of the pages (the web app's cookie on
+  // the parent domain), else the browser's.
+  return (event: APIGatewayProxyEventV2): Promise<Result> =>
+    withLocale(requestLocale(readCookie(event, LOCALE_COOKIE), event.headers?.["accept-language"]), () => handle(event));
+}
+
+function route(deps: HandlerDeps) {
   return async (event: APIGatewayProxyEventV2): Promise<Result> => {
     const method = event.requestContext.http.method;
     const path = event.rawPath;

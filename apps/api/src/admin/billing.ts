@@ -7,6 +7,8 @@ import type pg from "pg";
 import type { Session } from "../auth/session.ts";
 import { emailEnabled, sendEmail } from "../email.ts";
 import { withSession } from "../me.ts";
+import { DOCUMENT_TEXTS, formatMonth } from "../i18n/documents.ts";
+import { localeOr } from "../i18n/worker.ts";
 import { type InvoiceForEmail, invoiceEmail } from "./invoice-email.ts";
 import { type InvoiceForPdf, invoicePdf, type Logo } from "./invoice-pdf.ts";
 import { NotFound } from "./organizations.ts";
@@ -75,23 +77,24 @@ export function lines(value: unknown): LineInput[] {
   });
 }
 
-// The database's rules as messages for the superadmin.
+// The database's rules as messages for the superadmin (exported for the test of translations).
+export const BILLING_ERRORS: [string, string][] = [
+  ["billing settings are incomplete", "Fyll ut firmanavn, organisasjonsnummer og kontonummer under Innstillinger før du sender."],
+  ["at least one line", "Fakturaen trenger minst én linje."],
+  ["cannot be changed", "En sendt faktura kan ikke endres. Lag en kreditnota."],
+  ["only drafts", "Bare utkast og planlagte fakturaer kan slettes."],
+  ["only a sent invoice", "Bare en sendt faktura kan krediteres, og bare én gang."],
+  ["payments go on sent invoices", "Betaling kan bare registreres på en sendt faktura."],
+  ["credited with a credit note", "En faktura krediteres med kreditnota."],
+  ["future invoice date", "En planlagt faktura må ha fakturadato fram i tid."],
+  ["only an invoice can be unpaid", "Bare en faktura kan få status «betaling uteblitt»."],
+  ["invoices_period_check", "Perioden må slutte etter at den starter."],
+  ["invoices_access_kind", "Bare fakturaer kan gi tilgang."],
+];
+
 function translate(error: unknown): never {
   const message = (error as Error).message ?? "";
-  const known: [string, string][] = [
-    ["billing settings are incomplete", "Fyll ut firmanavn, organisasjonsnummer og kontonummer under Innstillinger før du sender."],
-    ["at least one line", "Fakturaen trenger minst én linje."],
-    ["cannot be changed", "En sendt faktura kan ikke endres. Lag en kreditnota."],
-    ["only drafts", "Bare utkast og planlagte fakturaer kan slettes."],
-    ["only a sent invoice", "Bare en sendt faktura kan krediteres, og bare én gang."],
-    ["payments go on sent invoices", "Betaling kan bare registreres på en sendt faktura."],
-    ["credited with a credit note", "En faktura krediteres med kreditnota."],
-    ["future invoice date", "En planlagt faktura må ha fakturadato fram i tid."],
-    ["only an invoice can be unpaid", "Bare en faktura kan få status «betaling uteblitt»."],
-    ["invoices_period_check", "Perioden må slutte etter at den starter."],
-    ["invoices_access_kind", "Bare fakturaer kan gi tilgang."],
-  ];
-  for (const [needle, text] of known) if (message.includes(needle)) throw new BadRequest(text);
+  for (const [needle, text] of BILLING_ERRORS) if (message.includes(needle)) throw new BadRequest(text);
   if ((error as { code?: string }).code === "23503") throw new BadRequest("Ukjent callsenter eller pakke.");
   throw error;
 }
@@ -160,7 +163,8 @@ export async function updateBillingSettings(db: pg.Pool, session: Session, body:
       await c.query("select 1 from billing_settings for update");
       const { rows } = await c.query<{ max: number | null }>("select max(number) as max from invoices");
       if ((rows[0]?.max ?? 0) >= (values.next_number as number)) {
-        throw new BadRequest(`Neste fakturanummer må være høyere enn ${rows[0]!.max}.`);
+        const max = rows[0]!.max;
+        throw new BadRequest(`Neste fakturanummer må være høyere enn ${max}.`);
       }
     }
     if (sets.length) {
@@ -337,7 +341,7 @@ export async function listInvoices(db: pg.Pool, session: Session, query: Record<
 // and by the worker.
 export async function invoiceDetail(c: pg.PoolClient, id: string) {
   const { rows } = await c.query(
-    `select ${SUMMARY}, i.seller, i.recipient, o.org_number as "organizationOrgNumber",
+    `select ${SUMMARY}, i.seller, i.recipient, o.org_number as "organizationOrgNumber", o.default_locale as "organizationLocale",
             o.invoice_email as "organizationInvoiceEmail", o.invoice_address as "organizationInvoiceAddress",
             (select number from invoices x where x.id = i.credit_of) as "creditOfNumber",
             (select json_build_object('id', x.id, 'number', x.number) from invoices x where x.credit_of = i.id) as "creditNote"
@@ -371,7 +375,11 @@ export async function getInvoice(db: pg.Pool, session: Session, id: string) {
 
 // The invoice as a PDF. A draft shows the seller and the call centre as they are now.
 export async function invoicePdfFor(c: pg.PoolClient, id: string): Promise<{ pdf: Uint8Array; filename: string }> {
-  const detail = (await invoiceDetail(c, id)) as unknown as InvoiceForPdf & { customerNumber: number; organizationName: string };
+  const detail = (await invoiceDetail(c, id)) as unknown as InvoiceForPdf & {
+    customerNumber: number;
+    organizationName: string;
+    organizationLocale: string;
+  };
   let preview: Parameters<typeof invoicePdf>[2];
   if (!detail.seller) {
     const s = (await c.query(`select ${SETTINGS} from billing_settings`)).rows[0] ?? {};
@@ -388,8 +396,11 @@ export async function invoicePdfFor(c: pg.PoolClient, id: string): Promise<{ pdf
       recipient: o ?? {},
     };
   }
-  const pdf = await invoicePdf(detail, await loadLogo(c), preview);
-  const name = detail.number === null ? "fakturautkast" : `${detail.kind === "credit" ? "kreditnota" : "faktura"}-${detail.number}`;
+  // In the call centre's language, whoever downloads it.
+  const locale = localeOr(detail.organizationLocale);
+  const pdf = await invoicePdf(detail, await loadLogo(c), preview, locale);
+  const t = DOCUMENT_TEXTS[locale].invoice;
+  const name = detail.number === null ? t.fileDraft : `${detail.kind === "credit" ? t.fileCredit : t.fileInvoice}-${detail.number}`;
   return { pdf, filename: `${name}.pdf` };
 }
 
@@ -490,6 +501,7 @@ export async function deliverInvoice(c: pg.PoolClient, id: string): Promise<bool
   const detail = (await invoiceDetail(c, id)) as unknown as InvoiceForEmail & {
     status: string;
     organizationId: string;
+    organizationLocale: string;
     recipient: { email?: string | null } | null;
   };
   if (detail.status === "draft" || detail.status === "scheduled") throw new BadRequest("Send fakturaen før den sendes på e-post.");
@@ -500,7 +512,7 @@ export async function deliverInvoice(c: pg.PoolClient, id: string): Promise<bool
   const messageId = await sendEmail({
     to,
     bcc: copy && copy !== to ? [copy] : undefined,
-    ...invoiceEmail(detail),
+    ...invoiceEmail(detail, localeOr(detail.organizationLocale)),
     attachments: [{ filename, contentType: "application/pdf", content: pdf }],
   });
   if (messageId === null) return false;
@@ -640,12 +652,17 @@ export async function addUsageLines(db: pg.Pool, session: Session, id: string, b
               (select count(distinct coalesce(call_id::text, id::text)) from u where kind = 'ai_control')::int as controls`,
       [inv.rows[0].organization_id, month],
     )).rows[0]!;
-    const label = new Intl.DateTimeFormat("nb-NO", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-01T00:00:00Z`));
+    // The lines are written in the call centre's language, as the invoice is.
+    const locale = localeOr(
+      (await c.query<{ locale: string }>("select default_locale as locale from organizations where id = $1", [inv.rows[0].organization_id])).rows[0]?.locale,
+    );
+    const t = DOCUMENT_TEXTS[locale].invoice;
+    const label = formatMonth(locale, month);
     const position = (await c.query<{ n: number }>("select count(*)::int as n from invoice_lines where invoice_id = $1", [id])).rows[0]!.n;
     const add: [string, string, string][] = [];
     const hours = Math.ceil(used.seconds / 36) / 100; // two decimals, rounded up
-    if (prices.audio !== null && hours > 0) add.push([`Transkribering ${label}, timer lyd`, hours.toFixed(2), prices.audio]);
-    if (prices.ai !== null && used.controls > 0) add.push([`AI-kontroll ${label}, samtaler`, String(used.controls), prices.ai]);
+    if (prices.audio !== null && hours > 0) add.push([t.usageAudio(label), hours.toFixed(2), prices.audio]);
+    if (prices.ai !== null && used.controls > 0) add.push([t.usageAi(label), String(used.controls), prices.ai]);
     if (!add.length) throw new BadRequest("Ikke noe forbruk å fakturere for denne måneden.");
     for (const [i, [description, quantity, price]] of add.entries()) {
       await c.query(
