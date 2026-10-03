@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
@@ -7,6 +8,7 @@ import { EmptyState } from "@/components/empty-state";
 import { orgFetch, type OrgOverview } from "@/lib/org";
 
 export default function TeamsPage() {
+  const t = useTranslations("org.teams");
   const [data, setData] = useState<OrgOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -55,43 +57,43 @@ export default function TeamsPage() {
   return (
     <section className="flex flex-col gap-8">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight">Team</h1>
-        <p className="mt-2 text-muted">Team brukes til å gi ledere innsyn i samtalene og salgene til sine selgere.</p>
+        <h1 className="text-3xl font-extrabold tracking-tight">{t("title")}</h1>
+        <p className="mt-2 text-muted">{t("intro")}</p>
       </div>
-      <Card title="Nytt team">
+      <Card title={t("new")}>
         <form onSubmit={create} className="flex flex-col gap-4 sm:flex-row sm:items-end">
-          <Field label="Navn">
+          <Field label={t("name")}>
             <input required maxLength={100} className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
           </Field>
           <button type="submit" className={primaryButton}>
-            Opprett team
+            {t("create")}
           </button>
         </form>
       </Card>
       <ErrorMessage message={error} />
-      <Card title={`Team (${active.length})`}>
+      <Card title={t("list", { count: active.length })}>
         {active.length === 0 ? (
-          <EmptyState title="Ingen team ennå">Lag det første over. Team trengs for teamledere, og for tall per team på dashboardet.</EmptyState>
+          <EmptyState title={t("empty")}>{t("emptyHint")}</EmptyState>
         ) : (
           <ul className="divide-y divide-line">
-            {active.map((t) => (
-              <TeamRow key={t.id} team={t} onRun={run} />
+            {active.map((team) => (
+              <TeamRow key={team.id} team={team} onRun={run} />
             ))}
           </ul>
         )}
       </Card>
       {archived.length > 0 && (
-        <Card title="Arkiverte team">
+        <Card title={t("archived")}>
           <ul className="divide-y divide-line">
-            {archived.map((t) => (
-              <li key={t.id} className="flex items-center justify-between gap-3 py-3">
-                <span>{t.name}</span>
+            {archived.map((team) => (
+              <li key={team.id} className="flex items-center justify-between gap-3 py-3">
+                <span>{team.name}</span>
                 <button
                   type="button"
                   className={secondaryButton}
-                  onClick={() => run(() => orgFetch(`/teams/${t.id}`, { method: "PATCH", body: { archived: false } }))}
+                  onClick={() => run(() => orgFetch(`/teams/${team.id}`, { method: "PATCH", body: { archived: false } }))}
                 >
-                  Gjenopprett
+                  {t("restore")}
                 </button>
               </li>
             ))}
@@ -109,11 +111,12 @@ function TeamRow({
   team: OrgOverview["teams"][number];
   onRun: (action: () => Promise<unknown>, confirmText?: string) => Promise<void>;
 }) {
+  const t = useTranslations("org.teams");
   const [name, setName] = useState(team.name);
   const changed = name.trim() !== team.name && name.trim().length > 0;
   return (
     <li className="flex flex-col gap-3 py-3 sm:flex-row sm:items-end sm:justify-between">
-      <Field label={`${team.members} ${team.members === 1 ? "medlem" : "medlemmer"}`}>
+      <Field label={t("members", { count: team.members })}>
         <input maxLength={100} className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
       <div className="flex gap-2">
@@ -123,20 +126,17 @@ function TeamRow({
             className={primaryButton}
             onClick={() => onRun(() => orgFetch(`/teams/${team.id}`, { method: "PATCH", body: { name } }))}
           >
-            Lagre navn
+            {t("saveName")}
           </button>
         )}
         <button
           type="button"
           className={secondaryButton}
           onClick={() =>
-            onRun(
-              () => orgFetch(`/teams/${team.id}`, { method: "PATCH", body: { archived: true } }),
-              `Arkivere ${team.name}? Medlemmene blir uten team.`,
-            )
+            onRun(() => orgFetch(`/teams/${team.id}`, { method: "PATCH", body: { archived: true } }), t("confirmArchive", { name: team.name }))
           }
         >
-          Arkiver
+          {t("archive")}
         </button>
       </div>
     </li>

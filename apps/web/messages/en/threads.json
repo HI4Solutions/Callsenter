@@ -1,0 +1,20 @@
+{
+  "new": "New conversation",
+  "empty": "No conversations yet.",
+  "unread": "Unread",
+  "messages": "{count, plural, one {# message} other {# messages}}",
+  "closed": "closed",
+  "choose": "Choose a conversation, or start a new one.",
+  "newWithOrganization": "New conversation with a call centre",
+  "newWithVeriqall": "New conversation with VeriQall",
+  "organization": "Call centre",
+  "chooseOrganization": "Choose call centre",
+  "subject": "Subject",
+  "message": "Message",
+  "sending": "Sending …",
+  "send": "Send",
+  "close": "Close conversation",
+  "reopen": "Reopen",
+  "reply": "Reply",
+  "sendReply": "Send reply"
+}

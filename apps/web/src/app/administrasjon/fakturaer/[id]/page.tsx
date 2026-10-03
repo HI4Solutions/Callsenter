@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { ErrorMessage, secondaryButton, LoadState } from "@/components/admin/field";
 import { InvoiceView } from "@/components/billing/invoice-view";
@@ -10,6 +11,7 @@ import { orgFetch } from "@/lib/org";
 
 export default function OrgInvoicePage() {
   const { id } = useParams<{ id: string }>();
+  const t = useTranslations("org.invoices");
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,14 +31,14 @@ export default function OrgInvoicePage() {
       <ErrorMessage message={error} />
       <div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
         <Link href="/administrasjon/fakturaer" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">
-          ← Alle fakturaer
+          {t("all")}
         </Link>
         <button
           type="button"
           className={secondaryButton}
           onClick={() => openPdf(`/org/invoices/${invoice.id}/pdf`).catch((e: Error) => setError(e.message))}
         >
-          Last ned PDF
+          {t("downloadPdf")}
         </button>
       </div>
       <InvoiceView invoice={invoice} />
