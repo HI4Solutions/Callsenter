@@ -14,7 +14,8 @@ import {
   revokeInvitation,
   updateOrganization,
 } from "./organizations.ts";
-import { addGrowthEvent, createAnnouncement, deleteAnnouncement, deleteGrowthEvent, growth, listAnnouncements, listContactRequests, replyContactRequest, setContactRequestHandled, updateAnnouncement } from "./messages.ts";
+import { addGrowthEvent, createAnnouncement, deleteAnnouncement, deleteGrowthEvent, growth, listAnnouncements, updateAnnouncement } from "./messages.ts";
+import { contactMessageEmail, listContactThreads, previewContactReply, replyContactThread, setContactThreadHandled } from "./contact-threads.ts";
 import { getThread, listThreads, reply as replyThread, setThreadStatus, startThread } from "../org/threads.ts";
 import { accessLog, auditLog, blockIp, listBlockedIps, securityOverview, unblockIp } from "./security.ts";
 import {
@@ -83,8 +84,7 @@ const BLOCKED_IP = /^\/admin\/security\/blocked-ips\/([^/]+)$/;
 const THREAD = /^\/admin\/threads\/([^/]+)$/;
 const THREAD_MESSAGES = /^\/admin\/threads\/([^/]+)\/messages$/;
 const ANNOUNCEMENT = /^\/admin\/announcements\/([^/]+)$/;
-const CONTACT_REQUEST = /^\/admin\/contact-requests\/([^/]+)$/;
-const CONTACT_REPLY = /^\/admin\/contact-requests\/([^/]+)\/replies$/;
+const CONTACT_MESSAGE_EMAIL = /^\/admin\/contact-messages\/([^/]+)\/email$/;
 const GROWTH_EVENT = /^\/admin\/growth\/events\/([^/]+)$/;
 const USER_PASSKEY = /^\/admin\/users\/([^/]+)\/passkeys\/([^/]+)$/;
 const INVOICE = /^\/admin\/invoices\/([^/]+)$/;
@@ -197,11 +197,13 @@ export async function handleAdmin(
       if (method === "PATCH") return reply(200, await updateAnnouncement(deps.appDb, session, match[1], body()));
       if (method === "DELETE") return reply(200, await deleteAnnouncement(deps.appDb, session, match[1]));
     }
-    if (method === "GET" && path === "/admin/contact-requests") return reply(200, await listContactRequests(deps.appDb, session));
-    match = CONTACT_REQUEST.exec(path);
-    if (match && isUuid(match[1]) && method === "PATCH") return reply(200, await setContactRequestHandled(deps.appDb, session, match[1], body()));
-    match = CONTACT_REPLY.exec(path);
-    if (match && isUuid(match[1]) && method === "POST") return reply(201, await replyContactRequest(deps.appDb, session, match[1], body()));
+    // Correspondence with the landing page's visitors, one thread per e-mail address.
+    if (method === "GET" && path === "/admin/contact-threads") return reply(200, await listContactThreads(deps.appDb, session));
+    if (method === "POST" && path === "/admin/contact-threads/preview") return reply(200, await previewContactReply(deps.appDb, session, body()));
+    if (method === "POST" && path === "/admin/contact-threads/reply") return reply(201, await replyContactThread(deps.appDb, session, body()));
+    if (method === "POST" && path === "/admin/contact-threads/handled") return reply(200, await setContactThreadHandled(deps.appDb, session, body()));
+    match = CONTACT_MESSAGE_EMAIL.exec(path);
+    if (match && isUuid(match[1]) && method === "GET") return reply(200, await contactMessageEmail(deps.appDb, session, match[1]));
     if (path === "/admin/system") {
       if (method === "GET") return reply(200, await getSystem(deps.appDb, session));
       if (method === "PATCH") return reply(200, await updateSystem(deps.appDb, session, body()));

@@ -372,23 +372,32 @@
     "publish": "Veröffentlichen",
     "contact": {
       "title": "Anfragen",
-      "intro": "Aus dem Kontaktformular der Landingpage. Per E-Mail antworten und die Anfrage als erledigt markieren.",
+      "intro": "Aus dem Kontaktformular der Landingpage, ein Verlauf pro E-Mail-Adresse. Antworten werden als E-Mail gesendet, Rückantworten kommen in Ihr Postfach.",
+      "introInbound": "Aus dem Kontaktformular und E-Mails an {email}, ein Verlauf pro E-Mail-Adresse. Antworten werden als E-Mail gesendet, Rückantworten kommen hier an.",
       "none": "Noch keine Anfragen.",
-      "open": "Neu",
-      "handled": "Erledigt am {date} von {name}",
+      "choose": "Wählen Sie eine Unterhaltung.",
+      "allThreads": "Alle Unterhaltungen",
+      "unread": "{count, plural, one {# neu} other {# neu}}",
       "markHandled": "Als erledigt markieren",
-      "reopen": "Wieder öffnen",
+      "reopen": "Als neu markieren",
       "phone": "Telefon",
       "company": "Firma",
       "language": "Sprache",
       "reply": "Antworten",
-      "replyHint": "Wird an {email} in der Sprache gesendet, in der die Person geschrieben hat, mit Ihrer E-Mail-Adresse als Antwortadresse.",
-      "send": "Antwort senden",
+      "replyHint": "Wird an {email} als E-Mail im Design von VeriQall gesendet, in der Sprache, in der die Person geschrieben hat.",
+      "preview": "E-Mail-Vorschau",
+      "send": "Senden",
       "sending": "Wird gesendet …",
-      "replies": "Gesendete Antworten",
-      "replyBy": "{name}, {date}",
       "notSent": "Nicht gesendet",
-      "noEmail": "E-Mail ist nicht eingerichtet, daher können von hier noch keine Antworten gesendet werden."
+      "noEmail": "E-Mail ist nicht eingerichtet, daher können von hier noch keine Antworten gesendet werden.",
+      "showEmail": "E-Mail anzeigen",
+      "to": "An",
+      "replyTo": "Antwort an",
+      "kind": {
+        "form": "Kontaktformular",
+        "email": "E-Mail",
+        "reply": "Antwort"
+      }
     }
   },
   "security": {

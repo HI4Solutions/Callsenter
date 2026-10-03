@@ -372,23 +372,32 @@
     "publish": "Publish",
     "contact": {
       "title": "Enquiries",
-      "intro": "From the contact form on the landing page. Reply by e-mail, and mark the enquiry as handled.",
+      "intro": "From the contact form on the landing page, one thread per e-mail address. Replies are sent as e-mail, and answers arrive in your inbox.",
+      "introInbound": "From the contact form and e-mail to {email}, one thread per e-mail address. Replies are sent as e-mail, and answers arrive here.",
       "none": "No enquiries yet.",
-      "open": "New",
-      "handled": "Handled {date} by {name}",
+      "choose": "Choose a conversation.",
+      "allThreads": "All conversations",
+      "unread": "{count, plural, one {# new} other {# new}}",
       "markHandled": "Mark as handled",
-      "reopen": "Reopen",
+      "reopen": "Mark as new",
       "phone": "Phone",
       "company": "Company",
       "language": "Language",
       "reply": "Reply",
-      "replyHint": "Sent to {email} in the language the person wrote in, with your e-mail address as the reply-to address.",
-      "send": "Send reply",
+      "replyHint": "Sent to {email} as an e-mail in VeriQall's design, in the language the person wrote in.",
+      "preview": "Preview e-mail",
+      "send": "Send",
       "sending": "Sending …",
-      "replies": "Replies sent",
-      "replyBy": "{name}, {date}",
       "notSent": "Not sent",
-      "noEmail": "E-mail is not set up, so replies cannot be sent from here yet."
+      "noEmail": "E-mail is not set up, so replies cannot be sent from here yet.",
+      "showEmail": "Show e-mail",
+      "to": "To",
+      "replyTo": "Reply to",
+      "kind": {
+        "form": "Contact form",
+        "email": "E-mail",
+        "reply": "Reply"
+      }
     }
   },
   "security": {

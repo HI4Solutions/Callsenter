@@ -62,6 +62,14 @@ Parameters:
       Domain e-mail is sent from (noreply@), for example staging.veriqall.no. Creates the SES
       identity; the DKIM and MAIL FROM records in the outputs go to the DNS provider. Empty turns
       e-mail off (invitation links are then copied by hand).
+  InboundEmailDomain:
+    Type: String
+    Default: ""
+    Description: >-
+      Domain SES receives e-mail for (docs/plan.md, section 20), for example
+      svar.staging.veriqall.no. Answers to replies from the portal go to kontakt@ on it and land in
+      Superadmin → Meldinger. Needs EmailDomain. The MX and DKIM records in the outputs go to the
+      DNS provider. Empty turns incoming e-mail off (answers go to the superadmin's own inbox).
   BedrockRegion:
     Type: String
     Default: eu-north-1
@@ -72,6 +80,9 @@ Parameters:
 
 Conditions:
   HasEmail: !Not [!Equals [!Ref EmailDomain, ""]]
+  HasInbound: !And
+    - !Not [!Equals [!Ref EmailDomain, ""]]
+    - !Not [!Equals [!Ref InboundEmailDomain, ""]]
   HasMigratorArtifact: !Not [!Equals [!Ref MigratorArtifactKey, ""]]
   HasCustomDomain: !And
     - !Not [!Equals [!Ref ApiDomainName, ""]]
@@ -268,6 +279,7 @@ Resources:
           AUDIO_BUCKET: !ImportValue {"Fn::Sub": "veriqall-${Environment}-audio-bucket"}
           WORKER_FUNCTION: !Sub veriqall-${Environment}-worker
           EMAIL_FROM: !If [HasEmail, !Sub "VeriQall <noreply@${EmailDomain}>", !Ref AWS::NoValue]
+          INBOUND_EMAIL: !If [HasInbound, !Sub "kontakt@${InboundEmailDomain}", !Ref AWS::NoValue]
       Tags:
         - Key: project
           Value: veriqall
@@ -343,6 +355,19 @@ Resources:
                 Resource:
                   - !Sub arn:${AWS::Partition}:bedrock:${BedrockRegion}:${AWS::AccountId}:inference-profile/eu.anthropic.*
                   - !Sub arn:${AWS::Partition}:bedrock:*::foundation-model/anthropic.*
+        # Reads and deletes the e-mails SES stores for the inbound address.
+        - !If
+          - HasInbound
+          - PolicyName: inbound
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:GetObject
+                    - s3:DeleteObject
+                  Resource: !Sub ${InboundBucket.Arn}/inbound/*
+          - !Ref AWS::NoValue
         # Invoices sent by the morning run are e-mailed from noreply@ on the environment's domain.
         - !If
           - HasEmail
@@ -395,6 +420,7 @@ Resources:
           AUDIO_BUCKET: !ImportValue {"Fn::Sub": "veriqall-${Environment}-audio-bucket"}
           BEDROCK_REGION: !Ref BedrockRegion
           EMAIL_FROM: !If [HasEmail, !Sub "VeriQall <noreply@${EmailDomain}>", !Ref AWS::NoValue]
+          INBOUND_BUCKET: !If [HasInbound, !Ref InboundBucket, !Ref AWS::NoValue]
       Tags:
         - Key: project
           Value: veriqall
@@ -434,6 +460,106 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt DailyRule.Arn
+
+  # --- Incoming e-mail (docs/plan.md, section 20) ---------------------------------------------
+  # SES receives mail for InboundEmailDomain, keeps the raw message here for 30 days and starts
+  # the worker, which stores the answer in its thread.
+  InboundIdentity:
+    Type: AWS::SES::EmailIdentity
+    Condition: HasInbound
+    Properties:
+      EmailIdentity: !Ref InboundEmailDomain
+
+  InboundBucket:
+    Type: AWS::S3::Bucket
+    Condition: HasInbound
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-inbound
+            Status: Enabled
+            ExpirationInDays: 30
+      Tags:
+        - Key: project
+          Value: veriqall
+        - Key: environment
+          Value: !Ref Environment
+
+  InboundBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: HasInbound
+    Properties:
+      Bucket: !Ref InboundBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: SesPut
+            Effect: Allow
+            Principal:
+              Service: ses.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub ${InboundBucket.Arn}/inbound/*
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+          - Sid: TlsOnly
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt InboundBucket.Arn
+              - !Sub ${InboundBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  InboundInvokePermission:
+    Type: AWS::Lambda::Permission
+    Condition: HasInbound
+    Properties:
+      FunctionName: !Ref WorkerFunction
+      Action: lambda:InvokeFunction
+      Principal: ses.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+
+  InboundRuleSet:
+    Type: AWS::SES::ReceiptRuleSet
+    Condition: HasInbound
+    Properties:
+      RuleSetName: !Sub veriqall-${Environment}-inbound
+
+  InboundRule:
+    Type: AWS::SES::ReceiptRule
+    Condition: HasInbound
+    DependsOn: [InboundBucketPolicy, InboundInvokePermission]
+    Properties:
+      RuleSetName: !Ref InboundRuleSet
+      Rule:
+        Name: !Sub veriqall-${Environment}-contact
+        Enabled: true
+        ScanEnabled: true
+        TlsPolicy: Require
+        Recipients:
+          - !Ref InboundEmailDomain
+        Actions:
+          - S3Action:
+              BucketName: !Ref InboundBucket
+              ObjectKeyPrefix: inbound/
+          - LambdaAction:
+              FunctionArn: !GetAtt WorkerFunction.Arn
+              InvocationType: Event
 
   HttpApi:
     Type: AWS::ApiGatewayV2::Api
@@ -683,6 +809,19 @@ Outputs:
         - !Sub "${EmailIdentity.DkimDNSTokenName3} CNAME ${EmailIdentity.DkimDNSTokenValue3}"
         - !Sub "mail.${EmailDomain} MX 10 feedback-smtp.${AWS::Region}.amazonses.com"
         - !Sub "mail.${EmailDomain} TXT v=spf1 include:amazonses.com ~all"
+  InboundRuleSetName:
+    Condition: HasInbound
+    Description: Receipt rule set deploy.sh makes active (one per account and region).
+    Value: !Ref InboundRuleSet
+  InboundDnsRecords:
+    Condition: HasInbound
+    Description: Records for incoming e-mail at the DNS provider (one.com), separated by |
+    Value: !Join
+      - "|"
+      - - !Sub "${InboundEmailDomain} MX 10 inbound-smtp.${AWS::Region}.amazonaws.com"
+        - !Sub "${InboundIdentity.DkimDNSTokenName1} CNAME ${InboundIdentity.DkimDNSTokenValue1}"
+        - !Sub "${InboundIdentity.DkimDNSTokenName2} CNAME ${InboundIdentity.DkimDNSTokenValue2}"
+        - !Sub "${InboundIdentity.DkimDNSTokenName3} CNAME ${InboundIdentity.DkimDNSTokenValue3}"
   MigratorFunctionName:
     Value: !Ref MigratorFunction
   WorkerFunctionName:

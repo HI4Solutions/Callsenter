@@ -5,7 +5,7 @@
 # Lambda zip at apps/api/lambda.zip.
 #
 # Optional environment variables: ALERT_EMAIL, API_DOMAIN_NAME, API_CERTIFICATE_ARN, APP_ORIGIN,
-# IDURA_DOMAIN, EMAIL_DOMAIN.
+# IDURA_DOMAIN, EMAIL_DOMAIN, INBOUND_EMAIL_DOMAIN.
 set -euo pipefail
 
 env="${1:?usage: infra/deploy.sh staging|production}"
@@ -83,6 +83,7 @@ if [[ -n "${API_DOMAIN_NAME:-}" && -n "${API_CERTIFICATE_ARN:-}" ]]; then
   app_params+=("ApiDomainName=$API_DOMAIN_NAME" "ApiCertificateArn=$API_CERTIFICATE_ARN")
 fi
 [[ -n "${EMAIL_DOMAIN:-}" ]] && app_params+=("EmailDomain=$EMAIL_DOMAIN")
+[[ -n "${INBOUND_EMAIL_DOMAIN:-}" ]] && app_params+=("InboundEmailDomain=$INBOUND_EMAIL_DOMAIN")
 
 # Migrations run before the API and the worker get the new code: first the stack with the new
 # migrator and the code that is running now, then the migrations, then the new code. A failed
@@ -114,6 +115,12 @@ deploy app app.yml "${app_params[@]}" "MigratorArtifactKey=$artifact_key"
 if [[ -n "${EMAIL_DOMAIN:-}" ]]; then
   echo "DNS records for e-mail (add at one.com once):"
   output "veriqall-$env-app" EmailDnsRecords | tr '|' '\n'
+fi
+if [[ -n "${INBOUND_EMAIL_DOMAIN:-}" ]]; then
+  # SES has one active receipt rule set per account and region; this environment's becomes it.
+  aws ses set-active-receipt-rule-set --region "$region" --rule-set-name "$(output "veriqall-$env-app" InboundRuleSetName)"
+  echo "DNS records for incoming e-mail (add at one.com once):"
+  output "veriqall-$env-app" InboundDnsRecords | tr '|' '\n'
 fi
 
 echo "::group::smoke test"

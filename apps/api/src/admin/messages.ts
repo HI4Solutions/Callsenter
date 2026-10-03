@@ -2,9 +2,6 @@
 // ("Vekst"). Announcements are read by every signed-in user through GET /announcements.
 import type pg from "pg";
 import type { Session } from "../auth/session.ts";
-import { emailEnabled, emailHtml, escapeHtml, sendEmail } from "../email.ts";
-import { DOCUMENT_TEXTS } from "../i18n/documents.ts";
-import { localeOr } from "../i18n/worker.ts";
 import { withSession } from "../me.ts";
 import { NotFound } from "./organizations.ts";
 import { BadRequest, type Body, isUuid, optionalDate, optionalText, requiredText } from "./validate.ts";
@@ -189,94 +186,5 @@ export async function deleteGrowthEvent(db: pg.Pool, session: Session, id: strin
     const { rowCount } = await c.query("delete from growth_events where id = $1", [id]);
     if (!rowCount) throw new NotFound();
     return { id };
-  });
-}
-
-// --- Contact requests from the landing page (docs/plan.md, section 20) -------------------------
-
-const CONTACT_COLUMNS = `r.id, r.name, r.email, r.phone, r.company, r.message, r.locale, r.created_at as "createdAt",
-       r.handled_at as "handledAt", u.full_name as "handledByName",
-       coalesce((select json_agg(json_build_object('id', x.id, 'body', x.body, 'sentTo', x.sent_to, 'sent', x.message_id is not null,
-                                                   'createdAt', x.created_at, 'sentByName', xu.full_name) order by x.created_at)
-                 from contact_replies x left join users xu on xu.id = x.sent_by where x.contact_request_id = r.id), '[]') as replies`;
-
-// The requests, open ones first, and whether replies can be e-mailed from here.
-export async function listContactRequests(db: pg.Pool, session: Session) {
-  return platform(db, session, async (c) => {
-    const { rows } = await c.query(
-      `select ${CONTACT_COLUMNS} from contact_requests r left join users u on u.id = r.handled_by
-       order by r.handled_at is not null, r.created_at desc limit 500`,
-    );
-    return { emailEnabled: emailEnabled(), requests: rows };
-  });
-}
-
-// Marks a request handled (or open again), with who did it.
-export async function setContactRequestHandled(db: pg.Pool, session: Session, id: string, body: Body) {
-  if (typeof body.handled !== "boolean") throw new BadRequest("Ugyldig verdi.");
-  return platform(db, session, async (c) => {
-    const { rows } = await c.query(
-      `update contact_requests r set handled_at = case when $2 then now() end, handled_by = case when $2 then app.current_user_id() end
-       where r.id = $1 returning r.id`,
-      [id, body.handled],
-    );
-    if (!rows.length) throw new NotFound();
-    const { rows: out } = await c.query(`select ${CONTACT_COLUMNS} from contact_requests r left join users u on u.id = r.handled_by where r.id = $1`, [id]);
-    return out[0];
-  });
-}
-
-// A superadmin answers a request by e-mail, in the visitor's language. Answers go to the
-// superadmin's own address (Reply-To). The reply is stored first, then sent; it marks the request
-// handled.
-export async function replyContactRequest(db: pg.Pool, session: Session, id: string, body: Body) {
-  const text = requiredText(body, "message", "Melding", 10000);
-  if (!emailEnabled()) throw new BadRequest("E-post er ikke satt opp.");
-  const draft = await platform(db, session, async (c) => {
-    const request = (
-      await c.query<{ name: string; email: string; message: string; locale: string | null }>(
-        "select name, email, message, locale from contact_requests where id = $1",
-        [id],
-      )
-    ).rows[0];
-    if (!request) throw new NotFound();
-    const me = (await c.query<{ email: string | null }>("select email from users where id = app.current_user_id()")).rows[0];
-    const { rows } = await c.query<{ id: string }>(
-      `insert into contact_replies (contact_request_id, body, sent_to, sent_by, reply_to)
-       values ($1, $2, $3, app.current_user_id(), $4) returning id`,
-      [id, text, request.email, me?.email ?? null],
-    );
-    await c.query(
-      "update contact_requests set handled_at = coalesce(handled_at, now()), handled_by = coalesce(handled_by, app.current_user_id()) where id = $1",
-      [id],
-    );
-    return { replyId: rows[0]!.id, request, replyTo: me?.email ?? undefined };
-  });
-  const t = DOCUMENT_TEXTS[localeOr(draft.request.locale)].contactReply;
-  const quoted = draft.request.message
-    .split("\n")
-    .map((line) => `> ${line}`)
-    .join("\n");
-  const messageId = await sendEmail({
-    to: draft.request.email,
-    replyTo: draft.replyTo,
-    subject: t.subject,
-    text: `${text}\n\n${draft.replyTo ? `${t.answerHint}\n\n` : ""}${t.youWrote}\n${quoted}`,
-    html: emailHtml(
-      t.subject,
-      `<p style="white-space:pre-wrap">${escapeHtml(text)}</p>${draft.replyTo ? `<p style="font-size:14px;color:#666">${escapeHtml(t.answerHint)}</p>` : ""}
-<p style="font-size:14px;color:#666;margin-top:24px">${escapeHtml(t.youWrote)}</p>
-<blockquote style="margin:0;padding-left:12px;border-left:3px solid #ccc;color:#555;white-space:pre-wrap">${escapeHtml(draft.request.message)}</blockquote>`,
-      localeOr(draft.request.locale),
-    ),
-  }).catch((error) => {
-    console.error("contact reply: could not send e-mail", error);
-    return null;
-  });
-  return platform(db, session, async (c) => {
-    if (messageId) await c.query("update contact_replies set message_id = $2 where id = $1", [draft.replyId, messageId]);
-    const { rows } = await c.query(`select ${CONTACT_COLUMNS} from contact_requests r left join users u on u.id = r.handled_by where r.id = $1`, [id]);
-    if (!messageId) throw new BadRequest("E-posten kunne ikke sendes. Svaret er lagret, men ikke sendt.");
-    return rows[0];
   });
 }

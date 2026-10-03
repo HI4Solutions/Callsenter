@@ -140,6 +140,22 @@ export function emailHtml(title: string, bodyHtml: string, locale: Locale = DEFA
 <p style="margin-top:32px;font-size:13px;color:#666">VeriQall</p></div></body></html>`;
 }
 
+// VeriQall's own design (docs/plan.md, section 6) for e-mails written by people: the wordmark in
+// the brand colour, the text on a white card, and who sends it. Tables and inline styles, so it
+// holds in Outlook and Gmail; no images, so nothing is blocked. Used for replies to the contact
+// form; the other e-mails keep emailHtml until they are moved over.
+export function brandedEmailHtml(title: string, bodyHtml: string, locale: Locale = DEFAULT_LOCALE): string {
+  const font = "'Schibsted Grotesk',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
+  return `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="light"><title>${escapeHtml(title)}</title></head>
+<body style="margin:0;padding:0;background:#fafafc">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fafafc"><tr><td align="center" style="padding:32px 16px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px">
+<tr><td style="padding:0 4px 20px;font-family:${font};font-size:26px;font-weight:800;letter-spacing:-0.5px;color:#15172e">Veri<span style="color:#3326c9">Q</span>all</td></tr>
+<tr><td style="background:#ffffff;border:1px solid #dcdcec;border-radius:12px;padding:28px 28px 24px;font-family:${font};font-size:16px;line-height:1.55;color:#15172e">${bodyHtml}</td></tr>
+<tr><td style="padding:20px 4px 0;font-family:${font};font-size:13px;line-height:1.5;color:#555873">VeriQall · Hi4 Solutions AS</td></tr>
+</table></td></tr></table></body></html>`;
+}
+
 // The invitation e-mail, in the language of the call centre the person is invited to.
 export function invitationEmail(name: string, organization: string, link: string, locale: Locale = DEFAULT_LOCALE) {
   const t = DOCUMENT_TEXTS[locale].invitation;
