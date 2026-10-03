@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 
-// Single-series charts for the growth tab: one hue (the brand color), hairline grid, 2px line,
+// Single-series charts for Vekst and Oversikt: one hue (the brand color), hairline grid, 2px line,
 // columns at most 24px with a 4px rounded top, a hover/focus tooltip, and a table view. No
 // legend: the title names the one series.
 
 export interface Point {
+  // Under the axis; title (if any) in the tooltip and the table, e.g. the whole date.
   label: string;
   value: number;
+  title?: string;
 }
 
 export interface Marker {
@@ -59,6 +61,7 @@ function Frame({
   tooltip,
   W,
   frameRef,
+  labelHeading,
 }: {
   title: string;
   points: Point[];
@@ -68,6 +71,7 @@ function Frame({
   tooltip: React.ReactNode;
   W: number;
   frameRef: React.RefObject<HTMLDivElement | null>;
+  labelHeading: string;
 }) {
   const plotH = H - PAD.top - PAD.bottom;
   const band = (W - PAD.left - PAD.right) / Math.max(points.length, 1);
@@ -121,7 +125,7 @@ function Frame({
           <thead>
             <tr className="border-b border-line text-left">
               <th scope="col" className="py-1 font-semibold">
-                Måned
+                {labelHeading}
               </th>
               <th scope="col" className="py-1 text-right font-semibold">
                 Antall
@@ -131,7 +135,7 @@ function Frame({
           <tbody>
             {points.map((p) => (
               <tr key={p.label} className="border-b border-line">
-                <td className="py-1">{p.label}</td>
+                <td className="py-1">{p.title ?? p.label}</td>
                 <td className="py-1 text-right">{fmt.format(p.value)}</td>
               </tr>
             ))}
@@ -156,7 +160,7 @@ function HitTargets({ points, onActive, W }: { points: Point[]; onActive: (i: nu
           height={H - PAD.top - PAD.bottom}
           fill="transparent"
           tabIndex={0}
-          aria-label={`${p.label}: ${fmt.format(p.value)}`}
+          aria-label={`${p.title ?? p.label}: ${fmt.format(p.value)}`}
           onMouseEnter={() => onActive(i)}
           onMouseLeave={() => onActive(null)}
           onFocus={() => onActive(i)}
@@ -189,7 +193,19 @@ function markerText(markers: Marker[], index: number) {
   return here.length ? <p className="text-muted">{here.map((m) => m.title).join(", ")}</p> : null;
 }
 
-export function ColumnChart({ title, points, unit, markers = [] }: { title: string; points: Point[]; unit: string; markers?: Marker[] }) {
+export function ColumnChart({
+  title,
+  points,
+  unit,
+  markers = [],
+  labelHeading = "Måned",
+}: {
+  title: string;
+  points: Point[];
+  unit: string;
+  markers?: Marker[];
+  labelHeading?: string;
+}) {
   const [active, setActive] = useState<number | null>(null);
   const { ref, width: W } = useWidth();
   const max = niceMax(Math.max(0, ...points.map((p) => p.value)));
@@ -205,10 +221,11 @@ export function ColumnChart({ title, points, unit, markers = [] }: { title: stri
       active={active}
       W={W}
       frameRef={ref}
+      labelHeading={labelHeading}
       tooltip={
         active !== null && (
           <>
-            <p className="font-semibold">{points[active]!.label}</p>
+            <p className="font-semibold">{points[active]!.title ?? points[active]!.label}</p>
             <p>
               {fmt.format(points[active]!.value)} {unit}
             </p>
@@ -232,7 +249,19 @@ export function ColumnChart({ title, points, unit, markers = [] }: { title: stri
   );
 }
 
-export function LineChart({ title, points, unit, markers = [] }: { title: string; points: Point[]; unit: string; markers?: Marker[] }) {
+export function LineChart({
+  title,
+  points,
+  unit,
+  markers = [],
+  labelHeading = "Måned",
+}: {
+  title: string;
+  points: Point[];
+  unit: string;
+  markers?: Marker[];
+  labelHeading?: string;
+}) {
   const [active, setActive] = useState<number | null>(null);
   const { ref, width: W } = useWidth();
   const max = niceMax(Math.max(0, ...points.map((p) => p.value)));
@@ -249,10 +278,11 @@ export function LineChart({ title, points, unit, markers = [] }: { title: string
       active={active}
       W={W}
       frameRef={ref}
+      labelHeading={labelHeading}
       tooltip={
         active !== null && (
           <>
-            <p className="font-semibold">{points[active]!.label}</p>
+            <p className="font-semibold">{points[active]!.title ?? points[active]!.label}</p>
             <p>
               {fmt.format(points[active]!.value)} {unit}
             </p>

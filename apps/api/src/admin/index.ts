@@ -77,6 +77,7 @@ import {
   revenueReport,
   updateFixedCost,
 } from "./accounting.ts";
+import { platformOverview } from "./overview.ts";
 import { getSystem, updateSystem, usage } from "./system.ts";
 import { getPrices, organizationUsage, refreshRate, updatePrices, usageByOrganization, usageSummary } from "./usage.ts";
 import { BadRequest, isUuid, parseBody } from "./validate.ts";
@@ -169,6 +170,7 @@ export async function handleAdmin(
       return reply(200, await removeIdentity(deps.appDb, session, match[1], match[2]!));
     }
     if (path === "/admin/catalog" && method === "GET") return reply(200, await catalog(deps.appDb, session));
+    if (path === "/admin/overview" && method === "GET") return reply(200, await platformOverview(deps.appDb, session));
     const query = event.queryStringParameters ?? {};
     if (method === "GET" && path === "/admin/security/overview") return reply(200, await securityOverview(deps.appDb, session, query));
     if (method === "GET" && path === "/admin/security/audit") return reply(200, await auditLog(deps.appDb, session, query));

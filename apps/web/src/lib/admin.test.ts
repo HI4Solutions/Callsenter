@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { announcementState, changedFields, cumulative, invitationState, organizationState, toCsv } from "./admin";
+import { announcementState, attention, changedFields, cumulative, invitationState, organizationState, type PlatformOverview, toCsv } from "./admin";
 
 const now = new Date("2026-10-02T12:00:00Z");
 
@@ -59,5 +59,52 @@ describe("messages and growth helpers", () => {
 
   it("builds running totals", () => {
     expect(cumulative(10, [1, 0, 3])).toEqual([11, 11, 14]);
+  });
+});
+
+describe("the superadmin's overview", () => {
+  const quiet: PlatformOverview = {
+    today: "2026-10-03",
+    organizations: { total: 2, open: 2, trial: 1, paying: 1, closed: 0, newThisMonth: 0, ending: [], mostActive: [], quiet: [] },
+    users: { active: 5, invited: 0, disabled: 0, new30: 0, loggedInToday: 2, loggedIn7: 4 },
+    logins: { today: 2, week: 9, byMethod: { bankid: 3, vipps: 6, passkey: 0 }, failed24h: 1, suspiciousIps: 0, blockedIps: 0 },
+    calls: { today: 10, week: 50, month: 20, failed7: 0, recording: 1, processing: 0, stuck: 0, piecesWaiting: 0, oldestPieceAt: null },
+    usage: { hours: 1, controls: 10, notes: 2 },
+    support: { open: 1, unread: 0, announcements: 0 },
+    days: [],
+    money: { mrr: 1000, arr: 12000, revenue: 0, costs: 10, result: -10, outstanding: 0, overdue: 0, missed: 0, drafts: 0, scheduled: 0 },
+  };
+  const now = Date.parse("2026-10-03T12:00:00Z");
+
+  it("has nothing to say when all is well", () => {
+    expect(attention(quiet, now)).toEqual([]);
+  });
+
+  it("puts the worker first, then failed calls, logins, money and messages", () => {
+    const busy: PlatformOverview = {
+      ...quiet,
+      calls: { ...quiet.calls, stuck: 1, piecesWaiting: 3, oldestPieceAt: "2026-10-03T11:48:00Z", failed7: 2 },
+      logins: { ...quiet.logins, suspiciousIps: 1 },
+      money: { ...quiet.money, missed: 2, overdue: 5000, drafts: 1 },
+      support: { ...quiet.support, unread: 3 },
+    };
+    const items = attention(busy, now);
+    expect(items.map((i) => i.key)).toEqual(["stuck", "pieces", "failed", "ips", "missed", "unread", "drafts"]);
+    expect(items[0]!.text).toMatch(/^1 samtale har stått i behandling/);
+    expect(items[1]!.text).toMatch(/^3 lydbiter venter på transkripsjon, den eldste i 12 minutter\./);
+    expect(items[4]).toMatchObject({ text: "2 fakturaer med uteblitt betaling.", href: "/admin/okonomi/faktura" });
+  });
+
+  it("lets pieces wait a few minutes, and shows what is overdue when no payment was missed", () => {
+    const items = attention(
+      {
+        ...quiet,
+        calls: { ...quiet.calls, piecesWaiting: 2, oldestPieceAt: "2026-10-03T11:58:00Z" },
+        money: { ...quiet.money, overdue: 12500 },
+      },
+      now,
+    );
+    expect(items.map((i) => i.key)).toEqual(["overdue"]);
+    expect(items[0]!.text).toBe("12\u00a0500 kr er forfalt og ikke betalt.");
   });
 });

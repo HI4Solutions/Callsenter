@@ -768,24 +768,37 @@ export async function runBilling(db: pg.Pool, session: Session) {
 
 // Key figures, excluding VAT: monthly recurring revenue from active agreements, what was invoiced
 // this month and this year (credit notes subtracted), and what is outstanding and overdue.
+// MRR from the fixed agreements, invoiced this month and year, and what is unpaid. Also on
+// the superadmin's overview.
+export async function billingTotals(c: pg.PoolClient) {
+  const { rows } = await c.query<{
+    mrr: string;
+    invoicedMonth: string;
+    invoicedYear: string;
+    outstanding: string;
+    overdue: string;
+    drafts: number;
+    scheduled: number;
+    missed: number;
+  }>(
+    `select
+       (select coalesce(sum((l->>'quantity')::numeric * (l->>'unitPrice')::numeric / r.interval_months), 0)
+        from recurring_invoices r, jsonb_array_elements(r.lines) l where r.active and not r.paused)::numeric(12, 2)::text as mrr,
+       (select coalesce(sum(subtotal), 0) from invoices where status not in ('draft', 'scheduled')
+          and issue_date >= date_trunc('month', app.oslo_today()))::text as "invoicedMonth",
+       (select coalesce(sum(subtotal), 0) from invoices where status not in ('draft', 'scheduled')
+          and issue_date >= date_trunc('year', app.oslo_today()))::text as "invoicedYear",
+       (select coalesce(sum(i.total - coalesce((select sum(amount) from invoice_payments p where p.invoice_id = i.id), 0)), 0)
+        from invoices i where i.status in ('sent', 'payment_missed') and i.kind = 'invoice')::text as outstanding,
+       (select coalesce(sum(i.total - coalesce((select sum(amount) from invoice_payments p where p.invoice_id = i.id), 0)), 0)
+        from invoices i where i.status in ('sent', 'payment_missed') and i.kind = 'invoice' and i.due_date < app.oslo_today())::text as overdue,
+       (select count(*)::int from invoices where status = 'draft') as drafts,
+       (select count(*)::int from invoices where status = 'scheduled') as scheduled,
+       (select count(*)::int from invoices where status = 'payment_missed') as missed`,
+  );
+  return rows[0]!;
+}
+
 export async function billingOverview(db: pg.Pool, session: Session) {
-  return withSession(db, session, async (c) => {
-    const { rows } = await c.query(
-      `select
-         (select coalesce(sum((l->>'quantity')::numeric * (l->>'unitPrice')::numeric / r.interval_months), 0)
-          from recurring_invoices r, jsonb_array_elements(r.lines) l where r.active and not r.paused)::numeric(12, 2)::text as mrr,
-         (select coalesce(sum(subtotal), 0) from invoices where status not in ('draft', 'scheduled')
-            and issue_date >= date_trunc('month', app.oslo_today()))::text as "invoicedMonth",
-         (select coalesce(sum(subtotal), 0) from invoices where status not in ('draft', 'scheduled')
-            and issue_date >= date_trunc('year', app.oslo_today()))::text as "invoicedYear",
-         (select coalesce(sum(i.total - coalesce((select sum(amount) from invoice_payments p where p.invoice_id = i.id), 0)), 0)
-          from invoices i where i.status in ('sent', 'payment_missed') and i.kind = 'invoice')::text as outstanding,
-         (select coalesce(sum(i.total - coalesce((select sum(amount) from invoice_payments p where p.invoice_id = i.id), 0)), 0)
-          from invoices i where i.status in ('sent', 'payment_missed') and i.kind = 'invoice' and i.due_date < app.oslo_today())::text as overdue,
-         (select count(*)::int from invoices where status = 'draft') as drafts,
-         (select count(*)::int from invoices where status = 'scheduled') as scheduled,
-         (select count(*)::int from invoices where status = 'payment_missed') as missed`,
-    );
-    return rows[0];
-  });
+  return withSession(db, session, billingTotals);
 }

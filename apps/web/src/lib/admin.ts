@@ -250,3 +250,119 @@ export function monthLabel(month: string): string {
   const [year, m] = month.split("-").map(Number);
   return new Intl.DateTimeFormat("nb-NO", { month: "short", year: "2-digit" }).format(new Date(Date.UTC(year!, m! - 1, 1)));
 }
+
+// Superadmin → Oversikt (GET /admin/overview). Counts only; money in NOK.
+export interface PlatformOverview {
+  today: string;
+  organizations: {
+    total: number;
+    open: number;
+    trial: number;
+    paying: number;
+    closed: number;
+    newThisMonth: number;
+    ending: { id: string; name: string; kind: "trial" | "access"; endsAt: string }[];
+    mostActive: { id: string; name: string; calls: number; users30: number }[];
+    quiet: { id: string; name: string; lastCallAt: string | null; lastLoginAt: string | null }[];
+  };
+  users: { active: number; invited: number; disabled: number; new30: number; loggedInToday: number; loggedIn7: number };
+  logins: {
+    today: number;
+    week: number;
+    byMethod: { bankid: number; vipps: number; passkey: number };
+    failed24h: number;
+    suspiciousIps: number;
+    blockedIps: number;
+  };
+  calls: {
+    today: number;
+    week: number;
+    month: number;
+    failed7: number;
+    recording: number;
+    processing: number;
+    stuck: number;
+    piecesWaiting: number;
+    oldestPieceAt: string | null;
+  };
+  usage: { hours: number; controls: number; notes: number };
+  support: { open: number; unread: number; announcements: number };
+  days: { day: string; calls: number; logins: number }[];
+  money: {
+    mrr: number;
+    arr: number;
+    revenue: number;
+    costs: number;
+    result: number;
+    outstanding: number;
+    overdue: number;
+    missed: number;
+    drafts: number;
+    scheduled: number;
+  };
+}
+
+export interface Attention {
+  key: string;
+  text: string;
+  href?: string;
+}
+
+export function waitedMinutes(since: string, now: number): number {
+  return Math.max(0, Math.floor((now - Date.parse(since)) / 60_000));
+}
+
+const count = (n: number, one: string, many: string) => `${new Intl.NumberFormat("nb-NO").format(n)} ${n === 1 ? one : many}`;
+
+// What needs the superadmin now, most urgent first: the worker falling behind, failed calls,
+// logins that look like an attack, money not paid, and messages not read.
+export function attention(o: PlatformOverview, now: number): Attention[] {
+  const items: Attention[] = [];
+  if (o.calls.stuck > 0) {
+    items.push({
+      key: "stuck",
+      text: `${count(o.calls.stuck, "samtale har", "samtaler har")} stått i behandling i over 30 minutter. Sjekk loggene til workeren.`,
+    });
+  }
+  const waited = o.calls.oldestPieceAt ? waitedMinutes(o.calls.oldestPieceAt, now) : 0;
+  if (o.calls.piecesWaiting > 0 && waited >= 5) {
+    items.push({
+      key: "pieces",
+      text: `${count(o.calls.piecesWaiting, "lydbit venter", "lydbiter venter")} på transkripsjon, den eldste i ${count(waited, "minutt", "minutter")}. Sjekk loggene til workeren.`,
+    });
+  }
+  if (o.calls.failed7 > 0) {
+    items.push({ key: "failed", text: `${count(o.calls.failed7, "samtale", "samtaler")} feilet de siste 7 dagene.` });
+  }
+  if (o.logins.suspiciousIps > 0) {
+    items.push({
+      key: "ips",
+      text: `${count(o.logins.suspiciousIps, "IP-adresse", "IP-adresser")} med fem eller flere mislykkede innlogginger siste døgn, ikke sperret.`,
+      href: "/admin/sikkerhet",
+    });
+  }
+  if (o.money.missed > 0) {
+    items.push({
+      key: "missed",
+      text: `${count(o.money.missed, "faktura", "fakturaer")} med uteblitt betaling.`,
+      href: "/admin/okonomi/faktura",
+    });
+  } else if (o.money.overdue > 0) {
+    items.push({
+      key: "overdue",
+      text: `${new Intl.NumberFormat("nb-NO", { maximumFractionDigits: 0 }).format(o.money.overdue)} kr er forfalt og ikke betalt.`,
+      href: "/admin/okonomi/faktura",
+    });
+  }
+  if (o.support.unread > 0) {
+    items.push({
+      key: "unread",
+      text: `${count(o.support.unread, "samtale", "samtaler")} med callsentre har uleste meldinger.`,
+      href: "/admin/meldinger",
+    });
+  }
+  if (o.money.drafts > 0) {
+    items.push({ key: "drafts", text: `${count(o.money.drafts, "fakturautkast", "fakturautkast")} er ikke sendt.`, href: "/admin/okonomi/faktura" });
+  }
+  return items;
+}

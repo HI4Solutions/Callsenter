@@ -9,6 +9,7 @@ import { usePageTitle } from "@/lib/use-page-title";
 
 // The superadmin portal's tabs (docs/plan.md, section 10). Tabs without href come later.
 const TABS: Omit<Tab, "active">[] = [
+  { label: "Oversikt", icon: "overview", href: "/admin/oversikt" },
   { label: "Callsentre", icon: "building", href: "/admin/callsentre" },
   { label: "Brukere", icon: "users", href: "/admin/brukere" },
   { label: "Meldinger", icon: "message", href: "/admin/meldinger" },

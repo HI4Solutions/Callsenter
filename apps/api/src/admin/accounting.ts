@@ -30,7 +30,7 @@ async function today(c: pg.PoolClient): Promise<string> {
 }
 
 // Costs and revenue for whole days in Norwegian time, from and to inclusive.
-async function figures(c: pg.PoolClient, from: string, to: string) {
+export async function figures(c: pg.PoolClient, from: string, to: string) {
   const params = [from, to];
   const usage = (
     await c.query<{ ai: string; soniox: string; usd: string }>(
