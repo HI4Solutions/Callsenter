@@ -67,7 +67,13 @@
     "title": "Häufigste Abweichungen",
     "intro": "Die Punkte, die die KI-Prüfung am häufigsten markiert hat. Hier bringt Coaching am meisten.",
     "violations": "Verstöße: {count}",
-    "deviations": "Abweichungen: {count}"
+    "deviations": "Abweichungen: {count}",
+    "category": {
+      "requiredPoint": "Pflichtpunkt",
+      "forbiddenPhrases": "Verbotene Formulierungen",
+      "priceTerms": "Preis und Bedingungen, die nicht stimmen",
+      "other": "Sonstiges"
+    }
   },
   "sellers": {
     "title": "Verkäufer",

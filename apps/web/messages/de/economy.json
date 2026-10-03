@@ -373,6 +373,11 @@
     "fixedSince": "Ab {from}",
     "fixedUntil": " bis {to}",
     "fixedAmount": "{amount} pro Monat",
-    "confirmDeleteFixed": "Fixkosten löschen? Sie verschwinden auch aus früheren Monaten."
+    "confirmDeleteFixed": "Fixkosten löschen? Sie verschwinden auch aus früheren Monaten.",
+    "products": {
+      "invoiceFee": "Rechnungsgebühr",
+      "otherLines": "Sonstige Positionen",
+      "manualPayments": "Manuelle Zahlungen"
+    }
   }
 }

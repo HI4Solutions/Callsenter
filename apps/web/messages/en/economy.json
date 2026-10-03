@@ -373,6 +373,11 @@
     "fixedSince": "From {from}",
     "fixedUntil": " to {to}",
     "fixedAmount": "{amount} per month",
-    "confirmDeleteFixed": "Delete the fixed expense? It also disappears from previous months."
+    "confirmDeleteFixed": "Delete the fixed expense? It also disappears from previous months.",
+    "products": {
+      "invoiceFee": "Invoice fee",
+      "otherLines": "Other lines",
+      "manualPayments": "Manual payments"
+    }
   }
 }

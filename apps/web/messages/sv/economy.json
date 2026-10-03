@@ -373,6 +373,11 @@
     "fixedSince": "Från {from}",
     "fixedUntil": " till {to}",
     "fixedAmount": "{amount} per månad",
-    "confirmDeleteFixed": "Radera den fasta utgiften? Den försvinner också från tidigare månader."
+    "confirmDeleteFixed": "Radera den fasta utgiften? Den försvinner också från tidigare månader.",
+    "products": {
+      "invoiceFee": "Fakturaavgift",
+      "otherLines": "Övriga rader",
+      "manualPayments": "Manuella inbetalningar"
+    }
   }
 }

@@ -37,7 +37,8 @@ export interface Dashboard {
     red: number;
     complaints: number;
   }[];
-  findings: { label: string; yellow: number; red: number }[];
+  // key: one of the fixed categories, shown in the page's language; else the template's point.
+  findings: { label: string; key: "requiredPoint" | "forbiddenPhrases" | "priceTerms" | "other" | null; yellow: number; red: number }[];
 }
 
 export interface CoachingNote {

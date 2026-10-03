@@ -8,6 +8,24 @@ import { withSession } from "../me.ts";
 
 const SCOPES = ["me", "seller", "team", "all"] as const;
 
+// app.dashboard groups the AI findings by the template's required point, or by one of these
+// fixed categories (written in Norwegian in the database). They get a key the pages show in the
+// user's language; a required point's own text is the call centre's and stays as written.
+const FINDING_CATEGORIES: Record<string, string> = {
+  "Obligatorisk punkt": "requiredPoint",
+  "Forbudte formuleringer": "forbiddenPhrases",
+  "Pris og vilkår som ikke stemmer": "priceTerms",
+  "Andre forhold": "other",
+};
+
+function withFindingKeys(d: Record<string, unknown>): Record<string, unknown> {
+  if (!Array.isArray(d.findings)) return d;
+  return {
+    ...d,
+    findings: (d.findings as { label: string }[]).map((f) => ({ ...f, key: FINDING_CATEGORIES[f.label] ?? null })),
+  };
+}
+
 function day(value: string | undefined, fallback: string): string {
   if (value === undefined || value === "") return fallback;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(value))) throw new BadRequest("Ugyldig dato.");
@@ -60,7 +78,7 @@ export async function getDashboard(db: pg.Pool, session: Session, query: Record<
     } else if (scope === "team") {
       target_name = (await c.query<{ name: string }>("select name from teams where id = $1", [target])).rows[0]?.name ?? null;
     }
-    return { scope, target: target ?? null, targetName: target_name, from, to, canSeeAll: all, teams: teams.rows, ...rows[0]!.d };
+    return { scope, target: target ?? null, targetName: target_name, from, to, canSeeAll: all, teams: teams.rows, ...withFindingKeys(rows[0]!.d) };
   });
 }
 

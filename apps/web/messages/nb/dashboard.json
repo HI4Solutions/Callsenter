@@ -67,7 +67,13 @@
     "title": "Hyppigste avvik",
     "intro": "Punktene AI-kontrollen oftest flagget. Det er her coaching gir mest.",
     "violations": "Brudd: {count}",
-    "deviations": "Avvik: {count}"
+    "deviations": "Avvik: {count}",
+    "category": {
+      "requiredPoint": "Obligatorisk punkt",
+      "forbiddenPhrases": "Forbudte formuleringer",
+      "priceTerms": "Pris og vilkår som ikke stemmer",
+      "other": "Andre forhold"
+    }
   },
   "sellers": {
     "title": "Selgere",

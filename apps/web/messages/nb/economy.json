@@ -373,6 +373,11 @@
     "fixedSince": "Fra {from}",
     "fixedUntil": " til {to}",
     "fixedAmount": "{amount} per måned",
-    "confirmDeleteFixed": "Slette den faste utgiften? Den forsvinner også fra tidligere måneder."
+    "confirmDeleteFixed": "Slette den faste utgiften? Den forsvinner også fra tidligere måneder.",
+    "products": {
+      "invoiceFee": "Fakturagebyr",
+      "otherLines": "Andre linjer",
+      "manualPayments": "Manuelle innbetalinger"
+    }
   }
 }
