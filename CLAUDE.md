@@ -42,7 +42,6 @@ Ikke gjort:
 - Vipps-knappen må byttes til Vipps' offisielle før produksjon.
 - Produksjon er ikke opprettet, og skal ikke opprettes før lansering. Lambda-kvoten er økt til 1000 i kontoen (3. oktober); en egen produksjonskonto må få den økt på nytt.
 - Egne domener for produksjon (`app.veriqall.no`, `api.veriqall.no`). I staging virker `staging.veriqall.no` og `api.staging.veriqall.no`.
-- CloudTrail til egen kryptert bøtte (revisjonslogg lag 1 i `docs/plan.md`, seksjon 3) er ikke satt opp.
 - Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.
 
 - Fase 2 (samtalen): opptak i nettleseren med mikrofon eller fanelyd, sanntid eller bitvis via Soniox i EU, lagret opptak i S3 med lagringstid 3–12 måneder per callsenter, AI-kontroll mot produktmalen og rapporter med Claude via Bedrock, worker-Lambdaen `veriqall-<env>-worker`, migrasjonen `0013_calls.sql` (`docs/plan.md`, seksjon 13).
@@ -67,6 +66,7 @@ Ikke gjort:
 - Kobling av BankID (3. oktober): navnet fra BankID må stemme med brukerens navn (`sameName` i `apps/api/src/auth/flow.ts`, `docs/auth.md`).
 - Kapasitet (3. oktober): workeren har tak på 200 samtidige kjøringer, og API-et tåler 200 kall i sekundet (topper 500), se `infra/README.md` under Kapasitet.
 - Overvåking og herding (3. oktober, fra infragjennomgangen): alarmer for Lambda, API, morgenkjøringen, faktureringen og databasen til SNS-emnet `veriqall-<miljø>-alerts` (e-post til `ALERT_EMAIL`), morgenkjøringen går uten e-post, databaseloggen får 365 dagers lagringstid og miljøets KMS-nøkkel, artefaktbøtta beholder pakkene stackene bruker (krever oppdatert bootstrap), og web og API sender sikkerhetsheadere (CSP `frame-ancestors 'none'`, `Referrer-Policy: no-referrer`, HSTS, `nosniff`, `Permissions-Policy`). Se `infra/README.md`, Overvåking.
+- CloudTrail og varsler (3. oktober): trailen `veriqall` for hele kontoen med egen KMS-nøkkel og bøtte, låst i 365 dager og utenfor deploy-kjeden (stacken `veriqall-cloudtrail` fra `infra/cloudtrail.yml`, `infra/README.md`). Bootstrap i staging er oppdatert, og alarmene i staging går til Nadeem (`AlertEmail` på network-stacken).
 - RLS-ytelse (3. oktober): policyene på `calls` og `sales` henter rettigheter og team én gang per spørring i stedet for per rad (migrasjonen `0027_visibility_performance.sql`). Med 100 000 samtaler gikk en selgers liste fra 25 sekunder til 17 ms, og en telling fra 10 minutter til under 40 ms. Ytelsestest i `packages/db/test/visibility-performance.test.ts`.
 - Vern mot sterkere brukere (3. oktober): ingen kan endre, deaktivere eller invitere på nytt et medlem med rettigheter de ikke har selv, eller endre rettighetene til en rolle som har det (`holdsMoreThanMe` i `apps/api/src/admin/organizations.ts`).
 - Revisjonslogg for samtaler (3. oktober): `calls` logges bare når status, koblinger, feil, varighet eller notatmaler endres, og tilleggsinformasjon og tittel bare som «endret», aldri teksten (migrasjonen `0028_call_audit.sql`). Rader som allerede var skrevet, ble redusert på samme måte.
