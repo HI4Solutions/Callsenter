@@ -2,9 +2,17 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
+import {
+  ErrorMessage,
+  Field,
+  inputClass,
+  primaryButton,
+  secondaryButton,
+  LoadState,
+} from "@/components/admin/field";
 import { AdditionalInfo } from "@/components/calls/additional-info";
 import { CallLog } from "@/components/calls/call-log";
 import { CallReference } from "@/components/calls/call-reference";
@@ -16,15 +24,17 @@ import { Flag } from "@/components/flag";
 import { Coaching } from "@/components/work/coaching";
 import { CustomerPicker } from "@/components/work/customer-picker";
 import { useWorkMe } from "@/components/work/work-shell";
-import { type CallDetail, FINDING_KIND, FLAG_LEVEL, formatDuration, SOURCE } from "@/lib/calls";
+import { type CallDetail, FLAG_LEVEL, formatDuration } from "@/lib/calls";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 import type { Customer, ProductSummary } from "@/lib/work";
 
-
 export default function CallPage() {
   const { id } = useParams<{ id: string }>();
   const me = useWorkMe();
+  const t = useTranslations("calls");
+  const td = useTranslations("domain");
+  const tc = useTranslations("common");
   const permissions = me?.permissions ?? [];
   const { call, error, setError, load, waiting } = useCall(id);
   const [audio, setAudio] = useState<string | null>(null);
@@ -67,59 +77,104 @@ export default function CallPage() {
   return (
     <section className="flex flex-col gap-8">
       <div>
-        <Link href="/samtaler" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">
-          ← Alle samtaler
+        <Link
+          href="/samtaler"
+          className="inline-flex min-h-11 items-center text-sm font-semibold text-brand"
+        >
+          {t("back")}
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-extrabold tracking-tight [overflow-wrap:anywhere]">
-            {call.title || call.customerName || call.productName || "Samtale"}
+            {call.title ||
+              call.customerName ||
+              call.productName ||
+              t("detail.untitled")}
           </h1>
-          {analysis ? <Flag level={FLAG_LEVEL[analysis.flag]} /> : <CallStatusBadge status={call.status} />}
+          {analysis ? (
+            <Flag level={FLAG_LEVEL[analysis.flag]}>
+              {td(`flag.${FLAG_LEVEL[analysis.flag]}`)}
+            </Flag>
+          ) : (
+            <CallStatusBadge status={call.status} />
+          )}
         </div>
         <p className="mt-2 text-muted">
-          {[formatDateTime(call.startedAt), call.userName, formatDuration(call.durationMs), SOURCE[call.source]].filter(Boolean).join(" · ")}
+          {[
+            formatDateTime(call.startedAt),
+            call.userName,
+            formatDuration(call.durationMs),
+            td(`callSource.${call.source}`),
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
         <div className="mt-2">
           <CallReference reference={call.reference} />
         </div>
-        <Links call={call} canEdit={permissions.includes("calls.upload") && !call.analyses.length && !call.working} onChanged={load} />
+        <Links
+          call={call}
+          canEdit={
+            permissions.includes("calls.upload") &&
+            !call.analyses.length &&
+            !call.working
+          }
+          onChanged={load}
+        />
       </div>
       <ErrorMessage message={error} />
 
       {call.status === "recording" && call.userId === me?.user.id && (
-        <Card title="Opptaket er ikke fullført">
-          <p className="text-muted">Opptaket ble ikke avsluttet. Det som er lastet opp, kan sendes til transkribering.</p>
+        <Card title={t("detail.incompleteTitle")}>
+          <p className="text-muted">{t("detail.incompleteText")}</p>
           <button
             type="button"
             className={`${primaryButton} mt-4`}
-            onClick={() => run(() => orgFetch(`/calls/${id}/complete`, { method: "POST", body: {} }))}
+            onClick={() =>
+              run(() =>
+                orgFetch(`/calls/${id}/complete`, { method: "POST", body: {} }),
+              )
+            }
           >
-            Fullfør opptaket
+            {t("detail.complete")}
           </button>
         </Card>
       )}
       {waiting && call.status !== "recording" && (
         <p role="status">
-          {call.status === "processing" ? "Samtalen transkriberes" : call.working ? "AI sjekker samtalen" : "Notatet skrives"}. Siden oppdateres av seg
-          selv.
+          {t("detail.waiting", {
+            stage:
+              call.status === "processing"
+                ? "processing"
+                : call.working
+                  ? "checking"
+                  : "notes",
+          })}
         </p>
       )}
       {call.status === "failed" && (
-        <Card title="Behandlingen feilet">
-          <p>{call.error ?? "Noe gikk galt."}</p>
+        <Card title={t("detail.failedTitle")}>
+          <p>{call.error ?? tc("somethingWrong")}</p>
           {permissions.includes("calls.upload") && (
-            <button type="button" className={`${primaryButton} mt-4`} onClick={() => run(() => orgFetch(`/calls/${id}/retry`, { method: "POST" }))}>
-              Prøv igjen
+            <button
+              type="button"
+              className={`${primaryButton} mt-4`}
+              onClick={() =>
+                run(() => orgFetch(`/calls/${id}/retry`, { method: "POST" }))
+              }
+            >
+              {tc("tryAgain")}
             </button>
           )}
         </Card>
       )}
 
-      <div className={`grid gap-8 lg:items-start [&>*]:min-w-0 ${side ? "lg:grid-cols-2" : ""}`}>
+      <div
+        className={`grid gap-8 lg:items-start [&>*]:min-w-0 ${side ? "lg:grid-cols-2" : ""}`}
+      >
         {side && (
           <div className="flex flex-col gap-8 lg:sticky lg:top-20 lg:col-start-2 lg:row-start-1 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
             {canPlay && (
-              <Card title="Opptak">
+              <Card title={t("detail.recording")}>
                 {audio ? (
                   // A short-lived link; every playback is logged.
                   <audio
@@ -138,19 +193,37 @@ export default function CallPage() {
                     }}
                   />
                 ) : (
-                  <button type="button" className={primaryButton} onClick={() => play()}>
-                    Spill av
+                  <button
+                    type="button"
+                    className={primaryButton}
+                    onClick={() => play()}
+                  >
+                    {t("detail.play")}
                   </button>
                 )}
-                <p className="mt-2 text-sm text-muted">Slettes automatisk {formatDate(call.expiresAt)}.</p>
+                <p className="mt-2 text-sm text-muted">
+                  {t("detail.expires", { date: formatDate(call.expiresAt) })}
+                </p>
               </Card>
             )}
-            {call.segments.length > 0 && <TranscriptPanel segments={call.segments} onSeek={canPlay ? play : undefined} />}
+            {call.segments.length > 0 && (
+              <TranscriptPanel
+                segments={call.segments}
+                onSeek={canPlay ? play : undefined}
+              />
+            )}
           </div>
         )}
 
         <div className="flex flex-col gap-8 lg:col-start-1 lg:row-start-1">
-          {analysis && <Analysis call={call} analysis={analysis} onSeek={canPlay ? play : undefined} onChanged={load} />}
+          {analysis && (
+            <Analysis
+              call={call}
+              analysis={analysis}
+              onSeek={canPlay ? play : undefined}
+              onChanged={load}
+            />
+          )}
 
           <NotesPanel call={call} onChanged={load} />
 
@@ -159,13 +232,21 @@ export default function CallPage() {
             value={call.note ?? ""}
             canEdit={call.isOwn && permissions.includes("calls.upload")}
             onSave={async (text) => {
-              await orgFetch(`/calls/${call.id}`, { method: "PATCH", body: { note: text.trim() || null } });
+              await orgFetch(`/calls/${call.id}`, {
+                method: "PATCH",
+                body: { note: text.trim() || null },
+              });
               await load();
             }}
           />
 
           {me?.modules?.includes("dashboard") && (
-            <Coaching sellerId={call.userId} sellerName={call.userName} callId={call.id} title="Tilbakemelding på samtalen" />
+            <Coaching
+              sellerId={call.userId}
+              sellerName={call.userName}
+              callId={call.id}
+              title={t("detail.feedback")}
+            />
           )}
           {permissions.includes("audit.read") && <CallLog callId={call.id} />}
         </div>
@@ -186,16 +267,23 @@ function Analysis({
   onChanged: () => Promise<unknown>;
 }) {
   const me = useWorkMe();
+  const t = useTranslations("calls");
+  const td = useTranslations("domain");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const order = { red: 0, yellow: 1, green: 2 } as const;
-  const findings = [...analysis.findings].sort((a, b) => order[a.level] - order[b.level]);
+  const findings = [...analysis.findings].sort(
+    (a, b) => order[a.level] - order[b.level],
+  );
 
   async function review(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
     try {
-      await orgFetch(`/calls/${call.id}/analyses/${analysis.id}`, { method: "PATCH", body: { reviewNote: note.trim() || null } });
+      await orgFetch(`/calls/${call.id}/analyses/${analysis.id}`, {
+        method: "PATCH",
+        body: { reviewNote: note.trim() || null },
+      });
       await onChanged();
     } catch (e) {
       setError((e as Error).message);
@@ -203,18 +291,25 @@ function Analysis({
   }
 
   return (
-    <Card title="AI-kontroll">
+    <Card title={t("detail.analysis.title")}>
       <p>{analysis.summary}</p>
       <p className="mt-1 text-sm text-muted">
-        Sjekket mot {call.productName}, malversjon {call.templateVersion}. AI kan ta feil; sjekk sitatet i opptaket.
+        {t("detail.analysis.checkedAgainst", {
+          product: call.productName ?? "",
+          version: call.templateVersion ?? "",
+        })}
       </p>
       <ul className="mt-4 flex flex-col gap-3">
         {findings.map((f, i) => (
           <li key={i} className="rounded-lg border border-line p-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Flag level={FLAG_LEVEL[f.level]} />
+              <Flag level={FLAG_LEVEL[f.level]}>
+                {td(`flag.${FLAG_LEVEL[f.level]}`)}
+              </Flag>
               <span className="font-semibold">{f.label}</span>
-              <span className="text-sm text-muted">{FINDING_KIND[f.kind]}</span>
+              <span className="text-sm text-muted">
+                {td(`findingKind.${f.kind}`)}
+              </span>
             </div>
             {f.comment && <p className="mt-2">{f.comment}</p>}
             {f.quote && (
@@ -224,7 +319,7 @@ function Analysis({
                     type="button"
                     className="-my-2 mr-1 inline-flex min-h-11 items-center rounded-lg px-2 font-mono text-sm text-brand hover:bg-bg"
                     onClick={() => onSeek(f.startMs!)}
-                    title="Spill av herfra"
+                    title={t("playFrom")}
                   >
                     {formatDuration(f.startMs)}
                   </button>
@@ -238,33 +333,64 @@ function Analysis({
       {analysis.flag !== "green" &&
         (analysis.reviewedAt ? (
           <p className="mt-4 rounded-lg bg-bg p-3">
-            Behandlet {formatDateTime(analysis.reviewedAt)}
-            {analysis.reviewedByName && ` av ${analysis.reviewedByName}`}
+            {analysis.reviewedByName
+              ? t("detail.analysis.reviewedBy", {
+                  date: formatDateTime(analysis.reviewedAt),
+                  name: analysis.reviewedByName,
+                })
+              : t("detail.analysis.reviewed", {
+                  date: formatDateTime(analysis.reviewedAt),
+                })}
             {analysis.reviewNote && `: ${analysis.reviewNote}`}
           </p>
         ) : me?.permissions.includes("flags.review") ? (
           <form onSubmit={review} className="mt-4 flex flex-col gap-3">
-            <Field label="Kommentar" hint="Hva er gjort med avviket, for eksempel tatt opp med selgeren eller kunden kontaktet.">
-              <textarea rows={2} maxLength={2000} className={`${inputClass} py-2`} value={note} onChange={(e) => setNote(e.target.value)} />
+            <Field
+              label={t("detail.analysis.comment")}
+              hint={t("detail.analysis.commentHint")}
+            >
+              <textarea
+                rows={2}
+                maxLength={2000}
+                className={`${inputClass} py-2`}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
             </Field>
             <ErrorMessage message={error} />
             <div>
               <button type="submit" className={primaryButton}>
-                Marker som behandlet
+                {t("detail.analysis.markReviewed")}
               </button>
             </div>
           </form>
         ) : (
-          <p className="mt-4 text-sm text-muted">Ikke behandlet ennå.</p>
+          <p className="mt-4 text-sm text-muted">
+            {t("detail.analysis.notReviewed")}
+          </p>
         ))}
     </Card>
   );
 }
 
-function Links({ call, canEdit, onChanged }: { call: CallDetail; canEdit: boolean; onChanged: () => Promise<unknown> }) {
+function Links({
+  call,
+  canEdit,
+  onChanged,
+}: {
+  call: CallDetail;
+  canEdit: boolean;
+  onChanged: () => Promise<unknown>;
+}) {
+  const t = useTranslations("calls");
   const [editing, setEditing] = useState(false);
-  const [customer, setCustomer] = useState<Pick<Customer, "id" | "name"> | null>(
-    call.customerId ? { id: call.customerId, name: call.customerName ?? "" } : null,
+  const [customer, setCustomer] = useState<Pick<
+    Customer,
+    "id" | "name"
+  > | null>(
+    call.customerId
+      ? { id: call.customerId, name: call.customerName ?? "" }
+      : null,
   );
   const [products, setProducts] = useState<ProductSummary[]>([]);
   const [productId, setProductId] = useState(call.productId ?? "");
@@ -275,7 +401,15 @@ function Links({ call, canEdit, onChanged }: { call: CallDetail; canEdit: boolea
     if (!editing) return;
     let cancelled = false;
     orgFetch<ProductSummary[]>("/products")
-      .then((rows) => !cancelled && setProducts(rows.filter((p) => p.publishedVersion !== null || p.id === call.productId)))
+      .then(
+        (rows) =>
+          !cancelled &&
+          setProducts(
+            rows.filter(
+              (p) => p.publishedVersion !== null || p.id === call.productId,
+            ),
+          ),
+      )
       .catch(() => undefined);
     return () => {
       cancelled = true;
@@ -304,16 +438,28 @@ function Links({ call, canEdit, onChanged }: { call: CallDetail; canEdit: boolea
   if (editing) {
     return (
       <div className="mt-4">
-        <Card title="Koblinger">
+        <Card title={t("detail.links.title")}>
           <form onSubmit={save} className="flex flex-col gap-4">
-            <Field label="Tittel">
-              <input maxLength={200} className={`${inputClass} sm:max-w-md`} value={title} onChange={(e) => setTitle(e.target.value)} />
+            <Field label={t("detail.links.titleLabel")}>
+              <input
+                maxLength={200}
+                className={`${inputClass} sm:max-w-md`}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
             </Field>
             <CustomerPicker value={customer} onChange={setCustomer} />
             {!call.saleId && (
-              <Field label="Produkt" hint="Når et produkt kobles til, sjekkes samtalen mot gjeldende produktmal.">
-                <select className={`${inputClass} sm:max-w-md`} value={productId} onChange={(e) => setProductId(e.target.value)}>
-                  <option value="">Ikke valgt</option>
+              <Field
+                label={t("detail.links.product")}
+                hint={t("detail.links.productHint")}
+              >
+                <select
+                  className={`${inputClass} sm:max-w-md`}
+                  value={productId}
+                  onChange={(e) => setProductId(e.target.value)}
+                >
+                  <option value="">{t("detail.links.notChosen")}</option>
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -325,10 +471,14 @@ function Links({ call, canEdit, onChanged }: { call: CallDetail; canEdit: boolea
             <ErrorMessage message={error} />
             <div className="flex gap-2">
               <button type="submit" className={primaryButton}>
-                Lagre
+                {t("save")}
               </button>
-              <button type="button" className={secondaryButton} onClick={() => setEditing(false)}>
-                Avbryt
+              <button
+                type="button"
+                className={secondaryButton}
+                onClick={() => setEditing(false)}
+              >
+                {t("cancel")}
               </button>
             </div>
           </form>
@@ -342,20 +492,48 @@ function Links({ call, canEdit, onChanged }: { call: CallDetail; canEdit: boolea
     <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
       <dl className="flex flex-wrap items-center gap-x-6 gap-y-1">
         <div className="flex gap-1.5">
-          <dt className="text-muted">Kunde:</dt>
-          <dd>{call.customerId ? <Link href={`/kunder/${call.customerId}`} className="font-semibold text-brand">{call.customerName}</Link> : "–"}</dd>
+          <dt className="text-muted">{t("detail.links.customer")}</dt>
+          <dd>
+            {call.customerId ? (
+              <Link
+                href={`/kunder/${call.customerId}`}
+                className="font-semibold text-brand"
+              >
+                {call.customerName}
+              </Link>
+            ) : (
+              "–"
+            )}
+          </dd>
         </div>
         <div className="flex gap-1.5">
-          <dt className="text-muted">Salg:</dt>
-          <dd>{call.saleId ? <Link href={`/salg/${call.saleId}`} className="font-semibold text-brand">Se salget</Link> : "–"}</dd>
+          <dt className="text-muted">{t("detail.links.sale")}</dt>
+          <dd>
+            {call.saleId ? (
+              <Link
+                href={`/salg/${call.saleId}`}
+                className="font-semibold text-brand"
+              >
+                {t("detail.links.seeSale")}
+              </Link>
+            ) : (
+              "–"
+            )}
+          </dd>
         </div>
         <div className="flex gap-1.5">
-          <dt className="text-muted">Produkt:</dt>
+          <dt className="text-muted">{t("detail.links.productLabel")}</dt>
           <dd>
             {call.productId ? (
-              <Link href={`/produkter/${call.productId}`} className="font-semibold text-brand">
+              <Link
+                href={`/produkter/${call.productId}`}
+                className="font-semibold text-brand"
+              >
                 {call.productName}
-                {call.templateVersion && `, mal versjon ${call.templateVersion}`}
+                {call.templateVersion &&
+                  t("detail.links.templateVersion", {
+                    version: call.templateVersion,
+                  })}
               </Link>
             ) : (
               "–"
@@ -364,8 +542,12 @@ function Links({ call, canEdit, onChanged }: { call: CallDetail; canEdit: boolea
         </div>
       </dl>
       {canEdit && (
-        <button type="button" className="inline-flex min-h-11 items-center font-semibold text-brand" onClick={() => setEditing(true)}>
-          Endre koblinger
+        <button
+          type="button"
+          className="inline-flex min-h-11 items-center font-semibold text-brand"
+          onClick={() => setEditing(true)}
+        >
+          {t("detail.links.edit")}
         </button>
       )}
     </div>

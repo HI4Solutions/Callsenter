@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Card } from "@/components/admin/card";
 import { Field, inputClass } from "@/components/admin/field";
@@ -20,14 +21,20 @@ export function TranscriptPanel({
   status?: string;
   onSeek?: (ms: number) => void;
 }) {
+  const t = useTranslations("calls");
   const [search, setSearch] = useState("");
   const q = search.trim().toLowerCase();
-  const shown = q ? segments.filter((s) => s.text.toLowerCase().includes(q)) : segments;
+  const shown = q
+    ? segments.filter((s) => s.text.toLowerCase().includes(q))
+    : segments;
 
   return (
-    <Card title="Transkripsjon">
+    <Card title={t("transcript.title")}>
       {live ? (
-        <div aria-live="polite" className="max-h-96 overflow-y-auto rounded-lg bg-bg p-3 [overflow-wrap:anywhere]">
+        <div
+          aria-live="polite"
+          className="max-h-96 overflow-y-auto rounded-lg bg-bg p-3 [overflow-wrap:anywhere]"
+        >
           {live.final || live.partial ? (
             <p className="whitespace-pre-wrap">
               {live.final}
@@ -35,14 +42,21 @@ export function TranscriptPanel({
             </p>
           ) : (
             <p className="text-muted">
-              {live.on ? "Teksten kommer her mens dere snakker …" : "Teksten kommer bitvis, omtrent hvert 15. sekund …"}
+              {live.on
+                ? t("transcript.liveRealtime")
+                : t("transcript.livePieces")}
             </p>
           )}
         </div>
       ) : segments.length ? (
         <>
-          <Field label="Søk i samtalen">
-            <input type="search" className={`${inputClass} sm:max-w-sm`} value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Field label={t("transcript.search")}>
+            <input
+              type="search"
+              className={`${inputClass} sm:max-w-sm`}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </Field>
           <ol className="mt-4 flex max-h-[32rem] flex-col gap-3 overflow-y-auto">
             {shown.map((s) => (
@@ -52,28 +66,34 @@ export function TranscriptPanel({
                     type="button"
                     className="min-h-11 shrink-0 self-start rounded-lg px-2 font-mono text-sm text-brand hover:bg-bg"
                     onClick={() => onSeek(s.startMs)}
-                    title="Spill av herfra"
+                    title={t("playFrom")}
                   >
                     {formatDuration(s.startMs)}
                   </button>
                 ) : (
-                  <span className="shrink-0 px-2 pt-1 font-mono text-sm text-muted">{formatDuration(s.startMs)}</span>
+                  <span className="shrink-0 px-2 pt-1 font-mono text-sm text-muted">
+                    {formatDuration(s.startMs)}
+                  </span>
                 )}
                 <p className="min-w-0 pt-1 [overflow-wrap:anywhere]">
-                  {s.speaker && <span className="mr-2 text-sm font-semibold text-muted">Taler {s.speaker}</span>}
+                  {s.speaker && (
+                    <span className="mr-2 text-sm font-semibold text-muted">
+                      {t("transcript.speaker", { speaker: s.speaker })}
+                    </span>
+                  )}
                   {s.text}
                 </p>
               </li>
             ))}
-            {shown.length === 0 && <li className="text-muted">Ingen treff.</li>}
+            {shown.length === 0 && (
+              <li className="text-muted">{t("transcript.noMatch")}</li>
+            )}
           </ol>
         </>
       ) : (
-        <p className="text-muted">{status ?? "Ingen transkripsjon ennå."}</p>
+        <p className="text-muted">{status ?? t("transcript.empty")}</p>
       )}
-      <p className="mt-4 text-sm text-muted">
-        Transkripsjonen lages fra opptaket og kan ikke endres. Taler 1 og 2 skilles automatisk og kan bytte plass.
-      </p>
+      <p className="mt-4 text-sm text-muted">{t("transcript.footer")}</p>
     </Card>
   );
 }

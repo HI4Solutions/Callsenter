@@ -5,21 +5,51 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import {
+  ErrorMessage,
+  Field,
+  inputClass,
+  primaryButton,
+  secondaryButton,
+} from "@/components/admin/field";
 import { AdditionalInfo } from "@/components/calls/additional-info";
-import { type CallLanguageChoice, CallLanguages } from "@/components/calls/call-languages";
+import {
+  type CallLanguageChoice,
+  CallLanguages,
+} from "@/components/calls/call-languages";
 import { CallReference } from "@/components/calls/call-reference";
-import { NoteTemplatePicker, useNoteTemplates } from "@/components/calls/note-templates";
+import {
+  NoteTemplatePicker,
+  useNoteTemplates,
+} from "@/components/calls/note-templates";
 import { NotesPanel } from "@/components/calls/notes-panel";
 import { TranscriptPanel } from "@/components/calls/transcript-panel";
 import { useCall } from "@/components/calls/use-call";
 import { WarningLamps } from "@/components/calls/warning-lamps";
 import { CustomerPicker } from "@/components/work/customer-picker";
 import { NoAccess, useWorkMe } from "@/components/work/work-shell";
-import { CALL_STATUS, type CreatedCall, formatDuration, type RequiredPoint, recordingMime } from "@/lib/calls";
+import {
+  type CreatedCall,
+  formatDuration,
+  type RequiredPoint,
+  recordingMime,
+} from "@/lib/calls";
+import { formatTagNow } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
-import { type Capture, CallRecorder, RecorderError, tabAudioSupported, tabShareActive, uploadFile } from "@/lib/recorder";
-import type { Customer, ProductDetail, ProductSummary, SaleSummary } from "@/lib/work";
+import {
+  type Capture,
+  CallRecorder,
+  RecorderError,
+  tabAudioSupported,
+  tabShareActive,
+  uploadFile,
+} from "@/lib/recorder";
+import type {
+  Customer,
+  ProductDetail,
+  ProductSummary,
+  SaleSummary,
+} from "@/lib/work";
 
 type State =
   | { step: "idle" }
@@ -54,11 +84,16 @@ const STUDIO_LANGUAGES = "veriqall.studio.languages";
 
 function readLanguages(): CallLanguageChoice {
   try {
-    const value = JSON.parse(localStorage.getItem(STUDIO_LANGUAGES) ?? "null") as Partial<CallLanguageChoice> | null;
+    const value = JSON.parse(
+      localStorage.getItem(STUDIO_LANGUAGES) ?? "null",
+    ) as Partial<CallLanguageChoice> | null;
     return {
       outputLocale: isLocale(value?.outputLocale) ? value.outputLocale : null,
       spokenLanguages:
-        Array.isArray(value?.spokenLanguages) && value.spokenLanguages.every((v) => typeof v === "string") ? value.spokenLanguages : null,
+        Array.isArray(value?.spokenLanguages) &&
+        value.spokenLanguages.every((v) => typeof v === "string")
+          ? value.spokenLanguages
+          : null,
     };
   } catch {
     return { outputLocale: null, spokenLanguages: null };
@@ -78,8 +113,12 @@ const TAB_NOTES = "veriqall.studio.notes";
 
 function readTabNotes(): string[] | null {
   try {
-    const value: unknown = JSON.parse(sessionStorage.getItem(TAB_NOTES) ?? "null");
-    return Array.isArray(value) && value.every((v) => typeof v === "string") ? value : null;
+    const value: unknown = JSON.parse(
+      sessionStorage.getItem(TAB_NOTES) ?? "null",
+    );
+    return Array.isArray(value) && value.every((v) => typeof v === "string")
+      ? value
+      : null;
   } catch {
     return null;
   }
@@ -99,16 +138,24 @@ function writeTabNotes(ids: string[]) {
 export default function StudioPage() {
   const me = useWorkMe();
   const tl = useTranslations("languages");
+  const t = useTranslations("calls");
+  const td = useTranslations("domain");
+  const tc = useTranslations("common");
   const [products, setProducts] = useState<ProductSummary[] | null>(null);
   const [productId, setProductId] = useState("");
   const [starred, setStarred] = useState<string | null>(null);
   const [points, setPoints] = useState<RequiredPoint[]>([]);
-  const [customer, setCustomer] = useState<Pick<Customer, "id" | "name"> | null>(null);
+  const [customer, setCustomer] = useState<Pick<
+    Customer,
+    "id" | "name"
+  > | null>(null);
   const [sales, setSales] = useState<SaleSummary[]>([]);
   const [saleId, setSaleId] = useState("");
   const [title, setTitle] = useState("");
   const [languages, setLanguages] = useState<CallLanguageChoice>(() =>
-    typeof window === "undefined" ? { outputLocale: null, spokenLanguages: null } : readLanguages(),
+    typeof window === "undefined"
+      ? { outputLocale: null, spokenLanguages: null }
+      : readLanguages(),
   );
   const [extraInfo, setExtraInfo] = useState("");
   const [capture, setCapture] = useState<Capture>("microphone");
@@ -128,14 +175,18 @@ export default function StudioPage() {
   const [tabSupported] = useState(() => tabAudioSupported());
   const [tabShared, setTabShared] = useState(() => tabShareActive());
   const { call, load, waiting } = useCall(doneId);
-  const noteTemplates = useNoteTemplates(me?.modules?.includes("reports") ?? false);
+  const noteTemplates = useNoteTemplates(
+    me?.modules?.includes("reports") ?? false,
+  );
   const [notes, setNotes] = useState<string[] | null>(null);
   // Before anything is chosen in this tab: the call centre's default note template.
   const chosenNotes =
     notes ??
-    (noteTemplates ? (readTabNotes() ?? noteTemplates.filter((t) => t.isDefault).map((t) => t.id)) : []).filter((id) =>
-      noteTemplates?.some((t) => t.id === id),
-    );
+    (noteTemplates
+      ? (readTabNotes() ??
+        noteTemplates.filter((t) => t.isDefault).map((t) => t.id))
+      : []
+    ).filter((id) => noteTemplates?.some((t) => t.id === id));
 
   // Products with a published template, and which one to start with: the one chosen in this tab,
   // then the member's own default (the star).
@@ -149,13 +200,16 @@ export default function StudioPage() {
     ])
       .then(([rows, studio]) => {
         if (cancelled) return;
-        const published = rows.filter((p) => p.publishedVersion !== null && !p.archivedAt);
+        const published = rows.filter(
+          (p) => p.publishedVersion !== null && !p.archivedAt,
+        );
         setProducts(published);
         setStarred(studio.productId);
         const tab = readTabProduct();
         const start =
-          [tab, studio.productId].find((id) => id && published.some((p) => p.id === id)) ??
-          (published.length === 1 ? published[0]!.id : "");
+          [tab, studio.productId].find(
+            (id) => id && published.some((p) => p.id === id),
+          ) ?? (published.length === 1 ? published[0]!.id : "");
         setProductId(start);
       })
       .catch(() => !cancelled && setProducts([]));
@@ -171,7 +225,14 @@ export default function StudioPage() {
     if (!templateProduct) return;
     let cancelled = false;
     orgFetch<ProductDetail>(`/products/${templateProduct}`)
-      .then((p) => !cancelled && setPoints(p.versions.find((v) => v.status === "published")?.requiredPoints ?? []))
+      .then(
+        (p) =>
+          !cancelled &&
+          setPoints(
+            p.versions.find((v) => v.status === "published")?.requiredPoints ??
+              [],
+          ),
+      )
       .catch(() => !cancelled && setPoints([]));
     return () => {
       cancelled = true;
@@ -196,7 +257,10 @@ export default function StudioPage() {
   const recording = state.step === "recording" || state.step === "stopping";
   useEffect(() => {
     if (!recording) return;
-    const timer = setInterval(() => setElapsed(recorder.current?.elapsedMs ?? 0), 500);
+    const timer = setInterval(
+      () => setElapsed(recorder.current?.elapsedMs ?? 0),
+      500,
+    );
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener("beforeunload", warn);
     return () => {
@@ -206,9 +270,27 @@ export default function StudioPage() {
   }, [recording]);
 
   if (!me) return null;
-  if (!me.permissions.includes("calls.upload")) return <NoAccess text="Du har ikke tilgang til å ta opp samtaler." />;
+  if (!me.permissions.includes("calls.upload"))
+    return <NoAccess text={t("studio.noAccess")} />;
 
-  const activeId = state.step === "recording" || state.step === "stopping" ? state.callId : doneId;
+  // A recorder error in the page's language (the API's own messages are shown as they are).
+  const recorderText = (e: RecorderError) => {
+    switch (e.key) {
+      case "incompleteUpload":
+        return t("recorder.incompleteUpload", {
+          detail: e.detail ?? t("recorder.signedOut"),
+        });
+      default:
+        return t(`recorder.${e.key}`);
+    }
+  };
+  const errorText = (e: unknown) =>
+    e instanceof RecorderError ? recorderText(e) : (e as Error).message;
+
+  const activeId =
+    state.step === "recording" || state.step === "stopping"
+      ? state.callId
+      : doneId;
   const analysed = Boolean(call?.analyses.length);
   const busy = state.step !== "idle";
 
@@ -253,7 +335,10 @@ export default function StudioPage() {
     writeTabNotes(ids);
     // Until the notes after the call are written, they follow the choice.
     if (activeId && !call?.reports.length) {
-      await orgFetch(`/calls/${activeId}`, { method: "PATCH", body: { noteTemplateIds: ids } }).catch((e: Error) => setError(e.message));
+      await orgFetch(`/calls/${activeId}`, {
+        method: "PATCH",
+        body: { noteTemplateIds: ids },
+      }).catch((e: Error) => setError(e.message));
     }
   }
 
@@ -263,7 +348,10 @@ export default function StudioPage() {
     writeLanguages(next);
     // Until the notes are written, a call already started follows the choice too.
     if (activeId && !call?.reports.length) {
-      await orgFetch(`/calls/${activeId}`, { method: "PATCH", body: next }).catch((e: Error) => setError(e.message));
+      await orgFetch(`/calls/${activeId}`, {
+        method: "PATCH",
+        body: next,
+      }).catch((e: Error) => setError(e.message));
     }
   }
 
@@ -299,24 +387,35 @@ export default function StudioPage() {
   async function start() {
     reset();
     setState({ step: "starting" });
-    const mime = recordingMime((t) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t));
+    const mime = recordingMime(
+      (t) =>
+        typeof MediaRecorder !== "undefined" &&
+        MediaRecorder.isTypeSupported(t),
+    );
     let rec: CallRecorder;
     try {
       rec = await CallRecorder.open(capture, mime, {
         onLiveText: (final, partial) => setLiveText({ final, partial }),
         onRealtimeLost: () => {
-          setNotice("Sanntidsteksten falt ut. Opptaket fortsetter, og teksten kommer nå bitvis, omtrent hvert 15. sekund.");
+          setNotice(t("studio.realtimeLost"));
           setState((s) => (s.step === "recording" ? { ...s, live: false } : s));
         },
         onUploads: setUploads,
-        onUploadFatal: (message) => setError(`${message} Opptaket stoppes ikke, men nye deler lagres ikke.`),
+        onUploadFatal: (message) =>
+          setError(
+            t("studio.uploadFatal", {
+              message: message ?? t("recorder.signedOut"),
+            }),
+          ),
         onTabEnded: () => {
           setTabShared(false);
-          setNotice("Fanedelingen ble avsluttet. Stopp opptaket, eller fortsett med bare mikrofonen.");
+          setNotice(t("studio.tabEnded"));
         },
       });
     } catch (e) {
-      setError(e instanceof RecorderError ? e.message : "Kunne ikke starte opptaket.");
+      setError(
+        e instanceof RecorderError ? recorderText(e) : t("studio.startFailed"),
+      );
       setState({ step: "idle" });
       return;
     }
@@ -351,7 +450,7 @@ export default function StudioPage() {
       await recorder.current.stop();
       setDoneId(callId);
     } catch (e) {
-      setError(`${(e as Error).message} Opptaket er lagret; du kan fullføre det fra samtalesiden.`);
+      setError(t("studio.stopFailed", { message: errorText(e) }));
       setDoneId(callId);
     }
     setState({ step: "idle" });
@@ -359,11 +458,11 @@ export default function StudioPage() {
 
   async function upload(file: File) {
     if (!file.type.startsWith("audio/")) {
-      setError("Velg en lydfil (for eksempel mp3, m4a, wav eller webm).");
+      setError(t("studio.chooseAudio"));
       return;
     }
     if (file.size > MAX_CHUNK_BYTES) {
-      setError("Lydfilen er for stor. Den kan være høyst 200 MB.");
+      setError(t("studio.tooLarge"));
       return;
     }
     reset();
@@ -377,42 +476,57 @@ export default function StudioPage() {
       await uploadFile(created.id, file);
       setDoneId(created.id);
     } catch (e) {
-      setError((e as Error).message);
+      setError(errorText(e));
     }
     setState({ step: "idle" });
   }
 
   const lampPoints = call?.templateVersionId ? call.requiredPoints : points;
-  const lampState = recording ? "recording" : !call ? "before" : waiting ? "checking" : "off";
+  const lampState = recording
+    ? "recording"
+    : !call
+      ? "before"
+      : waiting
+        ? "checking"
+        : "off";
   const statusText = !call
     ? undefined
     : call.status === "failed"
-      ? (call.error ?? "Behandlingen feilet.")
+      ? (call.error ?? t("studio.processingFailed"))
       : call.status === "processing" || call.status === "recording"
-        ? `${CALL_STATUS[call.status]}. Siden oppdateres av seg selv.`
+        ? t("studio.statusUpdating", {
+            status: td(`callStatus.${call.status}`),
+          })
         : undefined;
 
   return (
     <section className="flex flex-col gap-6">
       <div>
-        <Link href="/samtaler" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">
-          ← Alle samtaler
+        <Link
+          href="/samtaler"
+          className="inline-flex min-h-11 items-center text-sm font-semibold text-brand"
+        >
+          {t("back")}
         </Link>
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Samtalestudio</h1>
-        <p className="mt-2 text-muted">Kunden skal vite at samtalen tas opp. Velg malen samtalen skal sjekkes mot før du starter.</p>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight">
+          {t("studio.title")}
+        </h1>
+        <p className="mt-2 text-muted">{t("studio.intro")}</p>
       </div>
 
       <div className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-6">
         <div className="flex min-w-0 items-end gap-2">
           <div className="min-w-0 flex-1 sm:max-w-md">
-            <Field label="Mal">
+            <Field label={t("studio.template")}>
               <select
                 className={`${inputClass} w-full`}
                 value={sale ? sale.productId : productId}
                 disabled={Boolean(sale) || analysed}
                 onChange={(e) => void chooseProduct(e.target.value)}
               >
-                <option value="">{products ? "Ingen mal (ingen AI-kontroll)" : "Laster …"}</option>
+                <option value="">
+                  {products ? t("studio.noTemplate") : tc("loading")}
+                </option>
                 {products?.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -428,39 +542,62 @@ export default function StudioPage() {
               className={`${secondaryButton} px-3`}
               aria-pressed={starred === productId}
               onClick={toggleStar}
-              title={starred === productId ? "Fjern som standardmal" : "Sett som standardmal for Samtalestudio"}
+              title={
+                starred === productId ? t("studio.unstar") : t("studio.star")
+              }
             >
-              <span aria-hidden="true">{starred === productId ? "★" : "☆"}</span>
-              <span className="sr-only">{starred === productId ? "Fjern som standardmal" : "Sett som standardmal for Samtalestudio"}</span>
+              <span aria-hidden="true">
+                {starred === productId ? "★" : "☆"}
+              </span>
+              <span className="sr-only">
+                {starred === productId ? t("studio.unstar") : t("studio.star")}
+              </span>
             </button>
           )}
         </div>
         {me.modules?.includes("reports") && (
-          <NoteTemplatePicker templates={noteTemplates} chosen={chosenNotes} onChange={(ids) => void chooseNotes(ids)} />
+          <NoteTemplatePicker
+            templates={noteTemplates}
+            chosen={chosenNotes}
+            onChange={(ids) => void chooseNotes(ids)}
+          />
         )}
         {!recording && (
           <fieldset className="flex min-w-0 flex-wrap gap-x-6 gap-y-2">
-            <legend className="mb-1 text-sm font-semibold">Hvor går samtalen?</legend>
+            <legend className="mb-1 text-sm font-semibold">
+              {t("studio.where")}
+            </legend>
             <label className="flex min-h-11 items-center gap-2">
-              <input type="radio" name="capture" checked={capture === "microphone"} onChange={() => setCapture("microphone")} />
-              Mikrofon
+              <input
+                type="radio"
+                name="capture"
+                checked={capture === "microphone"}
+                onChange={() => setCapture("microphone")}
+              />
+              {t("studio.microphone")}
             </label>
             <label className="flex min-h-11 items-center gap-2">
-              <input type="radio" name="capture" disabled={!tabSupported} checked={capture === "tab"} onChange={() => setCapture("tab")} />
-              Ekstern løsning (fanelyd)
+              <input
+                type="radio"
+                name="capture"
+                disabled={!tabSupported}
+                checked={capture === "tab"}
+                onChange={() => setCapture("tab")}
+              />
+              {t("studio.tab")}
             </label>
           </fieldset>
         )}
         {!recording && capture === "tab" && (
           <ol className="list-decimal space-y-1 rounded-lg bg-bg p-3 pl-8 text-sm">
             {tabShared ? (
-              <li>Fanen deles allerede, og brukes på nytt uten ny dialog.</li>
+              <li>{t("studio.tabShared")}</li>
             ) : (
               <>
-                <li>Start samtalen i nettleserfanen (nettbasert telefoni, Teams, Zoom o.l.). Bare Chrome og Edge på PC og Mac.</li>
-                <li>Trykk «Start opptak» og velg fanen der samtalen går.</li>
-                <li>Huk av for «Del fanelyd». Uten den kommer det ingen lyd fra fanen.</li>
-                <li>Trykk «Del». Bruk hodetelefoner, så kommer kunden bare inn via fanelyden.</li>
+                <li>{t("studio.tabStep1")}</li>
+                <li>{t("studio.tabStep2")}</li>
+                <li>{t("studio.tabStep3")}</li>
+                <li>{t("studio.tabStep4")}</li>
               </>
             )}
           </ol>
@@ -468,16 +605,32 @@ export default function StudioPage() {
         <div
           className={`flex flex-wrap items-center gap-3 ${
             // While recording on a phone, Stopp stays in reach at the bottom of the screen.
-            recording ? "sticky bottom-0 z-10 -mx-4 border-t border-line bg-surface px-4 py-3 sm:static sm:mx-0 sm:border-0 sm:p-0" : ""
+            recording
+              ? "sticky bottom-0 z-10 -mx-4 border-t border-line bg-surface px-4 py-3 sm:static sm:mx-0 sm:border-0 sm:p-0"
+              : ""
           }`}
         >
           {recording ? (
-            <button type="button" className={primaryButton} disabled={state.step === "stopping"} onClick={stop}>
-              {state.step === "stopping" ? "Laster opp resten …" : "Stopp og send"}
+            <button
+              type="button"
+              className={primaryButton}
+              disabled={state.step === "stopping"}
+              onClick={stop}
+            >
+              {state.step === "stopping"
+                ? t("studio.stopping")
+                : t("studio.stop")}
             </button>
           ) : (
-            <button type="button" className={primaryButton} disabled={busy} onClick={start}>
-              {state.step === "starting" ? "Starter …" : "Start opptak"}
+            <button
+              type="button"
+              className={primaryButton}
+              disabled={busy}
+              onClick={start}
+            >
+              {state.step === "starting"
+                ? t("studio.starting")
+                : t("studio.start")}
             </button>
           )}
           {recording ? (
@@ -486,7 +639,9 @@ export default function StudioPage() {
             </span>
           ) : (
             <label className={`${secondaryButton} cursor-pointer`}>
-              {state.step === "uploading" ? "Laster opp …" : "Last opp lydfil"}
+              {state.step === "uploading"
+                ? t("studio.uploading")
+                : t("studio.upload")}
               <input
                 type="file"
                 accept="audio/*"
@@ -504,19 +659,31 @@ export default function StudioPage() {
 
         {recording && (
           <p className="text-sm text-muted" role="status">
-            {capture === "tab" ? (tabShared ? "Deler fane og mikrofon. " : "Bare mikrofon. ") : "Mikrofon. "}
-            {uploads.uploaded} {uploads.uploaded === 1 ? "del" : "deler"} lagret
-            {uploads.pending > 0 && `, ${uploads.pending} venter`}.
-            {uploads.failing && " Får ikke lastet opp akkurat nå; prøver igjen. Ikke lukk siden."}
+            {capture === "tab"
+              ? tabShared
+                ? t("studio.captureTabMic")
+                : t("studio.captureMicOnly")
+              : t("studio.captureMic")}{" "}
+            {uploads.pending > 0
+              ? t("studio.uploadsPending", {
+                  uploaded: uploads.uploaded,
+                  pending: uploads.pending,
+                })
+              : t("studio.uploads", { uploaded: uploads.uploaded })}
+            {uploads.failing && ` ${t("studio.uploadsFailing")}`}
           </p>
         )}
-        {notice && <p className="rounded-lg border border-line p-3">{notice}</p>}
+        {notice && (
+          <p className="rounded-lg border border-line p-3">{notice}</p>
+        )}
         <ErrorMessage message={error} />
 
         {!activeId && (
           <details className="rounded-lg border border-line p-3">
             <summary className="min-h-11 cursor-pointer content-center font-semibold">
-              Kunde, salg og tittel{customer ? `: ${customer.name}` : ""}
+              {customer
+                ? t("studio.detailsCustomer", { customer: customer.name })
+                : t("studio.details")}
             </summary>
             <div className="mt-3 flex flex-col gap-4">
               <CustomerPicker
@@ -526,33 +693,50 @@ export default function StudioPage() {
                   setSaleId("");
                   setSales([]);
                 }}
-                hint="Valgfritt. Kan også kobles etterpå."
+                hint={t("studio.customerHint")}
               />
               {customer && sales.length > 0 && (
-                <Field label="Salg" hint="Velg salget samtalen gjelder, så brukes malversjonen salget ble gjort på.">
-                  <select className={`${inputClass} sm:max-w-md`} value={saleId} onChange={(e) => setSaleId(e.target.value)}>
-                    <option value="">Ikke koblet til et salg</option>
+                <Field label={t("studio.sale")} hint={t("studio.saleHint")}>
+                  <select
+                    className={`${inputClass} sm:max-w-md`}
+                    value={saleId}
+                    onChange={(e) => setSaleId(e.target.value)}
+                  >
+                    <option value="">{t("studio.noSale")}</option>
                     {sales.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.productName}, {new Date(s.soldAt).toLocaleDateString("nb-NO")}
+                        {s.productName},{" "}
+                        {new Date(s.soldAt).toLocaleDateString(formatTagNow())}
                       </option>
                     ))}
                   </select>
                 </Field>
               )}
-              <Field label="Tittel" hint="Valgfritt.">
-                <input maxLength={200} className={`${inputClass} sm:max-w-md`} value={title} onChange={(e) => setTitle(e.target.value)} />
+              <Field label={t("studio.titleLabel")} hint={t("studio.optional")}>
+                <input
+                  maxLength={200}
+                  className={`${inputClass} sm:max-w-md`}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
               </Field>
             </div>
           </details>
         )}
         {(!activeId || (call && !call.reports.length)) && (
           <details className="rounded-lg border border-line p-3">
-            <summary className="min-h-11 cursor-pointer content-center font-semibold">{tl("title")}</summary>
+            <summary className="min-h-11 cursor-pointer content-center font-semibold">
+              {tl("title")}
+            </summary>
             <div className="mt-3">
               <CallLanguages
                 value={languages}
-                defaults={{ outputLocale: me.contentLocale ?? "nb", spokenLanguages: me.transcriptionLanguages?.length ? me.transcriptionLanguages : ["no"] }}
+                defaults={{
+                  outputLocale: me.contentLocale ?? "nb",
+                  spokenLanguages: me.transcriptionLanguages?.length
+                    ? me.transcriptionLanguages
+                    : ["no"],
+                }}
                 onChange={chooseLanguages}
               />
             </div>
@@ -561,16 +745,20 @@ export default function StudioPage() {
         {doneId && !busy && call && (
           <div className="flex flex-col gap-1">
             <CallReference reference={call.reference} />
-            <p className="text-sm text-muted">Lim referansen inn der salget registreres. Den finner samtalen igjen ved klage eller kontroll.</p>
+            <p className="text-sm text-muted">{t("studio.referenceHint")}</p>
           </div>
         )}
         {doneId && !busy && (
           <div className="flex flex-wrap gap-2">
             <Link href={`/samtaler/${doneId}`} className={secondaryButton}>
-              Åpne samtalen
+              {t("studio.openCall")}
             </Link>
-            <button type="button" className={secondaryButton} onClick={() => reset(true)}>
-              Ny samtale
+            <button
+              type="button"
+              className={secondaryButton}
+              onClick={() => reset(true)}
+            >
+              {t("studio.newCall")}
             </button>
           </div>
         )}
@@ -578,13 +766,23 @@ export default function StudioPage() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-6">
-          <Card title="Varsellamper">
-            <WarningLamps points={lampPoints} analysis={call?.analyses[0]} state={lampState} />
+          <Card title={t("studio.lamps")}>
+            <WarningLamps
+              points={lampPoints}
+              analysis={call?.analyses[0]}
+              state={lampState}
+            />
           </Card>
           <TranscriptPanel
             segments={call?.segments ?? []}
-            live={recording || (!call && liveText.final) ? { ...liveText, on: state.step === "recording" && state.live } : null}
-            status={statusText ?? (call ? undefined : "Start opptaket, så kommer teksten her.")}
+            live={
+              recording || (!call && liveText.final)
+                ? { ...liveText, on: state.step === "recording" && state.live }
+                : null
+            }
+            status={
+              statusText ?? (call ? undefined : t("studio.transcriptEmpty"))
+            }
           />
           <AdditionalInfo
             key={activeId ?? "new"}
@@ -603,7 +801,7 @@ export default function StudioPage() {
             }
             hint={
               call?.reports.some((r) => r.status === "done")
-                ? "Brukes når et notat lages. Har du endret den, trykk «Regenerer» for et nytt notat. AI-kontrollen bruker bare det som ble sagt."
+                ? t("studio.infoHintRegenerate")
                 : undefined
             }
           />
@@ -612,8 +810,8 @@ export default function StudioPage() {
           {call ? (
             <NotesPanel call={call} onChanged={load} chosen={chosenNotes} />
           ) : (
-            <Card title="Notater">
-              <p className="text-muted">Notatet lages av AI når samtalen er transkribert, ut fra transkripsjonen og malen.</p>
+            <Card title={t("studio.notes")}>
+              <p className="text-muted">{t("studio.notesBefore")}</p>
             </Card>
           )}
         </div>

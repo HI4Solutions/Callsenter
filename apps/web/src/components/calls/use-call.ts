@@ -31,8 +31,11 @@ export function useCall(id: string | null) {
     };
   }, [id]);
 
-  const pendingNotes = call?.reports.filter((r) => r.status === "pending").length ?? 0;
-  const waiting = call ? call.status === "processing" || call.working || pendingNotes > 0 : false;
+  const pendingNotes =
+    call?.reports.filter((r) => r.status === "pending").length ?? 0;
+  const waiting = call
+    ? call.status === "processing" || call.working || pendingNotes > 0
+    : false;
   useEffect(() => {
     if (!waiting || !call) return;
     const done = call.reports.filter((r) => r.status === "done").length;
@@ -40,7 +43,11 @@ export function useCall(id: string | null) {
     const timer = setInterval(() => {
       orgFetch<CallStatusCheck>(`/calls/${call.id}?status=1`)
         .then((s) => {
-          if (`${s.status}/${s.working}/${s.analyses}/${s.reports}/${s.pendingReports}` !== seen) void load();
+          if (
+            `${s.status}/${s.working}/${s.analyses}/${s.reports}/${s.pendingReports}` !==
+            seen
+          )
+            void load();
         })
         .catch(() => undefined);
     }, 4000);
