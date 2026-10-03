@@ -93,7 +93,7 @@ async function setup() {
   const customer = await call(admin, "POST", "/org/customers", { kind: "person", name: "Kari Kunde", phone: "91234567" });
   const seller = await sessionFor(await member(org, "seller"), org);
   const sale = await call(seller, "POST", "/org/sales", { customerId: customer.body.id, productId: product.body.id });
-  return { org, seller, saleId: sale.body.id as string };
+  return { org, admin, seller, customerId: customer.body.id as string, productId: product.body.id as string, saleId: sale.body.id as string };
 }
 
 async function send(s: Awaited<ReturnType<typeof setup>>) {
@@ -133,6 +133,28 @@ describe("sale confirmations", () => {
       ip: "198.51.100.7",
     });
     expect((await call(null, "GET", `/confirm?t=${c.token}`)).body.status).toBe("accepted");
+  });
+
+  it("refuses someone other than the buyer and keeps the link open for the buyer", async () => {
+    const s = await setup();
+    const c = await send(s);
+    const start = await call(null, "GET", `/confirm/bankid/start?t=${c.token}`);
+    const binding = start.cookies[0]!.split(";")[0]!.split("=")[1]!;
+    const query = bankid.approve(start.location!, { sub: "per-sub", name: "Per Annen" });
+    const result = await handleCallback(deps, "bankid", query, { confirmBinding: binding });
+    expect(result.location).toBe(`${ORIGIN}/bekreft/ferdig?resultat=feil_person`);
+    expect((await call(null, "GET", `/confirm?t=${c.token}`)).body.status).toBe("pending");
+    const sale = await call(s.seller, "GET", `/org/sales/${s.saleId}`);
+    expect(sale.body.status).toBe("awaiting_confirmation");
+    expect(sale.body.confirmations[0]).toMatchObject({ status: "pending", identityName: null });
+  });
+
+  it("needs a contact person or a mobile number to send a business's offer", async () => {
+    const s = await setup();
+    const business = await call(s.admin, "POST", "/org/customers", { kind: "business", name: "Kunde AS" });
+    const sale = await call(s.seller, "POST", "/org/sales", { customerId: business.body.id, productId: s.productId });
+    const refused = await call(s.seller, "POST", `/org/sales/${sale.body.id}/confirmations`);
+    expect(refused).toMatchObject({ status: 400, body: { error: expect.stringMatching(/^Legg inn kontaktperson/) } });
   });
 
   it("lets the customer decline, and a new link replaces the old one", async () => {

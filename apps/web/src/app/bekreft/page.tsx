@@ -128,7 +128,7 @@ export default function ConfirmPage() {
           <input type="checkbox" className="mt-1" checked={read} onChange={(e) => setRead(e.target.checked)} />
           <span>Jeg har lest tilbudet og vilkårene, og vil inngå avtalen.</span>
         </label>
-        <p className="text-sm text-muted">Du godtar ved å identifisere deg. Vi bruker bare navnet ditt (og mobilnummeret ved Vipps) som bevis.</p>
+        <p className="text-sm text-muted">Tilbudet må godtas av kjøperen selv. Du godtar ved å identifisere deg, og vi bruker bare navnet ditt (og mobilnummeret ved Vipps) som bevis.</p>
         <ErrorMessage message={error} />
         <div className="flex flex-wrap gap-2">
           <a

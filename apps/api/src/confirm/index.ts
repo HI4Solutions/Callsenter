@@ -74,7 +74,9 @@ export async function acceptConfirmation(deps: AuthDeps, confirmationId: string,
     "select app.confirmation_decide($1, 'accepted', $2, $3, $4, $5, $6, $7, $8) as r",
     [confirmationId, identity.provider, identity.name ?? null, normalizePhone(identity.phone) ?? null, ref, identity.acr ?? null, meta.ip ?? null, meta.userAgent ?? null],
   );
-  return rows[0]?.r === "accepted" ? "godtatt" : rows[0]?.r === "expired" ? "utlopt" : "avgjort";
+  const r = rows[0]?.r;
+  // Only the buyer can accept: someone else's BankID or Vipps leaves the link open (0035).
+  return r === "accepted" ? "godtatt" : r === "wrong_person" ? "feil_person" : r === "expired" ? "utlopt" : "avgjort";
 }
 
 export async function rejectConfirmation(authDb: pg.Pool, token: string, meta: RequestMeta) {
