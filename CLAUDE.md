@@ -81,6 +81,8 @@ Ikke gjort:
 
 - Landingsside (3. oktober, påbegynt, `docs/plan.md`, seksjon 20): den offentlige forsiden på alle fem språk (`apps/web/src/components/landing/landing-page.tsx`, navnerommet `landing`). I staging ser bare superadmin den, på `/forhandsvisning/landingsside`; `/` sender fortsatt til innlogging. Lokalt uten API: `/landingsside` (bare i utvikling). Kontaktskjemaet nederst lagres i `contact_requests` (migrasjonen `0037`) via `POST /contact`, varsler superadminene på e-post og vises under Superadmin → Meldinger → Henvendelser. Prisene står uten tall. Publisering er bryteren `LandingPublished` på Amplify-stacken (`NEXT_PUBLIC_LANDING_PUBLISHED`), som også åpner forsiden for søkemotorer (metadata, delingsbilde, strukturerte data, `robots.txt` og `sitemap.xml` er klare).
 
+- GDPR-dokumenter (3. oktober, utkast): personvernerklæring, databehandleravtale (art. 28) med vedlegg, behandlingsprotokoll (art. 30) og oversikt over informasjonskapsler i `docs/gdpr/`. Merket som utkast som må gjennomgås av jurist; plassholdere for organisasjonsnummer, adresser, avtaledatoer og det som må verifiseres hos Soniox, Idura og Vipps står i `docs/gdpr/README.md`.
+
 **Neste steg:** Test fase 2 i staging (Soniox-nøkkel fra EU-prosjekt, Claude slått på i Bedrock, moduler på for callsenteret). Test fase 3 i staging (lenke til kunden, aksept med BankID og Vipps, klage med dokumentasjon). Test fase 4A og 4B i staging (dashboard, coaching og fakturering). Alle fasene i planen er bygget. Seksjon 13–16 er godkjent 3. oktober og justeres etter full testing. Det som gjenstår, er juridiske avklaringer, databehandleravtaler, e-post (SES), Vipps-knappen, og senere SMS (med Salgsverifisering), Stripe og produksjon.
 
 ## Kommandoer
