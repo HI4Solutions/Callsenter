@@ -1,4 +1,4 @@
-// Invoicing (docs/plan.md, section 16, module 15): MedInnova invoices the call centres. The rules
+// Invoicing (docs/plan.md, section 16, module 15): Hi4 Solutions AS invoices the call centres. The rules
 // live in the database (0017_invoicing.sql and 0019_billing_v2.sql): numbering when sent,
 // frozen invoices, payments, credit notes, access and modules from packages, scheduled sending,
 // fixed agreements and missed payments. This module validates input, makes PDFs and e-mails,
