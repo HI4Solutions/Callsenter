@@ -24,7 +24,7 @@ CloudFormation (YAML) for VeriQall, én stack per lag og miljø. Alle stacker he
 
    Den gir GitHub-rollen lov til å deploye `veriqall-staging-*`-stacker gjennom en egen CloudFormation-rolle, laste opp Lambda-pakker og starte migrator-Lambdaen. Rollen trenger ikke noe mer. Den eldre inline-policyen `callsenter-deploy-permissions` på rollen (RDS, Amplify og Secrets Manager direkte) bør fjernes når bootstrap er på plass, så GitHub ikke kan endre ressurser utenom CloudFormation.
 
-2. **Resten skjer ved push** til `staging` (eller `main` for produksjon): `.github/workflows/deploy-*.yml` bygger Lambda-pakken og kjører `infra/deploy.sh`. Skriptet deployer network → data → app, kjører migrasjonene via migrator-Lambdaen og sjekker `GET /health`.
+2. **Resten skjer ved push** til `staging` (eller `main` for produksjon): `.github/workflows/deploy-*.yml` bygger Lambda-pakken og kjører `infra/deploy.sh`. Skriptet deployer network → data → app med den nye migratoren, kjører migrasjonene via migrator-Lambdaen, gir deretter API-et og workeren den nye koden, og sjekker `GET /health`. Feiler en migrasjon, fortsetter den gamle koden mot det gamle skjemaet. En migrasjon må derfor også virke med koden før den (legg til først, fjern i en senere deploy). Migratoren venter høyst 5 sekunder på en tabellås og prøver opptil 5 ganger, så den aldri får API-et til å stå i kø bak seg.
 
 Produksjons-workflowen gjør ingenting før repo-variabelen `PRODUCTION_ENABLED` er satt til `true` (ved lansering).
 
@@ -33,7 +33,7 @@ En deploy kan også startes manuelt: **Actions → Deploy to staging → Run wor
 ## Valgfrie variabler på GitHub Environment
 
 - `ALERT_EMAIL`: e-post når NAT-instansen er nede (staging).
-- `API_DOMAIN_NAME` og `API_CERTIFICATE_ARN`: eget domene for API-et, for eksempel `api.staging.veriqall.no`, med ACM-sertifikat validert via CNAME hos one.com. Stack-outputen `ApiDomainTarget` er CNAME-målet.
+- `API_DOMAIN_NAME` og `API_CERTIFICATE_ARN`: eget domene for API-et, for eksempel `api.staging.veriqall.no`, med ACM-sertifikat validert via CNAME hos one.com. Stack-outputen `ApiDomainTarget` er CNAME-målet. Påkrevd i produksjon (`deploy.sh` stopper uten), siden web-appen kaller `https://api.veriqall.no` og innloggingen bare virker på det domenet.
 - `IDURA_DOMAIN`: Idura-domenet for BankID, uten `https://`. Mangler den, er BankID-knappen «ikke satt opp».
 - `APP_ORIGIN`: adressen til web-appen. Standard er `https://staging.veriqall.no` og `https://app.veriqall.no`.
 - `EMAIL_DOMAIN`: slår på e-post og morgenkjøringen (fakturaer, kl. 04:00 UTC via EventBridge). Domenet e-post sendes fra (`noreply@`), `staging.veriqall.no` i staging og `veriqall.no` i produksjon. Lager SES-identiteten. Krever at bootstrap-stacken er oppdatert med SES- og EventBridge-rettigheter (kjør steg 1 på nytt med den nye malen). Deploy-loggen og stack-outputen `EmailDnsRecords` viser DNS-postene som skal inn hos one.com: tre DKIM-CNAME-er, og MX og SPF for `mail.<domene>`. Legg i tillegg inn DMARC (`_dmarc.<domene>` TXT `v=DMARC1; p=none;`). Til SES-kontoen er tatt ut av sandkassen (søkes om én gang per konto og region), kan det bare sendes til verifiserte adresser.

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Deploys one environment: network, data and app stacks, then runs the migrations and a smoke
-# test. Used by .github/workflows/deploy-*.yml. Requires the bootstrap stack
-# (infra/bootstrap.yml) and the Lambda zip at apps/api/lambda.zip.
+# Deploys one environment: the network and data stacks, the app stack with the new migrator,
+# the migrations, then the new code for the API and the worker, and a smoke test. Used by
+# .github/workflows/deploy-*.yml. Requires the bootstrap stack (infra/bootstrap.yml) and the
+# Lambda zip at apps/api/lambda.zip.
 #
 # Optional environment variables: ALERT_EMAIL, API_DOMAIN_NAME, API_CERTIFICATE_ARN, APP_ORIGIN,
 # IDURA_DOMAIN, EMAIL_DOMAIN.
@@ -20,6 +21,13 @@ case "$env" in
     app_origin="${APP_ORIGIN:-https://app.veriqall.no}" vipps_host=https://api.vipps.no ;;
   *) echo "unknown environment: $env" >&2; exit 1 ;;
 esac
+
+# The production web app calls https://api.veriqall.no, and the login cookie only works on that
+# domain; without it, logins would land on the execute-api address and fail.
+if [[ "$env" == production && ( -z "${API_DOMAIN_NAME:-}" || -z "${API_CERTIFICATE_ARN:-}" ) ]]; then
+  echo "production needs API_DOMAIN_NAME and API_CERTIFICATE_ARN (infra/README.md)" >&2
+  exit 1
+fi
 
 output() {
   local value
@@ -75,10 +83,18 @@ if [[ -n "${API_DOMAIN_NAME:-}" && -n "${API_CERTIFICATE_ARN:-}" ]]; then
   app_params+=("ApiDomainName=$API_DOMAIN_NAME" "ApiCertificateArn=$API_CERTIFICATE_ARN")
 fi
 [[ -n "${EMAIL_DOMAIN:-}" ]] && app_params+=("EmailDomain=$EMAIL_DOMAIN")
-deploy app app.yml "${app_params[@]}"
-if [[ -n "${EMAIL_DOMAIN:-}" ]]; then
-  echo "DNS records for e-mail (add at one.com once):"
-  output "veriqall-$env-app" EmailDnsRecords | tr '|' '\n'
+
+# Migrations run before the API and the worker get the new code: first the stack with the new
+# migrator and the code that is running now, then the migrations, then the new code. A failed
+# migration leaves the old code running against the old schema. Migrations must therefore work
+# with the code before them too (add first, remove in a later deploy).
+running_key=$(aws cloudformation describe-stacks --region "$region" --stack-name "veriqall-$env-app" \
+  --query "Stacks[0].Parameters[?ParameterKey=='ArtifactKey'].ParameterValue" --output text 2>/dev/null || true)
+if [[ -z "$running_key" || "$running_key" == "None" ]]; then
+  # First deploy: no older code to keep running.
+  deploy app app.yml "${app_params[@]}"
+elif [[ "$running_key" != "$artifact_key" ]]; then
+  deploy app app.yml "${app_params[@]/#ArtifactKey=*/ArtifactKey=$running_key}" "MigratorArtifactKey=$artifact_key"
 fi
 
 echo "::group::migrate"
@@ -93,6 +109,12 @@ if grep -q FunctionError <<<"$meta"; then
   exit 1
 fi
 echo "::endgroup::"
+
+deploy app app.yml "${app_params[@]}" "MigratorArtifactKey=$artifact_key"
+if [[ -n "${EMAIL_DOMAIN:-}" ]]; then
+  echo "DNS records for e-mail (add at one.com once):"
+  output "veriqall-$env-app" EmailDnsRecords | tr '|' '\n'
+fi
 
 echo "::group::smoke test"
 endpoint=$(output "veriqall-$env-app" DefaultEndpoint)
