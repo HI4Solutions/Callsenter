@@ -457,6 +457,7 @@ describe("calls: access", () => {
     expect((await call(seller, "POST", `/org/calls/${id}/chunks`, { seq: 0 })).status).toBe(400);
     expect((await call(seller, "POST", `/org/calls/${id}/chunks`, { seq: 0, size: 201 * 1024 * 1024 })).body.error).toMatch(/for stor/);
     expect((await call(seller, "POST", `/org/calls/${id}/pieces`, { seq: 0, startMs: 0, size: 11 * 1024 * 1024 })).status).toBe(400);
+    expect((await call(seller, "POST", `/org/calls/${id}/complete`, { durationMs: 25 * 3600_000 })).body.error).toBe("Ugyldig varighet.");
     expect((await call(seller, "POST", `/org/calls/${id}/complete`, {})).body.error).toBe("Ingen lyd er lastet opp.");
     const compliance = await sessionFor(await member(s.org, "compliance"), s.org);
     expect((await call(compliance, "POST", "/org/calls", { source: "upload", mime: "audio/mpeg" })).status).toBe(403);
