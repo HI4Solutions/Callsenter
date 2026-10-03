@@ -23,7 +23,7 @@ export function CallList({ calls, showCustomer = true }: { calls: CallSummary[];
                 {showCustomer && customerAfterTitle(c) && <span className="font-normal text-muted"> · {customerAfterTitle(c)}</span>}
               </span>
               <span className="text-sm text-muted">
-                {[formatDateTime(c.startedAt), c.userName, formatDuration(c.durationMs), c.productName].filter(Boolean).join(" · ")}
+                {[formatDateTime(c.startedAt), c.userName, formatDuration(c.durationMs), c.productName, c.reference].filter(Boolean).join(" · ")}
               </span>
               {c.match && <span className="text-sm [overflow-wrap:anywhere]">… {c.match} …</span>}
             </span>

@@ -6,6 +6,8 @@ export type Level = "green" | "yellow" | "red";
 
 export interface CallSummary {
   id: string;
+  // VQ-XXXX-XXXX: copied into the call centre's own sales system, and searchable here.
+  reference: string;
   status: CallStatus;
   source: "microphone" | "tab" | "upload";
   title: string | null;

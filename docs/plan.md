@@ -297,6 +297,7 @@ Beslutninger 2. oktober:
 - **AI-kontroll** med den valgte modellen. Samtalen sjekkes mot malversjonen den er koblet til (via salget, eller produktets gjeldende versjon): hvert obligatoriske punkt (grønn, gul, rød), forbudte formuleringer (rød), pris og vilkår som ikke stemmer, og andre alvorlige forhold. Hvert funn har sitat og tidspunkt i opptaket. Samtalen får det verste flagget. Gule og røde flagg behandles av den som har `flags.review`, med kommentar.
 - **Rapport** etter hver samtale etter callsenterets standard rapportmal (`report_templates.manage`), eller VeriQalls standardrapport.
 - **Én kanal.** Taler 1 og 2 kommer fra automatisk taleradskillelse og kan bytte plass.
+- **Referanse per samtale (Nadeem, 3. oktober).** Hver samtale får en fast referanse som `VQ-7K3M-Q9TX` (8 tegn uten forvekslbare tegn som 0/O og 1/I/L), laget av databasen og unik på tvers av callsentre. Den kan aldri endres. Når opptaket er ferdig, viser Samtalestudio referansen med en «Kopier»-knapp, og selgeren limer den inn der salget registreres i callsenterets eget system. Ved klage eller kontroll søkes referansen opp under Samtaler (med eller uten bindestreker, store eller små bokstaver), og den finner samtalen med opptak, transkripsjon og AI-kontroll. Referansen gir ingen tilgang i seg selv: søket følger de vanlige reglene for hvem som ser hvilke samtaler. Migrasjonen `0034_call_references.sql`.
 
 | Del | Innhold |
 |---|---|
@@ -310,6 +311,8 @@ Før det virker i staging: Soniox-nøkkelen i `callsenter/staging/app` må komme
 ## 14. Salgsverifisering, dokumentasjon og klager
 
 Bygget 2. oktober 2026 (modul 8, 9 og 10), i én PR. Claude tok beslutningene under alene, og de venter på Nadeems godkjenning.
+
+**Tilleggsmodul (Nadeem, 3. oktober).** De fleste callsentre har allerede sitt eget system for bekreftelse og kundelenker. Salgsverifisering (`sale_verification`) er derfor en egen modul som slås på per callsenter og faktureres ekstra, fordi hver aksept med BankID eller Vipps koster oss penger. Callsentre uten modulen kobler samtalen til salget i sitt eget system med samtalens referanse (seksjon 13).
 
 Beslutninger 2. oktober (til godkjenning):
 

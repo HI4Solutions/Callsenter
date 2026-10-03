@@ -76,7 +76,7 @@ export default function CallsPage() {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-        <Field label="Søk i samtalene">
+        <Field label="Søk i samtalene" hint="Ord fra samtalen, kunde, tittel eller referanse (VQ-…).">
           <input
             type="search"
             className={`${inputClass} w-full sm:w-72`}

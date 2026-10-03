@@ -215,6 +215,11 @@ describe("calls: recording to report", () => {
     // Search excerpts are transcript views too.
     const searchLog = await owner.query("select 1 from access_log where resource_type = 'call_search' and resource_id = $1", [id]);
     expect(searchLog.rowCount).toBe(1);
+    // The reference number finds it too, however it is typed.
+    expect(detail.body.reference).toMatch(/^VQ-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+    const typed = detail.body.reference.toLowerCase().replace(/-/g, " ").replace("vq ", "");
+    const byReference = await call(seller, "GET", "/org/calls", undefined, { q: typed });
+    expect(byReference.body.map((c: { id: string }) => c.id)).toEqual([id]);
     const admin = s.admin;
     expect((await call(admin, "GET", "/org/calls", undefined, { review: "1" })).body).toHaveLength(1);
     const analysisId = detail.body.analyses[0].id;
