@@ -146,6 +146,7 @@
     "send": "Send",
     "sending": "Sending …",
     "sent": "Thank you for your message. We will be in touch as soon as we can.",
-    "failed": "The message was not sent. Try again in a moment."
+    "failed": "The message was not sent. Try again in a moment.",
+    "bubble": "Contact us"
   }
 }

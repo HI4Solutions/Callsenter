@@ -146,6 +146,7 @@
     "send": "Send",
     "sending": "Sender …",
     "sent": "Tak for din henvendelse. Vi kontakter dig, så snart vi kan.",
-    "failed": "Beskeden blev ikke sendt. Prøv igen om lidt."
+    "failed": "Beskeden blev ikke sendt. Prøv igen om lidt.",
+    "bubble": "Kontakt os"
   }
 }

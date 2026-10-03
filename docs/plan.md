@@ -600,6 +600,7 @@ Påbegynt 3. oktober 2026 (Nadeems ønske). Siden skal ikke være synlig for noe
 4. Modulene (åtte kort), hvem siden er for (selger, leder, compliance, admin), «Bygget for å være bevis» (EU, skille per callsenter, innlogging, sporing, uforanderlige bevis, sletting), språk, pris (pakke, forbruk og salgsverifisering, uten tall), spørsmål og svar, og en avsluttende oppfordring.
 5. Kontaktskjema nederst (`#kontakt`, dit «Be om en demo» også peker): navn, e-post, telefon, firma og melding, med et skjult felt som stopper roboter. `POST /contact` lagrer henvendelsen i `contact_requests` (migrasjonen `0037_contact_requests.sql`, høyst 10 i timen per IP-adresse) gjennom `app_auth` og en `security definer`-funksjon, og sender e-post til alle superadminer med e-postadresse når e-post er satt opp. Superadmin ser henvendelsene under Meldinger → Henvendelser og merker dem som behandlet.
 6. Bunntekst med Hi4 Solutions AS og språkvelger.
+7. En chatboble nederst til høyre (`components/landing/chat-bubble.tsx`) som ruller ned til kontaktskjemaet og setter markøren i første felt. Den skjules mens skjemaet er synlig, og respekterer «redusert bevegelse».
 
 Siden bruker appens design: samme tokens, lys og mørk modus, og grønn, gul og rød bare i AI-flaggene i stillbildet.
 
