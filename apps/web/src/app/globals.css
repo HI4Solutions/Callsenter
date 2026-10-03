@@ -88,6 +88,19 @@ body {
   }
 }
 
+/* BankID's logo: BankID's purple on light backgrounds, white on dark (BankID's brand rules). */
+.bankid-logo {
+  color: #39134c;
+}
+[data-theme="dark"] .bankid-logo {
+  color: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .bankid-logo {
+    color: #fff;
+  }
+}
+
 .flag {
   --flag-color: var(--muted);
 }

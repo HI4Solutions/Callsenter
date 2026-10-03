@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BankIdLogo } from "@/components/bankid-logo";
 import { PasskeyLogin } from "@/components/passkey-login";
 import { SignedInRedirect } from "@/components/signed-in-redirect";
 import { loginErrorMessage, loginStartUrl, safeNext } from "@/lib/auth";
@@ -44,9 +45,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         </a>
         <a
           href={loginStartUrl("bankid", { invite, next })}
-          className="inline-flex min-h-12 items-center justify-center rounded-lg border border-line bg-surface px-5 font-semibold"
+          aria-label="Logg inn med BankID"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-line bg-surface px-5 font-semibold"
         >
-          Logg inn med BankID
+          Logg inn med <BankIdLogo />
         </a>
         {!invite && <PasskeyLogin next={next} />}
       </div>

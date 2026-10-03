@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ErrorMessage, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
+import { BankIdLogo } from "@/components/bankid-logo";
 import { API_URL } from "@/lib/auth";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { usePageTitle } from "@/lib/use-page-title";
@@ -134,9 +135,10 @@ export default function ConfirmPage() {
           <a
             href={read ? `${API_URL}/confirm/bankid/start?t=${encodeURIComponent(token)}` : undefined}
             aria-disabled={!read}
-            className={`${primaryButton} ${read ? "" : "pointer-events-none opacity-60"}`}
+            aria-label="Godta med BankID"
+            className={`${secondaryButton} gap-2 ${read ? "" : "pointer-events-none opacity-60"}`}
           >
-            Godta med BankID
+            Godta med <BankIdLogo height={18} />
           </a>
           <a
             href={read ? `${API_URL}/confirm/vipps/start?t=${encodeURIComponent(token)}` : undefined}

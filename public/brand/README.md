@@ -9,3 +9,7 @@ Godkjente logo- og ikonfiler (se `docs/plan.md`, seksjon 6). Genereres av `tools
 - `apple-touch-icon.png` (180 px) og `icon-512.png`: hjemskjermikoner
 
 Denne mappen er kilden. `apps/web` kopierer den til `apps/web/public/brand/` (gitignorert) ved `dev` og `build`.
+
+Fra andre:
+
+- `bankid-logo.svg`: BankID-logoen i BankIDs lilla (#39134C), levert av Nadeem 3. oktober 2026. Brukes på knappene via `apps/web/src/components/bankid-logo.tsx`, som tegner den hvit i mørk modus.
