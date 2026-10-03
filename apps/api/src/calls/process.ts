@@ -5,7 +5,7 @@ import { AI_MODELS, DEFAULT_AI_MODEL, isAiModelKey } from "@veriqall/shared";
 import type pg from "pg";
 import type { Ai } from "./ai.ts";
 import { type Segment, type Soniox, toSegments } from "./soniox.ts";
-import { audioKey, callPrefix, type AudioStore } from "./store.ts";
+import { audioKey, callPrefix, pieceKey, type AudioStore } from "./store.ts";
 
 export interface WorkerDeps {
   db: pg.Pool;
@@ -34,6 +34,8 @@ interface CallRow {
   note: string | null;
   // The note templates chosen in the studio; one note each (the default when none).
   note_templates: string[];
+  // Pieces the browser made for transcription while recording (null for files and old calls).
+  piece_count: number | null;
   attempts: number;
   soniox_file_id: string | null;
   soniox_transcription_id: string | null;
@@ -98,7 +100,7 @@ export async function processCall(deps: WorkerDeps, callId: string): Promise<voi
             or (c.status = 'analyzed' and c.template_version_id is not null
                 and not exists (select 1 from call_analyses a where a.call_id = c.id)))
      returning id, organization_id, status, transcription_mode, audio_key, audio_mime, duration_ms,
-               template_version_id, product_id, customer_id, title, note, note_templates, attempts, soniox_file_id, soniox_transcription_id`,
+               template_version_id, product_id, customer_id, title, note, note_templates, piece_count, attempts, soniox_file_id, soniox_transcription_id`,
     [callId],
   );
   const call = claimed.rows[0];
@@ -146,12 +148,16 @@ async function joinChunks(deps: WorkerDeps, call: CallRow): Promise<{ key: strin
 }
 
 async function context(db: pg.Pool, call: CallRow) {
+  return contextFor(db, call.organization_id, call.product_id);
+}
+
+async function contextFor(db: pg.Pool, organizationId: string, productId: string | null) {
   const terms = (await db.query<{ value: string[] }>("select value from platform_settings where key = 'transcription_terms'")).rows[0]
     ?.value;
   const names = await db.query<{ org: string; product: string | null }>(
     `select o.name as org, p.name as product from organizations o
      left join products p on p.id = $2 where o.id = $1`,
-    [call.organization_id, call.product_id],
+    [organizationId, productId],
   );
   const extra = [names.rows[0]?.org, names.rows[0]?.product].filter((v): v is string => Boolean(v));
   return {
@@ -164,6 +170,9 @@ async function transcribe(deps: WorkerDeps, call: CallRow, enabled: Set<string>)
   if (!enabled.has("transcription")) throw new CallFailure(FAILED.notEnabled);
   if (!deps.soniox) throw new CallFailure(FAILED.notConfigured);
   const audio = await joinChunks(deps, call);
+  // Transcribed in pieces while recording: those are the transcript, unless one is missing.
+  const fromPieces = await pieceSegments(deps, call);
+  if (fromPieces) return saveTranscript(deps, call, fromPieces, call.duration_ms ?? fromPieces.at(-1)?.endMs ?? 0, false);
 
   const soniox = deps.soniox;
   let fileId: string | undefined;
@@ -196,8 +205,11 @@ async function transcribe(deps: WorkerDeps, call: CallRow, enabled: Set<string>)
   }
 
   const segments = toSegments(tokens);
+  await saveTranscript(deps, call, segments, audioMs ?? segments.at(-1)?.endMs ?? call.duration_ms ?? 0, true);
+}
+
+async function saveTranscript(deps: WorkerDeps, call: CallRow, segments: Segment[], durationMs: number, wholeRecording: boolean) {
   const text = segments.map((s) => s.text).join("\n");
-  const durationMs = audioMs ?? segments.at(-1)?.endMs ?? call.duration_ms ?? 0;
   const client = await deps.db.connect();
   try {
     await client.query("begin");
@@ -213,10 +225,13 @@ async function transcribe(deps: WorkerDeps, call: CallRow, enabled: Set<string>)
     await insertSegments(client, call, segments);
     await client.query("update calls set status = 'transcribed', duration_ms = $2, error = null where id = $1", [call.id, durationMs]);
     const seconds = Math.round(durationMs / 1000);
-    await client.query(
-      "insert into usage_events (organization_id, call_id, kind, audio_seconds) values ($1, $2, 'transcription_async', $3)",
-      [call.organization_id, call.id, seconds],
-    );
+    // Pieces were counted one by one as they were transcribed.
+    if (wholeRecording) {
+      await client.query(
+        "insert into usage_events (organization_id, call_id, kind, audio_seconds) values ($1, $2, 'transcription_async', $3)",
+        [call.organization_id, call.id, seconds],
+      );
+    }
     // Live text was streamed once, however many times the recording is transcribed.
     if (call.transcription_mode === "realtime") {
       await client.query(
@@ -234,6 +249,106 @@ async function transcribe(deps: WorkerDeps, call: CallRow, enabled: Set<string>)
     client.release();
   }
   call.status = "transcribed";
+}
+
+// --- Pieces (transcription while recording) -----------------------------------------------------
+
+interface PieceRow {
+  seq: number;
+  start_ms: number;
+  status: string;
+  segments: Segment[] | null;
+}
+
+// The call's transcript from its pieces, when every piece the browser made was transcribed;
+// otherwise null, and the whole recording is transcribed instead. Pieces still waiting are
+// transcribed here first.
+async function pieceSegments(deps: WorkerDeps, call: CallRow): Promise<Segment[] | null> {
+  const count = call.piece_count ?? 0;
+  if (call.transcription_mode !== "chunked" || count === 0) return null;
+  const load = async () =>
+    (await deps.db.query<PieceRow>("select seq, start_ms, status, segments from call_pieces where call_id = $1 order by seq", [call.id])).rows;
+  let pieces = await load();
+  // Another run may hold a piece for a moment; wait a little for it.
+  for (let round = 0; round < 20 && pieces.some((p) => p.status === "pending"); round++) {
+    for (const p of pieces.filter((x) => x.status === "pending")) await processPiece(deps, call.id, p.seq);
+    pieces = await load();
+    if (pieces.some((p) => p.status === "pending")) await deps.sleep(3000);
+  }
+  const done = pieces.filter((p) => p.status === "done");
+  if (done.length !== count || done.some((p, i) => p.seq !== i)) {
+    console.warn("worker: pieces incomplete, transcribing the whole recording", call.id, done.length, count);
+    return null;
+  }
+  return done.flatMap((p) => p.segments ?? []);
+}
+
+// Transcribes one piece with Soniox's async model, right after the browser uploaded it. The text
+// is shown in the studio while the call goes on. Nothing is left at Soniox, and the piece's audio
+// is deleted once it has its text (the stored recording is the continuous one).
+export async function processPiece(deps: WorkerDeps, callId: string, seq: number): Promise<void> {
+  const claimed = await deps.db.query<{ organization_id: string; start_ms: number; attempts: number; audio_mime: string | null }>(
+    `update call_pieces p set lease_until = now() + interval '2 minutes', attempts = p.attempts + 1
+     from calls c
+     where p.call_id = $1 and p.seq = $2 and c.id = p.call_id and p.status = 'pending'
+       and (p.lease_until is null or p.lease_until < now())
+     returning p.organization_id, p.start_ms, p.attempts, c.audio_mime`,
+    [callId, seq],
+  );
+  const piece = claimed.rows[0];
+  if (!piece) return;
+  const key = pieceKey(piece.organization_id, callId, seq);
+  const fail = () =>
+    deps.db.query("update call_pieces set status = 'failed', lease_until = null where call_id = $1 and seq = $2", [callId, seq]);
+  if (piece.attempts > 3 || !deps.soniox || !(await modules(deps.db, piece.organization_id)).has("transcription")) return void (await fail());
+  const soniox = deps.soniox;
+  let fileId: string | undefined;
+  let transcriptionId: string | undefined;
+  try {
+    const bytes = await deps.store.get(key);
+    const mime = piece.audio_mime ?? "audio/webm";
+    fileId = await soniox.uploadFile(bytes, `${callId}-${seq}.${extension(mime)}`, mime);
+    const context = await deps.db.query<{ product_id: string | null }>("select product_id from calls where id = $1", [callId]);
+    transcriptionId = await soniox.createTranscription(
+      fileId,
+      await contextFor(deps.db, piece.organization_id, context.rows[0]?.product_id ?? null),
+      `${callId}:${seq}`,
+    );
+    let audioMs: number | undefined;
+    const deadline = Date.now() + 90_000;
+    for (;;) {
+      const status = await soniox.status(transcriptionId);
+      if (status.status === "completed") {
+        audioMs = status.audio_duration_ms;
+        break;
+      }
+      if (status.status === "error") throw new Error(`soniox: ${status.error_message ?? "error"}`);
+      if (Date.now() > deadline) throw new Error("soniox: timed out");
+      await deps.sleep(1000);
+    }
+    const segments = toSegments((await soniox.transcript(transcriptionId)).tokens).map((s) => ({
+      ...s,
+      startMs: s.startMs + piece.start_ms,
+      endMs: s.endMs + piece.start_ms,
+    }));
+    await deps.db.query(
+      "update call_pieces set status = 'done', segments = $3, audio_ms = $4, lease_until = null where call_id = $1 and seq = $2",
+      [callId, seq, JSON.stringify(segments), audioMs ?? null],
+    );
+    await deps.db.query(
+      "insert into usage_events (organization_id, call_id, kind, audio_seconds) values ($1, $2, 'transcription_async', $3)",
+      [piece.organization_id, callId, Math.round((audioMs ?? 15_000) / 1000)],
+    );
+    await deps.store.delete([key]);
+  } catch (error) {
+    console.error("worker: piece failed", callId, seq, error);
+    // Tried again by the next run, or when the call is finished.
+    await deps.db.query("update call_pieces set lease_until = null where call_id = $1 and seq = $2", [callId, seq]);
+    if (piece.attempts >= 3) await fail();
+  } finally {
+    if (transcriptionId) await soniox.deleteTranscription(transcriptionId).catch((e) => console.error("soniox cleanup", e));
+    if (fileId) await soniox.deleteFile(fileId).catch((e) => console.error("soniox cleanup", e));
+  }
 }
 
 async function insertSegments(client: pg.PoolClient, call: CallRow, segments: Segment[]) {

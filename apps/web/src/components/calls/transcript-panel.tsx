@@ -35,7 +35,7 @@ export function TranscriptPanel({
             </p>
           ) : (
             <p className="text-muted">
-              {live.on ? "Teksten kommer her mens dere snakker …" : "Teksten kommer når samtalen er ferdig behandlet."}
+              {live.on ? "Teksten kommer her mens dere snakker …" : "Teksten kommer bitvis, omtrent hvert 15. sekund …"}
             </p>
           )}
         </div>

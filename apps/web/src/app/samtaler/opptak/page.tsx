@@ -260,7 +260,7 @@ export default function StudioPage() {
       rec = await CallRecorder.open(capture, mime, {
         onLiveText: (final, partial) => setLiveText({ final, partial }),
         onRealtimeLost: () => {
-          setNotice("Sanntidsteksten falt ut. Opptaket fortsetter, og teksten kommer når samtalen er ferdig behandlet.");
+          setNotice("Sanntidsteksten falt ut. Opptaket fortsetter, og teksten kommer nå bitvis, omtrent hvert 15. sekund.");
           setState((s) => (s.step === "recording" ? { ...s, live: false } : s));
         },
         onUploads: setUploads,

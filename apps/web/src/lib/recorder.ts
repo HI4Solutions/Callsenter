@@ -1,9 +1,13 @@
 // Records a call in the browser (docs/plan.md, section 13), the way MedSide records
 // consultations: the microphone, optionally mixed with the audio of a browser tab where the call
 // runs (web telephony, Teams, Whereby and so on). The recording is uploaded in chunks while it
-// runs, so nothing is lost if the browser stops, and in realtime mode the same audio is streamed
-// to Soniox for live text. Live text is a help for the seller only; the stored recording is
-// transcribed again on the server, and that transcript is what counts.
+// runs, so nothing is lost if the browser stops. For text while the call goes on:
+// - in pieces (the default, as in MedSide): every 15 seconds a separate, complete audio file is
+//   made and uploaded, and the server transcribes it with Soniox's async model. The pieces
+//   become the call's transcript, so it is ready when the recording stops;
+// - realtime: the same audio is streamed to Soniox. That text is a help for the seller only; the
+//   stored recording is transcribed on the server afterwards. If realtime drops, pieces take over
+//   for the live text.
 import { AdminError, apiFetch } from "./api";
 import type { CreatedCall } from "./calls";
 
@@ -94,6 +98,15 @@ export class CallRecorder {
   #stopped = false;
   #startedAt = 0;
   #finalText = "";
+  // Pieces for transcription while recording.
+  #piece: MediaRecorder | null = null;
+  #pieceTimer: ReturnType<typeof setInterval> | null = null;
+  #pieceCount = 0;
+  #pieceUploads: Promise<void> = Promise.resolve();
+  #pieceTexts = new Map<number, string>();
+  #piecesPending = new Set<number>();
+  #pollTimer: ReturnType<typeof setInterval> | null = null;
+  #polledOnce = false;
   #callbacks: RecorderCallbacks;
 
   private constructor(capture: Capture, mime: string, mic: MediaStream, stream: MediaStream, context: AudioContext | null, cb: RecorderCallbacks) {
@@ -145,6 +158,94 @@ export class CallRecorder {
     });
     this.#storage.start(CHUNK_MS);
     if (call.realtime) this.#startLive(call);
+    else this.#startPieces();
+  }
+
+  // A complete audio file every 15 seconds: the next one starts before the previous stops, so no
+  // audio falls between them.
+  #startPieces() {
+    if (this.#piece || this.#stopped) return;
+    const begin = () => {
+      const startMs = this.elapsedMs;
+      const recorder = new MediaRecorder(this.#stream, { mimeType: this.mime, audioBitsPerSecond: 32_000 });
+      const parts: Blob[] = [];
+      recorder.addEventListener("dataavailable", (e) => {
+        if (e.data.size) parts.push(e.data);
+      });
+      recorder.addEventListener("stop", () => {
+        const blob = new Blob(parts, { type: this.mime });
+        if (blob.size) this.#enqueuePiece(this.#pieceCount++, startMs, blob);
+      });
+      recorder.start();
+      return recorder;
+    };
+    this.#piece = begin();
+    this.#pieceTimer = setInterval(() => {
+      if (this.#stopped) return;
+      const previous = this.#piece;
+      this.#piece = begin();
+      if (previous?.state === "recording") previous.stop();
+    }, CHUNK_MS);
+    this.#pollTimer = setInterval(() => void this.#pollPieces(), 3000);
+  }
+
+  #enqueuePiece(seq: number, startMs: number, blob: Blob) {
+    this.#piecesPending.add(seq);
+    this.#emitPieces();
+    this.#pieceUploads = this.#pieceUploads.then(() => this.#uploadPiece(seq, startMs, blob));
+  }
+
+  // Uploaded and handed to the server for transcription. A piece that cannot be uploaded is left
+  // out: the server then transcribes the whole recording instead.
+  async #uploadPiece(seq: number, startMs: number, blob: Blob) {
+    for (let attempt = 0; attempt < 6 && !this.#fatal; attempt++) {
+      try {
+        const { url, contentType } = await apiFetch<{ url: string; contentType: string }>(`/org/calls/${this.#callId}/pieces`, {
+          method: "POST",
+          body: { seq, startMs },
+        });
+        const res = await fetch(url, { method: "PUT", body: blob, headers: { "content-type": contentType } });
+        if (!res.ok) throw new Error(`upload ${res.status}`);
+        await apiFetch(`/org/calls/${this.#callId}/pieces/${seq}/uploaded`, { method: "POST" });
+        return;
+      } catch (error) {
+        if (error instanceof AdminError && error.status >= 400 && error.status < 500) break;
+        await new Promise((r) => setTimeout(r, Math.min(15_000, 1000 * 2 ** attempt)));
+      }
+    }
+    this.#piecesPending.delete(seq);
+    this.#emitPieces();
+  }
+
+  // The text of the pieces transcribed so far.
+  async #pollPieces() {
+    if (!this.#piecesPending.size) return;
+    let after = -1;
+    while (this.#polledOnce && this.#pieceTexts.has(after + 1)) after++;
+    try {
+      const rows = await apiFetch<{ seq: number; status: string; segments: { text: string }[] | null }[]>(
+        `/org/calls/${this.#callId}/pieces?after=${this.#polledOnce ? after : -1}`,
+      );
+      this.#polledOnce = true;
+      for (const row of rows) {
+        if (row.status === "done" || row.status === "failed") {
+          this.#pieceTexts.set(row.seq, (row.segments ?? []).map((x) => x.text).join(" "));
+          this.#piecesPending.delete(row.seq);
+        }
+      }
+      this.#emitPieces();
+    } catch {
+      // Tried again at the next poll.
+    }
+  }
+
+  #emitPieces() {
+    const text = [...this.#pieceTexts.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([, t]) => t)
+      .filter(Boolean)
+      .join(" ");
+    this.#callbacks.onLiveText?.(text, this.#piecesPending.size ? " …" : "");
   }
 
   #startLive(call: CreatedCall) {
@@ -163,6 +264,9 @@ export class CallRecorder {
       this.#socket = null;
       if (this.#live?.state === "recording") this.#live.stop();
       this.#callbacks.onRealtimeLost?.();
+      // Pieces take over the live text from here.
+      this.#finalText = "";
+      this.#startPieces();
     };
     socket.addEventListener("open", () => {
       // Stopped before the connection opened: nothing to stream.
@@ -267,6 +371,14 @@ export class CallRecorder {
         storage.stop();
       });
     }
+    if (this.#pieceTimer) clearInterval(this.#pieceTimer);
+    const piece = this.#piece;
+    if (piece && piece.state !== "inactive") {
+      await new Promise<void>((resolve) => {
+        piece.addEventListener("stop", () => resolve(), { once: true });
+        piece.stop();
+      });
+    }
     if (this.#live?.state === "recording") this.#live.stop();
     const socket = this.#socket;
     this.#socket = null;
@@ -278,7 +390,9 @@ export class CallRecorder {
     this.release();
     await this.#uploading;
     if (this.#fatal) throw new RecorderError(`Opptaket kunne ikke lastes ferdig opp: ${this.#fatal}`);
-    await apiFetch(`/org/calls/${this.#callId}/complete`, { method: "POST", body: { durationMs } });
+    await this.#pieceUploads;
+    if (this.#pollTimer) clearInterval(this.#pollTimer);
+    await apiFetch(`/org/calls/${this.#callId}/complete`, { method: "POST", body: { durationMs, pieces: this.#pieceCount } });
     return durationMs;
   }
 
@@ -286,6 +400,9 @@ export class CallRecorder {
   // uploaded can be finished from the call page, or is finished automatically later.
   abort() {
     this.#stopped = true;
+    if (this.#pieceTimer) clearInterval(this.#pieceTimer);
+    if (this.#pollTimer) clearInterval(this.#pollTimer);
+    if (this.#piece?.state === "recording") this.#piece.stop();
     if (this.#storage?.state === "recording") this.#storage.stop();
     if (this.#live?.state === "recording") this.#live.stop();
     this.#socket?.close();
