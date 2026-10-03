@@ -291,7 +291,7 @@ export async function retryCall(db: pg.Pool, session: Session, services: CallSer
   return { id: callId, status: "processing" };
 }
 
-const SUMMARY = `c.id, c.status, c.source, c.title, c.started_at as "startedAt", c.duration_ms as "durationMs",
+const SUMMARY = `c.id, c.reference, c.status, c.source, c.title, c.started_at as "startedAt", c.duration_ms as "durationMs",
   c.expires_at as "expiresAt", c.error, c.user_id as "userId", u.full_name as "userName", t.name as "teamName",
   c.customer_id as "customerId", cu.name as "customerName", c.sale_id as "saleId", c.product_id as "productId",
   p.name as "productName", tv.version as "templateVersion",
@@ -306,6 +306,12 @@ const FROM = `from calls c
   left join lateral (
     select flag, reviewed_at from call_analyses where call_id = c.id order by created_at desc limit 1
   ) a on true`;
+
+// "vq-7kx4 92pm", "7KX492PM" and the like as VQ-7KX4-92PM, or null if it cannot be a reference.
+export function callReference(value: string): string | null {
+  const plain = value.toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/^VQ/, "");
+  return /^[A-HJKMNP-Z2-9]{8}$/.test(plain) ? `VQ-${plain.slice(0, 4)}-${plain.slice(4)}` : null;
+}
 
 function dayParam(value: string | undefined): string | null {
   return value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) ? value : null;
@@ -341,7 +347,7 @@ export async function listCalls(
        ${FROM}
        left join transcripts tr on tr.call_id = c.id
        where c.organization_id = app.current_org_id()
-         and ($1 = '' or tr.search @@ websearch_to_tsquery('norwegian', $1) or c.title ilike '%' || $1 || '%' or cu.name ilike '%' || $1 || '%')
+         and ($1 = '' or c.reference = $14 or tr.search @@ websearch_to_tsquery('norwegian', $1) or c.title ilike '%' || $1 || '%' or cu.name ilike '%' || $1 || '%')
          and ($2::text is null or a.flag = $2)
          and ($3::text is null or c.status = $3)
          and ($4::uuid is null or c.customer_id = $4)
@@ -356,7 +362,7 @@ export async function listCalls(
          and (not $13 or a.flag is null)
        order by c.started_at desc
        limit 200`,
-      [q, flag, status, customerId, saleId, mine, review, from, to, userId, teamId, flagged, unchecked],
+      [q, flag, status, customerId, saleId, mine, review, from, to, userId, teamId, flagged, unchecked, callReference(q)],
     );
     // Search results show excerpts of the transcripts: each is a view of that transcript.
     const shown = rows.filter((r) => r.match).map((r) => r.id as string);

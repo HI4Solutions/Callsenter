@@ -7,6 +7,7 @@ import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
 import { AdditionalInfo } from "@/components/calls/additional-info";
 import { CallLog } from "@/components/calls/call-log";
+import { CallReference } from "@/components/calls/call-reference";
 import { CallStatusBadge } from "@/components/calls/call-status";
 import { NotesPanel } from "@/components/calls/notes-panel";
 import { TranscriptPanel } from "@/components/calls/transcript-panel";
@@ -78,6 +79,9 @@ export default function CallPage() {
         <p className="mt-2 text-muted">
           {[formatDateTime(call.startedAt), call.userName, formatDuration(call.durationMs), SOURCE[call.source]].filter(Boolean).join(" · ")}
         </p>
+        <div className="mt-2">
+          <CallReference reference={call.reference} />
+        </div>
         <Links call={call} canEdit={permissions.includes("calls.upload") && !call.analyses.length && !call.working} onChanged={load} />
       </div>
       <ErrorMessage message={error} />

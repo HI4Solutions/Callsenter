@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { AdditionalInfo } from "@/components/calls/additional-info";
+import { CallReference } from "@/components/calls/call-reference";
 import { NoteTemplatePicker, useNoteTemplates } from "@/components/calls/note-templates";
 import { NotesPanel } from "@/components/calls/notes-panel";
 import { TranscriptPanel } from "@/components/calls/transcript-panel";
@@ -501,6 +502,12 @@ export default function StudioPage() {
               </Field>
             </div>
           </details>
+        )}
+        {doneId && !busy && call && (
+          <div className="flex flex-col gap-1">
+            <CallReference reference={call.reference} />
+            <p className="text-sm text-muted">Lim referansen inn der salget registreres. Den finner samtalen igjen ved klage eller kontroll.</p>
+          </div>
         )}
         {doneId && !busy && (
           <div className="flex flex-wrap gap-2">
