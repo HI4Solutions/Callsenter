@@ -94,6 +94,15 @@ export async function updateRole(db: pg.Pool, session: Session, roleId: string, 
     if (role.rows[0].mine && (permissions !== undefined || archived === true)) {
       throw new BadRequest("Du kan ikke endre rettighetene til rollen du har selv.");
     }
+    // Only roles within your own rights: taking rights away from a stronger role (an admin's)
+    // would be a way round the rule that nobody gives or takes what they don't have.
+    if (permissions !== undefined || archived !== undefined) {
+      const stronger = await c.query<{ more: boolean }>(
+        "select exists (select 1 from role_permissions where role_id = $1 and not app.has_permission(permission)) as more",
+        [roleId],
+      );
+      if (stronger.rows[0]!.more) throw new BadRequest("Rollen har rettigheter du ikke har selv, og kan ikke endres av deg.");
+    }
     if (archived === true && role.rows[0].members > 0) {
       throw new BadRequest("Rollen har brukere. Gi dem en annen rolle før du arkiverer den.");
     }

@@ -5,6 +5,7 @@
 // reviews yellow and red flags. Every view and playback is written to access_log.
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
+import { isUploadSize, MAX_CHUNK_BYTES, MAX_PIECE_BYTES } from "@veriqall/shared";
 import { NotFound } from "../admin/organizations.ts";
 import { BadRequest, type Body, isUuid, optionalText, requiredText } from "../admin/validate.ts";
 import type { Session } from "../auth/session.ts";
@@ -164,6 +165,8 @@ async function recordingCall(db: pg.Pool, session: Session, callId: string) {
 export async function chunkUrl(db: pg.Pool, session: Session, services: CallServices, callId: string, body: Body) {
   const seq = body.seq;
   if (typeof seq !== "number" || !Number.isInteger(seq) || seq < 0 || seq >= MAX_CHUNKS) throw new BadRequest("Ugyldig del.");
+  if (!isUploadSize(body.size, MAX_CHUNK_BYTES)) throw new BadRequest("Lydfilen er for stor (høyst 200 MB).");
+  const size = body.size;
   const call = await withSession(db, session, async (c) => {
     const { rows } = await c.query<{ organization_id: string; status: string; user_id: string; audio_mime: string }>(
       "select organization_id, status, user_id, audio_mime from calls where id = $1 for update",
@@ -176,7 +179,7 @@ export async function chunkUrl(db: pg.Pool, session: Session, services: CallServ
     return found;
   });
   return {
-    url: await services.store.presignPut(chunkKey(call.organization_id, callId, seq), call.audio_mime),
+    url: await services.store.presignPut(chunkKey(call.organization_id, callId, seq), call.audio_mime, size),
     contentType: call.audio_mime,
   };
 }
@@ -192,6 +195,8 @@ export async function pieceUrl(db: pg.Pool, session: Session, services: CallServ
   if (typeof startMs !== "number" || !Number.isInteger(startMs) || startMs < 0 || startMs > 24 * 3600_000) {
     throw new BadRequest("Ugyldig tidspunkt.");
   }
+  if (!isUploadSize(body.size, MAX_PIECE_BYTES)) throw new BadRequest("Ugyldig størrelse.");
+  const size = body.size;
   const call = await recordingCall(db, session, callId);
   const mime = await withSession(db, session, async (c) => {
     if (!(await moduleEnabled(c, "transcription"))) throw new BadRequest("Transkribering er ikke slått på for callsenteret.");
@@ -202,7 +207,7 @@ export async function pieceUrl(db: pg.Pool, session: Session, services: CallServ
     );
     return (await c.query<{ audio_mime: string }>("select audio_mime from calls where id = $1", [callId])).rows[0]!.audio_mime;
   });
-  return { url: await services.store.presignPut(pieceKey(call.organization_id, callId, seq), mime), contentType: mime };
+  return { url: await services.store.presignPut(pieceKey(call.organization_id, callId, seq), mime, size), contentType: mime };
 }
 
 // The piece is uploaded: the worker transcribes it.
