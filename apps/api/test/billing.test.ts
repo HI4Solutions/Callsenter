@@ -104,6 +104,33 @@ describe("invoicing", () => {
     expect((await call(admin.cookie, "GET", "/admin/billing/overview")).status).toBe(200);
   });
 
+  it("bills transcription in pieces as the sum of the pieces, and a whole recording once", async () => {
+    const admin = await superadmin();
+    const org = await createOrg();
+    const seller = await member(org, "seller");
+    await call(admin.cookie, "PATCH", "/admin/billing/settings", { companyName: "Leverandør AS", orgNumber: "999999999", accountNumber: "12345678903", priceAudioHour: "100" });
+    const newCall = async () =>
+      (await owner.query("insert into calls (organization_id, user_id, source, transcription_mode) values ($1, $2, 'microphone', 'chunked') returning id", [org, seller])).rows[0].id as string;
+    const event = (callId: string, seconds: number, piece: number | null) =>
+      owner.query(
+        "insert into usage_events (organization_id, call_id, kind, audio_seconds, piece, created_at) values ($1, $2, 'transcription_async', $3, $4, '2026-09-10T12:00:00Z')",
+        [org, callId, seconds, piece],
+      );
+    // One hour in four pieces.
+    const pieces = await newCall();
+    for (const seq of [0, 1, 2, 3]) await event(pieces, 900, seq);
+    // A piece transcribed twice is still one piece.
+    await expect(event(pieces, 900, 3)).rejects.toThrow(/duplicate key/);
+    // A piece went missing, so the whole hour was transcribed again: billed once, as the whole.
+    const fallback = await newCall();
+    for (const seq of [0, 1]) await event(fallback, 900, seq);
+    await event(fallback, 3600, null);
+
+    const created = await call(admin.cookie, "POST", "/admin/invoices", { organizationId: org, lines: [{ description: "Lisens", quantity: 1, unitPrice: "1" }] });
+    const usage = await call(admin.cookie, "POST", `/admin/invoices/${created.body.id}/usage`, { month: "2026-09" });
+    expect(usage.body.lines[1]).toMatchObject({ description: "Transkribering september 2026, timer lyd", quantity: "2.000" });
+  });
+
   it("sends fixed agreements that are due when the run starts, and only once", async () => {
     const admin = await superadmin();
     const org = await createOrg();
