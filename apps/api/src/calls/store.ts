@@ -64,3 +64,5 @@ export function s3Store(bucket: string, client = new S3Client({})): AudioStore {
 export const callPrefix = (orgId: string, callId: string) => `${orgId}/${callId}/`;
 export const chunkKey = (orgId: string, callId: string, seq: number) => `${callPrefix(orgId, callId)}chunks/${String(seq).padStart(5, "0")}`;
 export const audioKey = (orgId: string, callId: string) => `${callPrefix(orgId, callId)}audio`;
+// A piece for transcription while recording: a complete audio file of about 15 seconds.
+export const pieceKey = (orgId: string, callId: string, seq: number) => `${callPrefix(orgId, callId)}pieces/${String(seq).padStart(5, "0")}`;

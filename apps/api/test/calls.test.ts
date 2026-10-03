@@ -1,12 +1,12 @@
 import { randomBytes } from "node:crypto";
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { api, auth, createOrg, createUser, makePlatformAdmin, member, owner, worker } from "../../../packages/db/test/helpers.ts";
 import { createHandler } from "../src/api.ts";
 import { sha256 } from "../src/auth/crypto.ts";
 import type { AuthDeps } from "../src/auth/types.ts";
 import type { Ai } from "../src/calls/ai.ts";
-import { housekeeping, pendingReports, processCall, processReport, type WorkerDeps } from "../src/calls/process.ts";
+import { housekeeping, pendingReports, processCall, processPiece, processReport, type WorkerDeps } from "../src/calls/process.ts";
 import type { CallServices } from "../src/calls/services.ts";
 import { Soniox, toSegments } from "../src/calls/soniox.ts";
 import type { AudioStore } from "../src/calls/store.ts";
@@ -93,9 +93,11 @@ const ai: Ai = {
 };
 
 const startedNotes: string[] = [];
+const startedPieces: string[] = [];
 const services: CallServices = {
   store,
   soniox,
+  startPiece: async (id, seq) => void startedPieces.push(`${id}:${seq}`),
   startWorker: async (id, reportId) => {
     if (id) started.push(id);
     if (reportId) startedNotes.push(reportId);
@@ -164,6 +166,11 @@ async function record(cookie: string, body: Record<string, unknown>) {
   expect((await call(cookie, "POST", `/org/calls/${id}/complete`, { durationMs: 64_000 })).status).toBe(200);
   return { id, created: created.body };
 }
+
+// Most of these tests use realtime mode; transcription in pieces sets its own.
+beforeEach(async () => {
+  await owner.query(`update platform_settings set value = '"realtime"' where key = 'transcription_mode'`);
+});
 
 describe("calls: recording to report", () => {
   it("records in realtime mode, transcribes, checks against the template and writes a report", async () => {
@@ -249,6 +256,79 @@ describe("calls: recording to report", () => {
     expect(started).toEqual([second.id]);
     detail = await call(seller2, "GET", `/org/calls/${second.id}`);
     expect(detail.body.templateVersion).toBe(1);
+  });
+});
+
+describe("calls: transcription in pieces", () => {
+  // Records like the browser in the default mode: the continuous recording in chunks, and a
+  // complete file every 15 seconds for transcription while the call goes on.
+  async function recordInPieces(cookie: string, pieces: number, body: Record<string, unknown> = {}) {
+    const created = await call(cookie, "POST", "/org/calls", { source: "tab", mime: "audio/webm", ...body });
+    expect(created.body).toMatchObject({ mode: "chunked", realtime: null });
+    const id = created.body.id as string;
+    for (let seq = 0; seq < pieces; seq++) {
+      const piece = await call(cookie, "POST", `/org/calls/${id}/pieces`, { seq, startMs: seq * 15_000 });
+      expect(piece.status).toBe(200);
+      objects.set(piece.body.url.replace("https://s3.test/put/", ""), new TextEncoder().encode(`bit${seq}`));
+      expect((await call(cookie, "POST", `/org/calls/${id}/pieces/${seq}/uploaded`)).status).toBe(200);
+      expect(startedPieces).toContain(`${id}:${seq}`);
+    }
+    const chunk = await call(cookie, "POST", `/org/calls/${id}/chunks`, { seq: 0 });
+    objects.set(chunk.body.url.replace("https://s3.test/put/", ""), new TextEncoder().encode("helt-opptak"));
+    return id;
+  }
+
+  it("is the default, shows the text while recording and uses the pieces as the transcript", async () => {
+    await owner.query(`update platform_settings set value = '"chunked"' where key = 'transcription_mode'`);
+    const s = await setup();
+    const seller = await sessionFor(await member(s.org, "seller"), s.org);
+    const id = await recordInPieces(seller, 2, { productId: s.productId });
+    await processPiece(workerDeps, id, 0);
+    await processPiece(workerDeps, id, 1);
+    // The text so far, with times from the start of the recording; the piece audio is gone.
+    const live = (await call(seller, "GET", `/org/calls/${id}/pieces`)).body;
+    expect(live.map((p: { status: string }) => p.status)).toEqual(["done", "done"]);
+    expect(live[1].segments[0]).toMatchObject({ startMs: 15_000, text: "Hei, dette er Kari fra Strøm AS." });
+    expect([...objects.keys()].some((k) => k.includes(`${id}/pieces/`))).toBe(false);
+    // Only new pieces after the last one seen.
+    expect((await call(seller, "GET", `/org/calls/${id}/pieces`, undefined, { after: "0" })).body).toHaveLength(1);
+
+    sonioxLog.length = 0;
+    expect((await call(seller, "POST", `/org/calls/${id}/complete`, { durationMs: 30_000, pieces: 2 })).status).toBe(200);
+    await processCall(workerDeps, id);
+    // No second transcription of the whole recording; it is still stored for playback.
+    expect(sonioxLog.some((l) => l.startsWith("upload:"))).toBe(false);
+    const detail = (await call(seller, "GET", `/org/calls/${id}`)).body;
+    expect(detail).toMatchObject({ status: "analyzed", hasAudio: true, durationMs: 30_000 });
+    expect(detail.segments.map((x: { startMs: number }) => x.startMs)).toEqual([0, 3000, 40_000, 15_000, 18_000, 55_000]);
+    expect(detail.reports).toHaveLength(1);
+    const usage = await owner.query("select count(*)::int as n from usage_events where call_id = $1 and kind = 'transcription_async'", [id]);
+    expect(usage.rows[0].n).toBe(2);
+  });
+
+  it("transcribes the whole recording when a piece is missing", async () => {
+    await owner.query(`update platform_settings set value = '"chunked"' where key = 'transcription_mode'`);
+    const s = await setup();
+    const seller = await sessionFor(await member(s.org, "seller"), s.org);
+    const id = await recordInPieces(seller, 1);
+    await processPiece(workerDeps, id, 0);
+    sonioxLog.length = 0;
+    // The browser made three pieces, but only one reached the server.
+    await call(seller, "POST", `/org/calls/${id}/complete`, { pieces: 3 });
+    await processCall(workerDeps, id);
+    expect(sonioxLog).toContain("upload:helt-opptak");
+    expect((await call(seller, "GET", `/org/calls/${id}`)).body.status).toBe("analyzed");
+  });
+
+  it("keeps pieces to the recorder while recording", async () => {
+    await owner.query(`update platform_settings set value = '"chunked"' where key = 'transcription_mode'`);
+    const s = await setup();
+    const seller = await sessionFor(await member(s.org, "seller"), s.org);
+    const other = await sessionFor(await member(s.org, "seller"), s.org);
+    const created = await call(seller, "POST", "/org/calls", { source: "microphone", mime: "audio/webm" });
+    expect((await call(other, "POST", `/org/calls/${created.body.id}/pieces`, { seq: 0, startMs: 0 })).status).toBe(404);
+    expect((await call(other, "GET", `/org/calls/${created.body.id}/pieces`)).status).toBe(404);
+    expect((await call(seller, "POST", `/org/calls/${created.body.id}/pieces`, { seq: 0, startMs: -1 })).status).toBe(400);
   });
 });
 

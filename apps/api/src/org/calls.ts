@@ -11,7 +11,7 @@ import type { Session } from "../auth/session.ts";
 import type { CallServices } from "../calls/services.ts";
 import { SONIOX_REALTIME_MODEL, SONIOX_REALTIME_URL } from "../calls/soniox.ts";
 import { DEFAULT_REPORT, extension } from "../calls/process.ts";
-import { chunkKey } from "../calls/store.ts";
+import { chunkKey, pieceKey } from "../calls/store.ts";
 import { withSession } from "../me.ts";
 
 export class Unavailable extends Error {}
@@ -41,7 +41,7 @@ async function transcriptionMode(c: pg.PoolClient): Promise<{ mode: "realtime" |
   const settings = new Map(rows.map((r) => [r.key, r.value]));
   const terms = settings.get("transcription_terms");
   return {
-    mode: settings.get("transcription_mode") === "chunked" ? "chunked" : "realtime",
+    mode: settings.get("transcription_mode") === "realtime" ? "realtime" : "chunked",
     terms: Array.isArray(terms) ? (terms as string[]) : [],
   };
 }
@@ -181,10 +181,74 @@ export async function chunkUrl(db: pg.Pool, session: Session, services: CallServ
   };
 }
 
+// --- Transcription in pieces ---------------------------------------------------------------------
+// While recording, the browser makes a complete audio file every 15 seconds. Each is uploaded here
+// and transcribed by the worker, so the text shows as the call goes on (docs/plan.md, section 13).
+
+export async function pieceUrl(db: pg.Pool, session: Session, services: CallServices, callId: string, body: Body) {
+  const seq = body.seq;
+  const startMs = body.startMs;
+  if (typeof seq !== "number" || !Number.isInteger(seq) || seq < 0 || seq >= MAX_CHUNKS) throw new BadRequest("Ugyldig del.");
+  if (typeof startMs !== "number" || !Number.isInteger(startMs) || startMs < 0 || startMs > 24 * 3600_000) {
+    throw new BadRequest("Ugyldig tidspunkt.");
+  }
+  const call = await recordingCall(db, session, callId);
+  const mime = await withSession(db, session, async (c) => {
+    if (!(await moduleEnabled(c, "transcription"))) throw new BadRequest("Transkribering er ikke slått på for callsenteret.");
+    await c.query(
+      `insert into call_pieces (call_id, organization_id, seq, start_ms) values ($1, app.current_org_id(), $2, $3)
+       on conflict (call_id, seq) do nothing`,
+      [callId, seq, startMs],
+    );
+    return (await c.query<{ audio_mime: string }>("select audio_mime from calls where id = $1", [callId])).rows[0]!.audio_mime;
+  });
+  return { url: await services.store.presignPut(pieceKey(call.organization_id, callId, seq), mime), contentType: mime };
+}
+
+// The piece is uploaded: the worker transcribes it.
+export async function pieceUploaded(db: pg.Pool, session: Session, services: CallServices, callId: string, seq: number) {
+  const changed = await withSession(db, session, async (c) => {
+    const { rowCount } = await c.query("update call_pieces set status = 'pending' where call_id = $1 and seq = $2 and status = 'uploading'", [
+      callId,
+      seq,
+    ]);
+    return rowCount === 1;
+  });
+  if (changed) await services.startPiece(callId, seq);
+  return { seq, status: "pending" };
+}
+
+// The text so far, piece by piece. The first look at a call's live text is logged as a view of it.
+export async function listPieces(
+  db: pg.Pool,
+  session: Session,
+  callId: string,
+  query: Record<string, string | undefined>,
+  meta: { ip?: string; userAgent?: string },
+) {
+  const after = Number(query.after ?? -1);
+  return withSession(db, session, async (c) => {
+    const call = await c.query("select 1 from calls where id = $1", [callId]);
+    if (!call.rowCount) throw new NotFound();
+    const { rows } = await c.query(
+      `select seq, start_ms as "startMs", status, segments from call_pieces
+       where call_id = $1 and seq > $2 order by seq`,
+      [callId, Number.isInteger(after) ? after : -1],
+    );
+    if (!Number.isInteger(after) || after < 0) await logAccess(c, callId, "view", meta);
+    return rows;
+  });
+}
+
 export async function completeCall(db: pg.Pool, session: Session, services: CallServices, callId: string, body: Body) {
   const durationMs = body.durationMs;
   if (durationMs !== undefined && (typeof durationMs !== "number" || !Number.isInteger(durationMs) || durationMs < 0)) {
     throw new BadRequest("Ugyldig varighet.");
+  }
+  // How many pieces the browser made for transcription while recording (none for a file).
+  const pieces = body.pieces;
+  if (pieces !== undefined && (typeof pieces !== "number" || !Number.isInteger(pieces) || pieces < 0 || pieces > MAX_CHUNKS)) {
+    throw new BadRequest("Ugyldig antall deler.");
   }
   await withSession(db, session, async (c) => {
     const { rows } = await c.query<{ status: string; chunk_count: number }>("select status, chunk_count from calls where id = $1", [
@@ -194,9 +258,10 @@ export async function completeCall(db: pg.Pool, session: Session, services: Call
     if (!call) throw new NotFound();
     if (call.status !== "recording") throw new BadRequest("Opptaket er allerede avsluttet.");
     if (call.chunk_count === 0) throw new BadRequest("Ingen lyd er lastet opp.");
-    await c.query("update calls set status = 'processing', duration_ms = coalesce($2, duration_ms) where id = $1", [
+    await c.query("update calls set status = 'processing', duration_ms = coalesce($2, duration_ms), piece_count = $3 where id = $1", [
       callId,
       durationMs ?? null,
+      pieces ?? null,
     ]);
   });
   await services.startWorker(callId);

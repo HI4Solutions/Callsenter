@@ -166,8 +166,8 @@ describe("settings, report templates and usage", () => {
     const s = await setup();
     const admin = await member(s.org, "admin");
     await as(api, { userId: admin, orgId: s.org }, async (db) => {
-      expect((await db.query("select value from platform_settings where key = 'transcription_mode'")).rows[0].value).toBe("realtime");
-      expect((await db.query("update platform_settings set value = '\"chunked\"' where key = 'transcription_mode'")).rowCount).toBe(0);
+      expect((await db.query("select value from platform_settings where key = 'transcription_mode'")).rows[0].value).toBe("chunked");
+      expect((await db.query("update platform_settings set value = '\"realtime\"' where key = 'transcription_mode'")).rowCount).toBe(0);
       expect((await db.query("update organizations set recording_retention_months = 6 where id = $1", [s.org])).rowCount).toBe(0);
     });
     await expect(owner.query("update organizations set recording_retention_months = 24 where id = $1", [s.org])).rejects.toThrow(/check/);

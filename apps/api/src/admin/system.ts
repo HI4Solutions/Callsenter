@@ -13,7 +13,7 @@ export async function getSystem(db: pg.Pool, session: Session) {
     );
     const settings = new Map(rows.map((r) => [r.key, r]));
     return {
-      transcriptionMode: settings.get("transcription_mode")?.value === "chunked" ? "chunked" : "realtime",
+      transcriptionMode: settings.get("transcription_mode")?.value === "realtime" ? "realtime" : "chunked",
       transcriptionTerms: (settings.get("transcription_terms")?.value as string[] | undefined) ?? [],
       aiModel: isAiModelKey(settings.get("ai_model")?.value) ? settings.get("ai_model")!.value : DEFAULT_AI_MODEL,
       aiModels: AI_MODEL_KEYS.map((key) => ({ key, name: AI_MODELS[key].name, description: AI_MODELS[key].description })),

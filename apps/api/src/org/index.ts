@@ -21,6 +21,9 @@ import {
   createReportTemplate,
   editNote,
   getStudio,
+  listPieces,
+  pieceUploaded,
+  pieceUrl,
   noteHistory,
   requestNote,
   setStudio,
@@ -83,6 +86,8 @@ const SALE_CONFIRMATION_REVOKE = /^\/org\/sales\/([^/]+)\/confirmations\/([^/]+)
 const CALL = /^\/org\/calls\/([^/]+)$/;
 const CALL_ACTION = /^\/org\/calls\/([^/]+)\/(chunks|complete|retry|realtime-key|audio)$/;
 const CALL_ANALYSIS = /^\/org\/calls\/([^/]+)\/analyses\/([^/]+)$/;
+const CALL_PIECES = /^\/org\/calls\/([^/]+)\/pieces$/;
+const CALL_PIECE_DONE = /^\/org\/calls\/([^/]+)\/pieces\/(\d+)\/uploaded$/;
 const CALL_NOTES = /^\/org\/calls\/([^/]+)\/notes$/;
 const CALL_NOTE = /^\/org\/calls\/([^/]+)\/notes\/([^/]+)(\/history)?$/;
 const REPORT_TEMPLATE = /^\/org\/report-templates\/([^/]+)$/;
@@ -293,6 +298,19 @@ export async function handleOrg(
           if (name === "retry") return reply(200, await retryCall(deps.appDb, session, services, id));
           if (name === "realtime-key") return reply(200, await renewRealtimeKey(deps.appDb, session, services, id));
         }
+      }
+      const pieces = CALL_PIECES.exec(path);
+      if (pieces && isUuid(pieces[1])) {
+        if (method === "GET") return reply(200, await listPieces(deps.appDb, session, pieces[1], event.queryStringParameters ?? {}, meta));
+        if (method === "POST") {
+          await requirePermission(deps.appDb, session, "calls.upload");
+          return reply(200, await pieceUrl(deps.appDb, session, services, pieces[1], body()));
+        }
+      }
+      const pieceDone = CALL_PIECE_DONE.exec(path);
+      if (pieceDone && isUuid(pieceDone[1]) && method === "POST") {
+        await requirePermission(deps.appDb, session, "calls.upload");
+        return reply(200, await pieceUploaded(deps.appDb, session, services, pieceDone[1], Number(pieceDone[2])));
       }
       const notes = CALL_NOTES.exec(path);
       if (notes && isUuid(notes[1]) && method === "POST") {

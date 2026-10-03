@@ -1,12 +1,13 @@
 // Worker Lambda (docs/plan.md, section 13). Started by the API when a recording is done
 // ({callId}), it transcribes and analyses that call, then tidies up: deletes calls past their
 // retention, finishes abandoned recordings and frees calls a crashed run left behind. With
-// {reportId} it writes a note asked for in the studio (docs/plan.md, section 18). Every
+// {reportId} it writes a note asked for in the studio (docs/plan.md, section 18), and with
+// {callId, piece} it transcribes one piece of a call that is still being recorded. Every
 // morning ({task: "daily"}, EventBridge) it also runs invoicing (docs/plan.md, section 16).
 import type pg from "pg";
 import { deliverInvoice } from "./admin/billing.ts";
 import { updateUsdNok } from "./exchange.ts";
-import { type WorkerDeps, housekeeping, pendingReports, processCall, processReport } from "./calls/process.ts";
+import { type WorkerDeps, housekeeping, pendingReports, processCall, processPiece, processReport } from "./calls/process.ts";
 import { loadAi, loadSoniox } from "./calls/runtime.ts";
 import { s3Store } from "./calls/store.ts";
 import { iamPool } from "./db.ts";
@@ -51,11 +52,16 @@ export async function billingDaily(db: pg.Pool) {
   return { sent: sent.length, emailed };
 }
 
-export async function handler(event: { callId?: unknown; reportId?: unknown; task?: unknown }, context?: { getRemainingTimeInMillis(): number }) {
+export async function handler(event: { callId?: unknown; reportId?: unknown; piece?: unknown; task?: unknown }, context?: { getRemainingTimeInMillis(): number }) {
   deps ??= load();
   deps.catch(() => (deps = undefined));
   const d = await deps;
   const remaining = () => context?.getRemainingTimeInMillis() ?? Infinity;
+  // A piece of a call that is still being recorded: only that, as fast as possible.
+  if (typeof event.callId === "string" && /^[0-9a-f-]{36}$/.test(event.callId) && Number.isInteger(event.piece)) {
+    await processPiece(d, event.callId, event.piece as number);
+    return { ok: true };
+  }
   if (event.task === "daily") {
     // Failures here must not stop the rest of the morning run.
     await billingDaily(d.db).then(
