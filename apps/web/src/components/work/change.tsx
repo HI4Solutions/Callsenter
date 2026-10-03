@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 // How a figure changed from the period before. Green, yellow and red are kept for AI flags and
 // status, so a change is shown with an arrow and words, never in those colours. While the period
 // is still running (it includes today), a percentage would compare part of a day or week with a
@@ -27,8 +29,12 @@ export function Change({
   // Shares in percent change by percentage points, not by percent.
   points?: boolean;
 }) {
+  const t = useTranslations("work.change");
   if (before === null) return null;
-  const earlier = `${comparison.label[0]!.toUpperCase()}${comparison.label.slice(1)}: ${format(before)}`;
+  const earlier = t("earlier", {
+    label: `${comparison.label[0]!.toUpperCase()}${comparison.label.slice(1)}`,
+    value: format(before),
+  });
   if (!comparison.complete || now === null) {
     return (
       <span className="text-muted" title={comparison.title}>
@@ -40,25 +46,27 @@ export function Change({
   if (Math.abs(diff) < 1e-9) {
     return (
       <span className="text-muted" title={comparison.title}>
-        Som {comparison.label} ({format(before)})
+        {t("same", { label: comparison.label, value: format(before) })}
       </span>
     );
   }
   const up = diff > 0;
   const size = points
-    ? `${Math.abs(Math.round(diff))} prosentpoeng`
+    ? t("points", { count: Math.abs(Math.round(diff)) })
     : before === 0
       ? null
-      : `${Math.abs(Math.round((diff / before) * 100))} %`;
+      : t("percent", { count: Math.abs(Math.round((diff / before) * 100)) });
   return (
     <span title={comparison.title}>
       <span aria-hidden="true" className="mr-1 text-xs">
         {up ? "▲" : "▼"}
       </span>
-      <span className="font-semibold">{size ? `${up ? "Opp" : "Ned"} ${size}` : up ? "Opp" : "Ned"}</span>
+      <span className="font-semibold">
+        {size ? t(up ? "upBy" : "downBy", { size }) : t(up ? "up" : "down")}
+      </span>
       <span className="text-muted">
         {" "}
-        fra {comparison.label} ({format(before)})
+        {t("from", { label: comparison.label, value: format(before) })}
       </span>
     </span>
   );
