@@ -1,23 +1,49 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import {
+  ErrorMessage,
+  Field,
+  inputClass,
+  primaryButton,
+  secondaryButton,
+} from "@/components/admin/field";
 import { formatDateTime } from "@/lib/format";
-import { days, formatPrice, lines, months, priceInput, type RequiredPoint, type TemplateVersion } from "@/lib/work";
+import {
+  days,
+  formatPrice,
+  lines,
+  months,
+  priceInput,
+  type RequiredPoint,
+  type TemplateVersion,
+} from "@/lib/work";
 
 // A version as sellers and AI control see it.
 export function VersionView({ version }: { version: TemplateVersion }) {
+  const t = useTranslations("work.template");
   return (
     <div className="flex flex-col gap-5">
       <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[12rem_1fr]">
         {(
           [
-            ["Pris", formatPrice(version)],
-            ["Bindingstid", months(version.bindingMonths)],
-            ["Oppsigelsestid", months(version.noticeMonths)],
-            ["Angrefrist", days(version.withdrawalDays)],
+            [t("price"), formatPrice(version)],
+            [t("binding"), months(version.bindingMonths)],
+            [t("notice"), months(version.noticeMonths)],
+            [t("withdrawal"), days(version.withdrawalDays)],
             ...(version.publishedAt
-              ? [["Publisert", `${formatDateTime(version.publishedAt)}${version.publishedByName ? ` av ${version.publishedByName}` : ""}`]]
+              ? [
+                  [
+                    t("published"),
+                    version.publishedByName
+                      ? t("publishedBy", {
+                          date: formatDateTime(version.publishedAt),
+                          name: version.publishedByName,
+                        })
+                      : formatDateTime(version.publishedAt),
+                  ],
+                ]
               : []),
           ] as [string, string][]
         ).map(([label, value]) => (
@@ -28,8 +54,8 @@ export function VersionView({ version }: { version: TemplateVersion }) {
         ))}
       </dl>
       <div>
-        <h3 className="font-bold">Obligatoriske punkter</h3>
-        <p className="text-sm text-muted">Selgeren må si dette i samtalen. AI-kontrollen sjekker hvert punkt.</p>
+        <h3 className="font-bold">{t("requiredPoints")}</h3>
+        <p className="text-sm text-muted">{t("requiredPointsIntro")}</p>
         {version.requiredPoints.length ? (
           <ol className="mt-2 list-decimal space-y-1 pl-6 [overflow-wrap:anywhere]">
             {version.requiredPoints.map((p) => (
@@ -37,17 +63,25 @@ export function VersionView({ version }: { version: TemplateVersion }) {
             ))}
           </ol>
         ) : (
-          <p className="mt-2 text-muted">Ingen.</p>
+          <p className="mt-2 text-muted">{t("none")}</p>
         )}
       </div>
-      <PhraseList title="Godkjente formuleringer" phrases={version.approvedPhrases} />
-      <PhraseList title="Forbudte formuleringer" phrases={version.forbiddenPhrases} />
+      <PhraseList
+        title={t("approvedPhrases")}
+        phrases={version.approvedPhrases}
+      />
+      <PhraseList
+        title={t("forbiddenPhrases")}
+        phrases={version.forbiddenPhrases}
+      />
       <div>
-        <h3 className="font-bold">Vilkår</h3>
+        <h3 className="font-bold">{t("terms")}</h3>
         {version.terms ? (
-          <p className="mt-2 whitespace-pre-wrap [overflow-wrap:anywhere] rounded-lg bg-bg p-3">{version.terms}</p>
+          <p className="mt-2 whitespace-pre-wrap [overflow-wrap:anywhere] rounded-lg bg-bg p-3">
+            {version.terms}
+          </p>
         ) : (
-          <p className="mt-2 text-muted">Ingen vilkår.</p>
+          <p className="mt-2 text-muted">{t("noTerms")}</p>
         )}
       </div>
     </div>
@@ -55,6 +89,7 @@ export function VersionView({ version }: { version: TemplateVersion }) {
 }
 
 function PhraseList({ title, phrases }: { title: string; phrases: string[] }) {
+  const t = useTranslations("work.template");
   return (
     <div>
       <h3 className="font-bold">{title}</h3>
@@ -65,14 +100,14 @@ function PhraseList({ title, phrases }: { title: string; phrases: string[] }) {
           ))}
         </ul>
       ) : (
-        <p className="mt-2 text-muted">Ingen.</p>
+        <p className="mt-2 text-muted">{t("none")}</p>
       )}
     </div>
   );
 }
 
-function wholeNumber(value: string, label: string): number {
-  if (!/^\d+$/.test(value.trim())) throw new Error(`${label} må være et helt tall.`);
+function wholeNumber(value: string, message: string): number {
+  if (!/^\d+$/.test(value.trim())) throw new Error(message);
   return Number(value);
 }
 
@@ -84,15 +119,25 @@ export function DraftEditor({
   onDelete,
 }: {
   draft: TemplateVersion;
-  onSave: (body: Record<string, unknown>) => Promise<{ requiredPoints: RequiredPoint[] }>;
+  onSave: (
+    body: Record<string, unknown>,
+  ) => Promise<{ requiredPoints: RequiredPoint[] }>;
   onPublish: () => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
+  const t = useTranslations("work.template");
+  const tc = useTranslations("common");
   const [priceOnce, setPriceOnce] = useState(priceInput(draft.priceOnce));
-  const [priceMonthly, setPriceMonthly] = useState(priceInput(draft.priceMonthly));
-  const [bindingMonths, setBindingMonths] = useState(String(draft.bindingMonths));
+  const [priceMonthly, setPriceMonthly] = useState(
+    priceInput(draft.priceMonthly),
+  );
+  const [bindingMonths, setBindingMonths] = useState(
+    String(draft.bindingMonths),
+  );
   const [noticeMonths, setNoticeMonths] = useState(String(draft.noticeMonths));
-  const [withdrawalDays, setWithdrawalDays] = useState(String(draft.withdrawalDays));
+  const [withdrawalDays, setWithdrawalDays] = useState(
+    String(draft.withdrawalDays),
+  );
   const [terms, setTerms] = useState(draft.terms);
   const [points, setPoints] = useState<RequiredPoint[]>(draft.requiredPoints);
   const [approved, setApproved] = useState(draft.approvedPhrases.join("\n"));
@@ -107,9 +152,18 @@ export function DraftEditor({
   const body = () => ({
     priceOnce: priceOnce.trim() || null,
     priceMonthly: priceMonthly.trim() || null,
-    bindingMonths: wholeNumber(bindingMonths, "Bindingstid"),
-    noticeMonths: wholeNumber(noticeMonths, "Oppsigelsestid"),
-    withdrawalDays: wholeNumber(withdrawalDays, "Angrefrist"),
+    bindingMonths: wholeNumber(
+      bindingMonths,
+      t("wholeNumber", { label: t("binding") }),
+    ),
+    noticeMonths: wholeNumber(
+      noticeMonths,
+      t("wholeNumber", { label: t("notice") }),
+    ),
+    withdrawalDays: wholeNumber(
+      withdrawalDays,
+      t("wholeNumber", { label: t("withdrawal") }),
+    ),
     terms,
     requiredPoints: points.filter((p) => p.text.trim()),
     approvedPhrases: lines(approved),
@@ -129,10 +183,12 @@ export function DraftEditor({
     }
   }
 
-  const edit = <T,>(setter: (v: T) => void) => (v: T) => {
-    setSaved(false);
-    setter(v);
-  };
+  const edit =
+    <T,>(setter: (v: T) => void) =>
+    (v: T) => {
+      setSaved(false);
+      setter(v);
+    };
 
   return (
     <form
@@ -148,72 +204,140 @@ export function DraftEditor({
       }}
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Field label="Månedspris (kr)" hint="Tom hvis produktet ikke har månedspris.">
-          <input inputMode="decimal" className={inputClass} value={priceMonthly} onChange={(e) => edit(setPriceMonthly)(e.target.value)} />
+        <Field label={t("priceMonthly")} hint={t("priceMonthlyHint")}>
+          <input
+            inputMode="decimal"
+            className={inputClass}
+            value={priceMonthly}
+            onChange={(e) => edit(setPriceMonthly)(e.target.value)}
+          />
         </Field>
-        <Field label="Engangspris (kr)" hint="For eksempel etablering eller utstyr.">
-          <input inputMode="decimal" className={inputClass} value={priceOnce} onChange={(e) => edit(setPriceOnce)(e.target.value)} />
+        <Field label={t("priceOnce")} hint={t("priceOnceHint")}>
+          <input
+            inputMode="decimal"
+            className={inputClass}
+            value={priceOnce}
+            onChange={(e) => edit(setPriceOnce)(e.target.value)}
+          />
         </Field>
-        <Field label="Bindingstid (måneder)">
-          <input type="number" required min={0} max={120} className={inputClass} value={bindingMonths} onChange={(e) => edit(setBindingMonths)(e.target.value)} />
+        <Field label={t("bindingMonths")}>
+          <input
+            type="number"
+            required
+            min={0}
+            max={120}
+            className={inputClass}
+            value={bindingMonths}
+            onChange={(e) => edit(setBindingMonths)(e.target.value)}
+          />
         </Field>
-        <Field label="Oppsigelsestid (måneder)">
-          <input type="number" required min={0} max={24} className={inputClass} value={noticeMonths} onChange={(e) => edit(setNoticeMonths)(e.target.value)} />
+        <Field label={t("noticeMonths")}>
+          <input
+            type="number"
+            required
+            min={0}
+            max={24}
+            className={inputClass}
+            value={noticeMonths}
+            onChange={(e) => edit(setNoticeMonths)(e.target.value)}
+          />
         </Field>
-        <Field label="Angrefrist (dager)" hint="Minst 14 dager ved telefonsalg til forbrukere.">
-          <input type="number" required min={0} max={365} className={inputClass} value={withdrawalDays} onChange={(e) => edit(setWithdrawalDays)(e.target.value)} />
+        <Field label={t("withdrawalDays")} hint={t("withdrawalDaysHint")}>
+          <input
+            type="number"
+            required
+            min={0}
+            max={365}
+            className={inputClass}
+            value={withdrawalDays}
+            onChange={(e) => edit(setWithdrawalDays)(e.target.value)}
+          />
         </Field>
       </div>
 
       <fieldset className="flex min-w-0 flex-col gap-3">
-        <legend className="font-bold">Obligatoriske punkter</legend>
-        <p className="text-sm text-muted">Det selgeren må si i samtalen, ett punkt per linje. AI-kontrollen sjekker hvert punkt.</p>
+        <legend className="font-bold">{t("requiredPoints")}</legend>
+        <p className="text-sm text-muted">{t("requiredPointsHint")}</p>
         {points.map((p, i) => (
           <div key={p.id || `ny-${i}`} className="flex gap-2">
             <label className="sr-only" htmlFor={`point-${i}`}>
-              Punkt {i + 1}
+              {t("point", { number: i + 1 })}
             </label>
             <input
               id={`point-${i}`}
               maxLength={500}
               className={`${inputClass} min-w-0 flex-1`}
               value={p.text}
-              onChange={(e) => edit(setPoints)(points.map((q, j) => (j === i ? { ...q, text: e.target.value } : q)))}
+              onChange={(e) =>
+                edit(setPoints)(
+                  points.map((q, j) =>
+                    j === i ? { ...q, text: e.target.value } : q,
+                  ),
+                )
+              }
             />
-            <button type="button" className={secondaryButton} onClick={() => edit(setPoints)(points.filter((_, j) => j !== i))}>
-              Fjern<span className="sr-only"> punkt {i + 1}</span>
+            <button
+              type="button"
+              className={secondaryButton}
+              onClick={() => edit(setPoints)(points.filter((_, j) => j !== i))}
+            >
+              {tc("remove")}
+              <span className="sr-only">
+                {" "}
+                {t("removePoint", { number: i + 1 })}
+              </span>
             </button>
           </div>
         ))}
         <div>
-          <button type="button" className={secondaryButton} onClick={() => edit(setPoints)([...points, { id: "", text: "" }])}>
-            Legg til punkt
+          <button
+            type="button"
+            className={secondaryButton}
+            onClick={() => edit(setPoints)([...points, { id: "", text: "" }])}
+          >
+            {t("addPoint")}
           </button>
         </div>
       </fieldset>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Field label="Godkjente formuleringer" hint="Én per linje. Formuleringer selgeren gjerne kan bruke.">
-          <textarea rows={5} className={`${inputClass} py-2`} value={approved} onChange={(e) => edit(setApproved)(e.target.value)} />
+        <Field label={t("approvedPhrases")} hint={t("approvedHint")}>
+          <textarea
+            rows={5}
+            className={`${inputClass} py-2`}
+            value={approved}
+            onChange={(e) => edit(setApproved)(e.target.value)}
+          />
         </Field>
-        <Field label="Forbudte formuleringer" hint="Én per linje. AI-kontrollen flagger dem.">
-          <textarea rows={5} className={`${inputClass} py-2`} value={forbidden} onChange={(e) => edit(setForbidden)(e.target.value)} />
+        <Field label={t("forbiddenPhrases")} hint={t("forbiddenHint")}>
+          <textarea
+            rows={5}
+            className={`${inputClass} py-2`}
+            value={forbidden}
+            onChange={(e) => edit(setForbidden)(e.target.value)}
+          />
         </Field>
       </div>
 
-      <Field label="Vilkår" hint="Vilkårene kunden godtar. Sendes med bekreftelsen.">
-        <textarea rows={10} maxLength={50000} className={`${inputClass} py-2`} value={terms} onChange={(e) => edit(setTerms)(e.target.value)} />
+      <Field label={t("terms")} hint={t("termsHint")}>
+        <textarea
+          rows={10}
+          maxLength={50000}
+          className={`${inputClass} py-2`}
+          value={terms}
+          onChange={(e) => edit(setTerms)(e.target.value)}
+        />
       </Field>
 
       <ErrorMessage message={error} />
       {saved && (
         <p role="status" className="text-muted">
-          Utkastet er lagret.
+          {t("saved")}
         </p>
       )}
       <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={busy} className={primaryButton}>
-          Lagre utkast
+          {t("saveDraft")}
         </button>
         <button
           type="button"
@@ -221,14 +345,17 @@ export function DraftEditor({
           className={secondaryButton}
           onClick={() => {
             if (!form.current?.reportValidity()) return;
-            if (!window.confirm(`Publisere versjon ${draft.version}? Den kan ikke endres etterpå, og nye salg bruker den.`)) return;
+            if (
+              !window.confirm(t("publishConfirm", { version: draft.version }))
+            )
+              return;
             void run(async () => {
               await onSave(body());
               await onPublish();
             });
           }}
         >
-          Lagre og publiser
+          {t("saveAndPublish")}
         </button>
         {/* Away from the save buttons, and quieter, since it throws the work away. */}
         <button
@@ -236,10 +363,10 @@ export function DraftEditor({
           disabled={busy}
           className="inline-flex min-h-11 items-center px-2 font-semibold text-muted underline-offset-4 hover:text-fg hover:underline disabled:opacity-60 sm:ml-auto"
           onClick={() => {
-            if (window.confirm("Slette utkastet? Endringene i det går tapt.")) void run(onDelete);
+            if (window.confirm(t("deleteConfirm"))) void run(onDelete);
           }}
         >
-          Slett utkast
+          {t("deleteDraft")}
         </button>
       </div>
     </form>
