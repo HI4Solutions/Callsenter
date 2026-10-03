@@ -1,13 +1,17 @@
 // Calls to the superadmin API (apps/api/src/admin). The session cookie lives on the API host,
 // so every call carries credentials; the API only answers this app's origin.
-import type { Locale } from "@veriqall/shared";
+import { type Locale, LOCALES } from "@veriqall/shared";
+import { useLocale } from "next-intl";
 import { apiFetch } from "./api";
-import { formatDate } from "./format";
+import { formatDate, formatTagNow } from "./format";
 
 export { AdminError, apiFetch } from "./api";
 export { formatDate, formatDateTime, invitationState, toCsv } from "./format";
 
-export function adminFetch<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+export function adminFetch<T>(
+  path: string,
+  init: { method?: string; body?: unknown } = {},
+): Promise<T> {
   return apiFetch<T>(`/admin${path}`, init);
 }
 
@@ -68,16 +72,48 @@ export interface OrganizationDetail {
   }[];
 }
 
-// Status as shown to the superadmin: a trial is an active call centre with an end date.
-export function organizationState(org: { status: string; trialEndsAt: string | null; accessUntil?: string | null }, now = new Date()) {
-  if (org.status === "suspended") return { label: "Suspendert", tone: "danger" as const };
-  if (org.accessUntil && new Date(org.accessUntil) <= now) return { label: "Stengt (ubetalt faktura)", tone: "danger" as const };
+// The page language's BCP 47 tag (nb-NO, en-GB …), for Intl formatters in components.
+export function useLocaleTag(): string {
+  return LOCALES[useLocale()].tag;
+}
+
+// Status as shown to the superadmin: a trial is an active call centre with an end date. `key` is
+// the text in messages/<locale>/admin.json (admin.organizationState, with {date}).
+export function organizationState(
+  org: {
+    status: string;
+    trialEndsAt: string | null;
+    accessUntil?: string | null;
+  },
+  now = new Date(),
+) {
+  if (org.status === "suspended")
+    return { key: "suspended" as const, tone: "danger" as const, date: "" };
+  if (org.accessUntil && new Date(org.accessUntil) <= now) {
+    return { key: "closed" as const, tone: "danger" as const, date: "" };
+  }
   if (org.trialEndsAt) {
     return new Date(org.trialEndsAt) > now
-      ? { label: `Prøveperiode til ${formatDate(org.trialEndsAt)}`, tone: "warning" as const }
-      : { label: "Prøveperiode utløpt", tone: "danger" as const };
+      ? {
+          key: "trial" as const,
+          tone: "warning" as const,
+          date: formatDate(org.trialEndsAt),
+        }
+      : { key: "trialExpired" as const, tone: "danger" as const, date: "" };
   }
-  return { label: "Aktiv", tone: "ok" as const };
+  return { key: "active" as const, tone: "ok" as const, date: "" };
+}
+
+// An invitation's state as a key in admin.invitationState (invitationState in lib/format.ts gives
+// the Norwegian text).
+export function invitationKey(
+  inv: { usedAt: string | null; revokedAt: string | null; expiresAt: string },
+  now = new Date(),
+) {
+  if (inv.usedAt) return "used" as const;
+  if (inv.revokedAt) return "revoked" as const;
+  if (new Date(inv.expiresAt) <= now) return "expired" as const;
+  return "pending" as const;
 }
 
 export interface UserSummary {
@@ -95,20 +131,54 @@ export interface UserSummary {
 export interface UserDetail extends Omit<UserSummary, "organizations"> {
   self: boolean;
   organizations: { id: string; name: string; role: string; status: string }[];
-  identities: { provider: "bankid" | "vipps"; createdAt: string; lastUsedAt: string | null }[];
-  passkeys: { id: string; name: string; createdAt: string; lastUsedAt: string | null }[];
-  sessions: { provider: string; createdAt: string; lastSeenAt: string; expiresAt: string; ip: string | null; userAgent: string | null }[];
-  logins: { occurredAt: string; provider: string; result: string; ip: string | null }[];
+  identities: {
+    provider: "bankid" | "vipps";
+    createdAt: string;
+    lastUsedAt: string | null;
+  }[];
+  passkeys: {
+    id: string;
+    name: string;
+    createdAt: string;
+    lastUsedAt: string | null;
+  }[];
+  sessions: {
+    provider: string;
+    createdAt: string;
+    lastSeenAt: string;
+    expiresAt: string;
+    ip: string | null;
+    userAgent: string | null;
+  }[];
+  logins: {
+    occurredAt: string;
+    provider: string;
+    result: string;
+    ip: string | null;
+  }[];
 }
 
 export interface Catalog {
   permissions: { key: string; description: string; requiresBankId: boolean }[];
   defaultRoles: { key: string; name: string; permissions: string[] }[];
-  modules: { key: string; name: string; description: string; enabledIn: number }[];
+  modules: {
+    key: string;
+    name: string;
+    description: string;
+    enabledIn: number;
+  }[];
 }
 
-export const USER_STATUS: Record<string, string> = { invited: "Invitert", active: "Aktiv", disabled: "Deaktivert" };
-export const PROVIDER: Record<string, string> = { bankid: "BankID", vipps: "Vipps", passkey: "Passkey" };
+export const USER_STATUS: Record<string, string> = {
+  invited: "Invitert",
+  active: "Aktiv",
+  disabled: "Deaktivert",
+};
+export const PROVIDER: Record<string, string> = {
+  bankid: "BankID",
+  vipps: "Vipps",
+  passkey: "Passkey",
+};
 export const LOGIN_RESULT: Record<string, string> = {
   success: "Vellykket",
   cancelled: "Avbrutt",
@@ -120,8 +190,19 @@ export const LOGIN_RESULT: Record<string, string> = {
 export interface SecurityOverview {
   hours: number;
   totals: { success: number; failed: number };
-  failedByIp: { ip: string; failures: number; users: number; lastAt: string; blocked: boolean }[];
-  failedByUser: { id: string; name: string; failures: number; lastAt: string }[];
+  failedByIp: {
+    ip: string;
+    failures: number;
+    users: number;
+    lastAt: string;
+    blocked: boolean;
+  }[];
+  failedByUser: {
+    id: string;
+    name: string;
+    failures: number;
+    lastAt: string;
+  }[];
   recent: {
     occurredAt: string;
     provider: string;
@@ -170,7 +251,11 @@ export interface BlockedIp {
   createdByName: string | null;
 }
 
-export const AUDIT_ACTION: Record<string, string> = { insert: "Opprettet", update: "Endret", delete: "Slettet" };
+export const AUDIT_ACTION: Record<string, string> = {
+  insert: "Opprettet",
+  update: "Endret",
+  delete: "Slettet",
+};
 
 export const AUDIT_TABLE: Record<string, string> = {
   organizations: "Callsenter",
@@ -188,15 +273,22 @@ export const AUDIT_TABLE: Record<string, string> = {
 };
 
 // Fields that changed in an audit row (ignoring timestamps that change on every update).
-export function changedFields(oldData: Record<string, unknown> | null, newData: Record<string, unknown> | null) {
+export function changedFields(
+  oldData: Record<string, unknown> | null,
+  newData: Record<string, unknown> | null,
+) {
   const ignore = new Set(["updated_at"]);
-  const keys = new Set([...Object.keys(oldData ?? {}), ...Object.keys(newData ?? {})]);
+  const keys = new Set([
+    ...Object.keys(oldData ?? {}),
+    ...Object.keys(newData ?? {}),
+  ]);
   const changes: { field: string; before: unknown; after: unknown }[] = [];
   for (const field of [...keys].sort()) {
     if (ignore.has(field)) continue;
     const before = oldData?.[field] ?? null;
     const after = newData?.[field] ?? null;
-    if (JSON.stringify(before) !== JSON.stringify(after)) changes.push({ field, before, after });
+    if (JSON.stringify(before) !== JSON.stringify(after))
+      changes.push({ field, before, after });
   }
   return changes;
 }
@@ -222,11 +314,22 @@ export interface AdminAnnouncement {
   organizations: { id: string; name: string }[];
 }
 
-export function announcementState(a: { active: boolean; startsAt: string; endsAt: string | null }, now = new Date()) {
-  if (!a.active) return { label: "Av", tone: "danger" as const };
-  if (new Date(a.startsAt) > now) return { label: `Fra ${formatDate(a.startsAt)}`, tone: "warning" as const };
-  if (a.endsAt && new Date(a.endsAt) <= now) return { label: "Utløpt", tone: "danger" as const };
-  return { label: "Vises nå", tone: "ok" as const };
+// `key` is the text in admin.announcementState (with {date}).
+export function announcementState(
+  a: { active: boolean; startsAt: string; endsAt: string | null },
+  now = new Date(),
+) {
+  if (!a.active)
+    return { key: "off" as const, tone: "danger" as const, date: "" };
+  if (new Date(a.startsAt) > now)
+    return {
+      key: "from" as const,
+      tone: "warning" as const,
+      date: formatDate(a.startsAt),
+    };
+  if (a.endsAt && new Date(a.endsAt) <= now)
+    return { key: "expired" as const, tone: "danger" as const, date: "" };
+  return { key: "showing" as const, tone: "ok" as const, date: "" };
 }
 
 export interface Growth {
@@ -241,7 +344,12 @@ export interface Growth {
     allUsers: number;
     usersBefore: number;
   };
-  series: { month: string; newOrganizations: number; newUsers: number; logins: number }[];
+  series: {
+    month: string;
+    newOrganizations: number;
+    newUsers: number;
+    logins: number;
+  }[];
   events: { id: string; title: string; occurredOn: string }[];
 }
 
@@ -253,7 +361,10 @@ export function cumulative(start: number, values: number[]): number[] {
 
 export function monthLabel(month: string): string {
   const [year, m] = month.split("-").map(Number);
-  return new Intl.DateTimeFormat("nb-NO", { month: "short", year: "2-digit" }).format(new Date(Date.UTC(year!, m! - 1, 1)));
+  return new Intl.DateTimeFormat(formatTagNow(), {
+    month: "short",
+    year: "2-digit",
+  }).format(new Date(Date.UTC(year!, m! - 1, 1)));
 }
 
 // Superadmin → Oversikt (GET /admin/overview). Counts only; money in NOK.
@@ -266,11 +377,28 @@ export interface PlatformOverview {
     paying: number;
     closed: number;
     newThisMonth: number;
-    ending: { id: string; name: string; kind: "trial" | "access"; endsAt: string }[];
+    ending: {
+      id: string;
+      name: string;
+      kind: "trial" | "access";
+      endsAt: string;
+    }[];
     mostActive: { id: string; name: string; calls: number; users30: number }[];
-    quiet: { id: string; name: string; lastCallAt: string | null; lastLoginAt: string | null }[];
+    quiet: {
+      id: string;
+      name: string;
+      lastCallAt: string | null;
+      lastLoginAt: string | null;
+    }[];
   };
-  users: { active: number; invited: number; disabled: number; new30: number; loggedInToday: number; loggedIn7: number };
+  users: {
+    active: number;
+    invited: number;
+    disabled: number;
+    new30: number;
+    loggedInToday: number;
+    loggedIn7: number;
+  };
   logins: {
     today: number;
     week: number;
@@ -307,9 +435,20 @@ export interface PlatformOverview {
   };
 }
 
+export type AttentionKey =
+  | "stuck"
+  | "pieces"
+  | "failed"
+  | "ips"
+  | "missed"
+  | "overdue"
+  | "unread"
+  | "drafts";
+
+// The text is admin.overview.attention.<key>, with `values` as its {placeholders}.
 export interface Attention {
-  key: string;
-  text: string;
+  key: AttentionKey;
+  values: { count: number; minutes?: number };
   href?: string;
 }
 
@@ -317,57 +456,54 @@ export function waitedMinutes(since: string, now: number): number {
   return Math.max(0, Math.floor((now - Date.parse(since)) / 60_000));
 }
 
-const count = (n: number, one: string, many: string) => `${new Intl.NumberFormat("nb-NO").format(n)} ${n === 1 ? one : many}`;
-
 // What needs the superadmin now, most urgent first: the worker falling behind, failed calls,
-// logins that look like an attack, money not paid, and messages not read.
+// logins that look like an attack, money not paid, and messages not read. For "overdue", count is
+// the amount in kroner.
 export function attention(o: PlatformOverview, now: number): Attention[] {
   const items: Attention[] = [];
-  if (o.calls.stuck > 0) {
-    items.push({
-      key: "stuck",
-      text: `${count(o.calls.stuck, "samtale har", "samtaler har")} stått i behandling i over 30 minutter. Sjekk loggene til workeren.`,
-    });
-  }
-  const waited = o.calls.oldestPieceAt ? waitedMinutes(o.calls.oldestPieceAt, now) : 0;
+  if (o.calls.stuck > 0)
+    items.push({ key: "stuck", values: { count: o.calls.stuck } });
+  const waited = o.calls.oldestPieceAt
+    ? waitedMinutes(o.calls.oldestPieceAt, now)
+    : 0;
   if (o.calls.piecesWaiting > 0 && waited >= 5) {
     items.push({
       key: "pieces",
-      text: `${count(o.calls.piecesWaiting, "lydbit venter", "lydbiter venter")} på transkripsjon, den eldste i ${count(waited, "minutt", "minutter")}. Sjekk loggene til workeren.`,
+      values: { count: o.calls.piecesWaiting, minutes: waited },
     });
   }
-  if (o.calls.failed7 > 0) {
-    items.push({ key: "failed", text: `${count(o.calls.failed7, "samtale", "samtaler")} feilet de siste 7 dagene.` });
-  }
-  if (o.logins.suspiciousIps > 0) {
+  if (o.calls.failed7 > 0)
+    items.push({ key: "failed", values: { count: o.calls.failed7 } });
+  if (o.logins.suspiciousIps > 0)
     items.push({
       key: "ips",
-      text: `${count(o.logins.suspiciousIps, "IP-adresse", "IP-adresser")} med fem eller flere mislykkede innlogginger siste døgn, ikke sperret.`,
+      values: { count: o.logins.suspiciousIps },
       href: "/admin/sikkerhet",
     });
-  }
   if (o.money.missed > 0) {
     items.push({
       key: "missed",
-      text: `${count(o.money.missed, "faktura", "fakturaer")} med uteblitt betaling.`,
+      values: { count: o.money.missed },
       href: "/admin/okonomi/faktura",
     });
   } else if (o.money.overdue > 0) {
     items.push({
       key: "overdue",
-      text: `${new Intl.NumberFormat("nb-NO", { maximumFractionDigits: 0 }).format(o.money.overdue)} kr er forfalt og ikke betalt.`,
+      values: { count: o.money.overdue },
       href: "/admin/okonomi/faktura",
     });
   }
-  if (o.support.unread > 0) {
+  if (o.support.unread > 0)
     items.push({
       key: "unread",
-      text: `${count(o.support.unread, "samtale", "samtaler")} med callsentre har uleste meldinger.`,
+      values: { count: o.support.unread },
       href: "/admin/meldinger",
     });
-  }
-  if (o.money.drafts > 0) {
-    items.push({ key: "drafts", text: `${count(o.money.drafts, "fakturautkast", "fakturautkast")} er ikke sendt.`, href: "/admin/okonomi/faktura" });
-  }
+  if (o.money.drafts > 0)
+    items.push({
+      key: "drafts",
+      values: { count: o.money.drafts },
+      href: "/admin/okonomi/faktura",
+    });
   return items;
 }

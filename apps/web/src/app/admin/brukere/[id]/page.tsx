@@ -2,9 +2,17 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, LoadState, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import {
+  ErrorMessage,
+  Field,
+  LoadState,
+  inputClass,
+  primaryButton,
+  secondaryButton,
+} from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
 import {
   adminFetch,
@@ -12,13 +20,15 @@ import {
   formatDateTime,
   LOGIN_RESULT,
   PROVIDER,
-  USER_STATUS,
   type UserDetail,
 } from "@/lib/admin";
 
 const TONE = { active: "ok", invited: "warning", disabled: "danger" } as const;
 
 export default function UserPage() {
+  const t = useTranslations("admin.user");
+  const tu = useTranslations("admin.users");
+  const td = useTranslations("domain");
   const { id } = useParams<{ id: string }>();
   const [user, setUser] = useState<UserDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +55,9 @@ export default function UserPage() {
     return (
       <section>
         <BackLink />
-        <div className="mt-6"><LoadState error={error} /></div>
+        <div className="mt-6">
+          <LoadState error={error} />
+        </div>
       </section>
     );
   }
@@ -55,12 +67,21 @@ export default function UserPage() {
       <div>
         <BackLink />
         <div className="mt-4 flex flex-wrap items-center gap-4">
-          <h1 className="text-3xl font-extrabold tracking-tight">{user.name}</h1>
-          <StatusBadge tone={TONE[user.status]}>{USER_STATUS[user.status]}</StatusBadge>
-          {user.platformAdmin && <span className="font-semibold text-brand">Superadmin</span>}
+          <h1 className="text-3xl font-extrabold tracking-tight">
+            {user.name}
+          </h1>
+          <StatusBadge tone={TONE[user.status]}>
+            {td(`userStatus.${user.status}`)}
+          </StatusBadge>
+          {user.platformAdmin && (
+            <span className="font-semibold text-brand">{tu("superadmin")}</span>
+          )}
         </div>
         <p className="mt-2 text-muted">
-          Opprettet {formatDate(user.createdAt)} · {user.lastLoginAt ? `sist innlogget ${formatDateTime(user.lastLoginAt)}` : "aldri innlogget"}
+          {t("created", { date: formatDate(user.createdAt) })} ·{" "}
+          {user.lastLoginAt
+            ? t("lastLogin", { date: formatDateTime(user.lastLoginAt) })
+            : t("neverLoggedIn")}
         </p>
       </div>
 
@@ -74,9 +95,13 @@ export default function UserPage() {
 }
 
 function BackLink() {
+  const t = useTranslations("admin.user");
   return (
-    <Link href="/admin/brukere" className="inline-flex min-h-11 items-center font-semibold text-brand">
-      ← Alle brukere
+    <Link
+      href="/admin/brukere"
+      className="inline-flex min-h-11 items-center font-semibold text-brand"
+    >
+      ← {t("back")}
     </Link>
   );
 }
@@ -85,7 +110,10 @@ function BackLink() {
 function useAction(onDone: () => Promise<void>) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const run = async (confirmText: string | null, action: () => Promise<unknown>) => {
+  const run = async (
+    confirmText: string | null,
+    action: () => Promise<unknown>,
+  ) => {
     if (confirmText && !window.confirm(confirmText)) return;
     setBusy(true);
     setError(null);
@@ -101,8 +129,20 @@ function useAction(onDone: () => Promise<void>) {
   return { error, busy, run };
 }
 
-function Profile({ user, onSaved }: { user: UserDetail; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState({ fullName: user.name, phone: user.phone ?? "", email: user.email ?? "" });
+function Profile({
+  user,
+  onSaved,
+}: {
+  user: UserDetail;
+  onSaved: () => Promise<void>;
+}) {
+  const t = useTranslations("admin.user");
+  const ts = useTranslations("admin.shared");
+  const [form, setForm] = useState({
+    fullName: user.name,
+    phone: user.phone ?? "",
+    email: user.email ?? "",
+  });
   const [message, setMessage] = useState<string | null>(null);
   const { error, busy, run } = useAction(onSaved);
 
@@ -111,31 +151,48 @@ function Profile({ user, onSaved }: { user: UserDetail; onSaved: () => Promise<v
     setMessage(null);
     await run(null, async () => {
       await adminFetch(`/users/${user.id}`, { method: "PATCH", body: form });
-      setMessage("Lagret.");
+      setMessage(ts("saved"));
     });
   }
 
-  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
+  const set =
+    (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm({ ...form, [key]: e.target.value });
 
   return (
-    <Card title="Profil">
+    <Card title={t("profile")}>
       <form onSubmit={submit} className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Navn">
-            <input required className={inputClass} value={form.fullName} onChange={set("fullName")} />
+          <Field label={t("name")}>
+            <input
+              required
+              className={inputClass}
+              value={form.fullName}
+              onChange={set("fullName")}
+            />
           </Field>
-          <Field label="Mobilnummer" hint="Brukes til å koble første Vipps-innlogging.">
-            <input type="tel" className={inputClass} value={form.phone} onChange={set("phone")} />
+          <Field label={t("mobile")} hint={t("mobileHint")}>
+            <input
+              type="tel"
+              className={inputClass}
+              value={form.phone}
+              onChange={set("phone")}
+            />
           </Field>
-          <Field label="E-post">
-            <input type="email" className={inputClass} value={form.email} onChange={set("email")} />
+          <Field label={t("email")}>
+            <input
+              type="email"
+              className={inputClass}
+              value={form.email}
+              onChange={set("email")}
+            />
           </Field>
         </div>
         <ErrorMessage message={error} />
         {message && <p role="status">{message}</p>}
         <div>
           <button type="submit" className={primaryButton} disabled={busy}>
-            {busy ? "Lagrer …" : "Lagre"}
+            {busy ? ts("saving") : ts("save")}
           </button>
         </div>
       </form>
@@ -143,20 +200,25 @@ function Profile({ user, onSaved }: { user: UserDetail; onSaved: () => Promise<v
   );
 }
 
-function Access({ user, onChanged }: { user: UserDetail; onChanged: () => Promise<void> }) {
+function Access({
+  user,
+  onChanged,
+}: {
+  user: UserDetail;
+  onChanged: () => Promise<void>;
+}) {
+  const t = useTranslations("admin.user");
   const { error, busy, run } = useAction(onChanged);
   const disabled = user.status === "disabled";
 
   return (
-    <Card title="Tilgang">
+    <Card title={t("access")}>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="font-semibold">Brukerkonto</p>
+            <p className="font-semibold">{t("account")}</p>
             <p className="text-sm text-muted">
-              {disabled
-                ? "Deaktivert: kan ikke logge inn i noe callsenter."
-                : "En deaktivert bruker logges ut overalt og kan ikke logge inn."}
+              {disabled ? t("disabledText") : t("disableText")}
             </p>
           </div>
           {!user.self && (
@@ -165,22 +227,25 @@ function Access({ user, onChanged }: { user: UserDetail; onChanged: () => Promis
               className={secondaryButton}
               disabled={busy}
               onClick={() =>
-                run(disabled ? null : `Deaktivere ${user.name}? Brukeren logges ut overalt.`, () =>
-                  adminFetch(`/users/${user.id}`, { method: "PATCH", body: { access: disabled ? "enabled" : "disabled" } }),
+                run(
+                  disabled ? null : t("confirmDisable", { name: user.name }),
+                  () =>
+                    adminFetch(`/users/${user.id}`, {
+                      method: "PATCH",
+                      body: { access: disabled ? "enabled" : "disabled" },
+                    }),
                 )
               }
             >
-              {disabled ? "Aktiver igjen" : "Deaktiver"}
+              {disabled ? t("enable") : t("disable")}
             </button>
           )}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="font-semibold">Superadmin</p>
+            <p className="font-semibold">{t("superadmin")}</p>
             <p className="text-sm text-muted">
-              {user.platformAdmin
-                ? "Har tilgang til denne portalen og alle callsentre (bare med BankID)."
-                : "Gir tilgang til denne portalen og alle callsentre (bare med BankID)."}
+              {user.platformAdmin ? t("isSuperadmin") : t("makeSuperadminText")}
             </p>
           </div>
           {!user.self && (
@@ -191,17 +256,21 @@ function Access({ user, onChanged }: { user: UserDetail; onChanged: () => Promis
               onClick={() =>
                 run(
                   user.platformAdmin
-                    ? `Fjerne superadmin-tilgangen til ${user.name}?`
-                    : `Gjøre ${user.name} til superadmin? Det gir full tilgang til alle callsentre.`,
-                  () => adminFetch(`/users/${user.id}/superadmin`, { method: "PUT", body: { enabled: !user.platformAdmin } }),
+                    ? t("confirmRemoveSuperadmin", { name: user.name })
+                    : t("confirmMakeSuperadmin", { name: user.name }),
+                  () =>
+                    adminFetch(`/users/${user.id}/superadmin`, {
+                      method: "PUT",
+                      body: { enabled: !user.platformAdmin },
+                    }),
                 )
               }
             >
-              {user.platformAdmin ? "Fjern superadmin" : "Gjør til superadmin"}
+              {user.platformAdmin ? t("removeSuperadmin") : t("makeSuperadmin")}
             </button>
           )}
         </div>
-        {user.self && <p className="text-sm text-muted">Du kan ikke deaktivere deg selv eller fjerne din egen superadmin-tilgang.</p>}
+        {user.self && <p className="text-sm text-muted">{t("selfNote")}</p>}
         <ErrorMessage message={error} />
       </div>
     </Card>
@@ -209,20 +278,27 @@ function Access({ user, onChanged }: { user: UserDetail; onChanged: () => Promis
 }
 
 function Organizations({ user }: { user: UserDetail }) {
+  const t = useTranslations("admin.user");
   return (
-    <Card title="Callsentre">
+    <Card title={t("organizations")}>
       {user.organizations.length === 0 ? (
-        <p className="text-muted">Ikke medlem av noe callsenter.</p>
+        <p className="text-muted">{t("noOrganization")}</p>
       ) : (
         <ul className="divide-y divide-line">
           {user.organizations.map((o) => (
-            <li key={o.id} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <Link href={`/admin/callsentre/${o.id}`} className="font-semibold text-brand">
+            <li
+              key={o.id}
+              className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <Link
+                href={`/admin/callsentre/${o.id}`}
+                className="font-semibold text-brand"
+              >
                 {o.name}
               </Link>
               <span className="text-sm">
                 {o.role}
-                {o.status === "disabled" && " · deaktivert i callsenteret"}
+                {o.status === "disabled" && ` · ${t("disabledHere")}`}
               </span>
             </li>
           ))}
@@ -232,12 +308,20 @@ function Organizations({ user }: { user: UserDetail }) {
   );
 }
 
-function Logins({ user, onChanged }: { user: UserDetail; onChanged: () => Promise<void> }) {
+function Logins({
+  user,
+  onChanged,
+}: {
+  user: UserDetail;
+  onChanged: () => Promise<void>;
+}) {
+  const t = useTranslations("admin.user");
+  const tc = useTranslations("common");
   const { error, busy, run } = useAction(onChanged);
 
   return (
     <Card
-      title="Innlogging"
+      title={t("login")}
       actions={
         user.sessions.length > 0 && (
           <button
@@ -245,25 +329,33 @@ function Logins({ user, onChanged }: { user: UserDetail; onChanged: () => Promis
             className={secondaryButton}
             disabled={busy}
             onClick={() =>
-              run(`Logge ut ${user.name} fra alle enheter?`, () => adminFetch(`/users/${user.id}/logout`, { method: "POST" }))
+              run(t("confirmLogout", { name: user.name }), () =>
+                adminFetch(`/users/${user.id}/logout`, { method: "POST" }),
+              )
             }
           >
-            Logg ut overalt
+            {t("logoutEverywhere")}
           </button>
         )
       }
     >
-      <h3 className="font-semibold">Innloggingsmetoder</h3>
+      <h3 className="font-semibold">{t("methods")}</h3>
       {user.identities.length === 0 ? (
-        <p className="mt-1 text-sm text-muted">Ingen ennå. Brukeren kobles ved første innlogging med invitasjonslenken.</p>
+        <p className="mt-1 text-sm text-muted">{t("noMethods")}</p>
       ) : (
         <ul className="mt-2 divide-y divide-line">
           {user.identities.map((i) => (
-            <li key={i.provider} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <li
+              key={i.provider}
+              className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+            >
               <div>
                 <p className="font-semibold">{PROVIDER[i.provider]}</p>
                 <p className="text-sm text-muted">
-                  Koblet {formatDate(i.createdAt)} · sist brukt {formatDateTime(i.lastUsedAt)}
+                  {t("linked", {
+                    date: formatDate(i.createdAt),
+                    used: formatDateTime(i.lastUsedAt),
+                  })}
                 </p>
               </div>
               {!user.self && (
@@ -273,12 +365,19 @@ function Logins({ user, onChanged }: { user: UserDetail; onChanged: () => Promis
                   disabled={busy}
                   onClick={() =>
                     run(
-                      `Fjerne ${PROVIDER[i.provider]} fra ${user.name}? Brukeren trenger en ny invitasjon for å koble den igjen.`,
-                      () => adminFetch(`/users/${user.id}/identities/${i.provider}`, { method: "DELETE" }),
+                      t("confirmRemoveMethod", {
+                        method: PROVIDER[i.provider] ?? i.provider,
+                        name: user.name,
+                      }),
+                      () =>
+                        adminFetch(
+                          `/users/${user.id}/identities/${i.provider}`,
+                          { method: "DELETE" },
+                        ),
                     )
                   }
                 >
-                  Fjern
+                  {tc("remove")}
                 </button>
               )}
             </li>
@@ -286,17 +385,23 @@ function Logins({ user, onChanged }: { user: UserDetail; onChanged: () => Promis
         </ul>
       )}
 
-      <h3 className="mt-6 font-semibold">Passkeys</h3>
+      <h3 className="mt-6 font-semibold">{t("passkeys")}</h3>
       {user.passkeys.length === 0 ? (
-        <p className="mt-1 text-sm text-muted">Ingen passkeys.</p>
+        <p className="mt-1 text-sm text-muted">{t("noPasskeys")}</p>
       ) : (
         <ul className="mt-2 divide-y divide-line">
           {user.passkeys.map((p) => (
-            <li key={p.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <li
+              key={p.id}
+              className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+            >
               <div>
                 <p className="font-semibold">{p.name}</p>
                 <p className="text-sm text-muted">
-                  Lagt til {formatDate(p.createdAt)} · sist brukt {formatDateTime(p.lastUsedAt)}
+                  {t("passkeyAdded", {
+                    date: formatDate(p.createdAt),
+                    used: formatDateTime(p.lastUsedAt),
+                  })}
                 </p>
               </div>
               <button
@@ -304,31 +409,41 @@ function Logins({ user, onChanged }: { user: UserDetail; onChanged: () => Promis
                 className={secondaryButton}
                 disabled={busy}
                 onClick={() =>
-                  run(`Fjerne passkeyen «${p.name}» fra ${user.name}? Brukeren logges ut overalt.`, () =>
-                    adminFetch(`/users/${user.id}/passkeys/${p.id}`, { method: "DELETE" }),
+                  run(
+                    t("confirmRemovePasskey", {
+                      passkey: p.name,
+                      name: user.name,
+                    }),
+                    () =>
+                      adminFetch(`/users/${user.id}/passkeys/${p.id}`, {
+                        method: "DELETE",
+                      }),
                   )
                 }
               >
-                Fjern
+                {tc("remove")}
               </button>
             </li>
           ))}
         </ul>
       )}
 
-      <h3 className="mt-6 font-semibold">Aktive økter</h3>
+      <h3 className="mt-6 font-semibold">{t("sessions")}</h3>
       {user.sessions.length === 0 ? (
-        <p className="mt-1 text-sm text-muted">Ingen aktive økter.</p>
+        <p className="mt-1 text-sm text-muted">{t("noSessions")}</p>
       ) : (
         <ul className="mt-2 divide-y divide-line">
           {user.sessions.map((s, index) => (
             <li key={index} className="py-3 text-sm">
               <p>
-                <span className="font-semibold">{PROVIDER[s.provider]}</span> · startet {formatDateTime(s.createdAt)} · sist
-                aktiv {formatDateTime(s.lastSeenAt)}
+                <span className="font-semibold">{PROVIDER[s.provider]}</span> ·{" "}
+                {t("sessionTimes", {
+                  started: formatDateTime(s.createdAt),
+                  seen: formatDateTime(s.lastSeenAt),
+                })}
               </p>
               <p className="text-muted">
-                {s.ip ?? "Ukjent IP"} · {s.userAgent ?? "Ukjent nettleser"}
+                {s.ip ?? t("unknownIp")} · {s.userAgent ?? t("unknownBrowser")}
               </p>
             </li>
           ))}
@@ -342,17 +457,26 @@ function Logins({ user, onChanged }: { user: UserDetail; onChanged: () => Promis
 }
 
 function History({ user }: { user: UserDetail }) {
+  const t = useTranslations("admin.user");
+  const td = useTranslations("domain");
   return (
-    <Card title="Siste innlogginger">
+    <Card title={t("history")}>
       {user.logins.length === 0 ? (
-        <p className="text-muted">Ingen innlogginger registrert.</p>
+        <p className="text-muted">{t("noLogins")}</p>
       ) : (
         <ul className="divide-y divide-line text-sm">
           {user.logins.map((l, index) => (
-            <li key={index} className="flex flex-wrap justify-between gap-2 py-2">
+            <li
+              key={index}
+              className="flex flex-wrap justify-between gap-2 py-2"
+            >
               <span>{formatDateTime(l.occurredAt)}</span>
               <span>
-                {PROVIDER[l.provider]} · {LOGIN_RESULT[l.result] ?? l.result} · {l.ip ?? "ukjent IP"}
+                {PROVIDER[l.provider]} ·{" "}
+                {l.result in LOGIN_RESULT
+                  ? td(`loginResult.${l.result as "success"}`)
+                  : l.result}{" "}
+                · {l.ip ?? t("unknownIpLower")}
               </span>
             </li>
           ))}

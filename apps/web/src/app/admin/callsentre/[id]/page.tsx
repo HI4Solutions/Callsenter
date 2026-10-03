@@ -3,24 +3,37 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { isModuleKey, type Locale, LOCALE_CODES, LOCALES, MODULES } from "@veriqall/shared";
+import {
+  isModuleKey,
+  type Locale,
+  LOCALE_CODES,
+  LOCALES,
+} from "@veriqall/shared";
 import { useTranslations } from "next-intl";
 import { SpokenLanguages } from "@/components/calls/call-languages";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, LoadState, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import {
+  ErrorMessage,
+  Field,
+  LoadState,
+  inputClass,
+  primaryButton,
+  secondaryButton,
+} from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
 import {
   adminFetch,
   formatDate,
   formatDateTime,
-  invitationState,
+  invitationKey,
   organizationState,
   type OrganizationDetail,
-  USER_STATUS,
 } from "@/lib/admin";
 import { switchOrganization } from "@/lib/org";
 
 export default function CallCentrePage() {
+  const t = useTranslations("admin.organization");
+  const ta = useTranslations("admin");
   const { id } = useParams<{ id: string }>();
   const [org, setOrg] = useState<OrganizationDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +60,9 @@ export default function CallCentrePage() {
     return (
       <section>
         <BackLink />
-        <div className="mt-6"><LoadState error={error} /></div>
+        <div className="mt-6">
+          <LoadState error={error} />
+        </div>
       </section>
     );
   }
@@ -59,9 +74,13 @@ export default function CallCentrePage() {
         <BackLink />
         <div className="mt-4 flex flex-wrap items-center gap-4">
           <h1 className="text-3xl font-extrabold tracking-tight">{org.name}</h1>
-          <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
+          <StatusBadge tone={state.tone}>
+            {ta(`organizationState.${state.key}`, { date: state.date })}
+          </StatusBadge>
         </div>
-        <p className="mt-2 text-muted">Opprettet {formatDate(org.createdAt)}</p>
+        <p className="mt-2 text-muted">
+          {t("created", { date: formatDate(org.createdAt) })}
+        </p>
         <OpenAsAdmin orgId={org.id} />
       </div>
 
@@ -77,12 +96,16 @@ export default function CallCentrePage() {
 
 // Steps into the call centre (the session's current call centre) and opens its admin portal.
 function OpenAsAdmin({ orgId }: { orgId: string }) {
+  const t = useTranslations("admin.organization");
   const [error, setError] = useState<string | null>(null);
   async function open() {
     try {
       await switchOrganization(orgId);
       // A full page load (absolute URL), so the header picks up the new call centre.
-      window.location.href = new URL("/administrasjon", window.location.origin).href;
+      window.location.href = new URL(
+        "/administrasjon",
+        window.location.origin,
+      ).href;
     } catch (e) {
       setError((e as Error).message);
     }
@@ -90,7 +113,7 @@ function OpenAsAdmin({ orgId }: { orgId: string }) {
   return (
     <div className="mt-4">
       <button type="button" className={secondaryButton} onClick={open}>
-        Åpne adminportalen for callsenteret
+        {t("openAdmin")}
       </button>
       <ErrorMessage message={error} />
     </div>
@@ -98,14 +121,28 @@ function OpenAsAdmin({ orgId }: { orgId: string }) {
 }
 
 function BackLink() {
+  const t = useTranslations("admin.organization");
   return (
-    <Link href="/admin/callsentre" className="inline-flex min-h-11 items-center font-semibold text-brand">
-      ← Alle callsentre
+    <Link
+      href="/admin/callsentre"
+      className="inline-flex min-h-11 items-center font-semibold text-brand"
+    >
+      ← {t("back")}
     </Link>
   );
 }
 
-function Details({ org, onSaved }: { org: OrganizationDetail; onSaved: () => Promise<void> }) {
+function Details({
+  org,
+  onSaved,
+}: {
+  org: OrganizationDetail;
+  onSaved: () => Promise<void>;
+}) {
+  const t = useTranslations("admin.organization");
+  const to = useTranslations("admin.organizations");
+  const ts = useTranslations("admin.shared");
+  const ta = useTranslations("admin");
   const [form, setForm] = useState({
     name: org.name,
     orgNumber: org.orgNumber ?? "",
@@ -131,10 +168,14 @@ function Details({ org, onSaved }: { org: OrganizationDetail; onSaved: () => Pro
     try {
       await adminFetch(`/organizations/${org.id}`, {
         method: "PATCH",
-        body: { ...form, trialEndsAt: form.trialEndsAt || null, recordingRetentionMonths: Number(form.recordingRetentionMonths) },
+        body: {
+          ...form,
+          trialEndsAt: form.trialEndsAt || null,
+          recordingRetentionMonths: Number(form.recordingRetentionMonths),
+        },
       });
       await onSaved();
-      setMessage("Lagret.");
+      setMessage(ts("saved"));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -143,54 +184,110 @@ function Details({ org, onSaved }: { org: OrganizationDetail; onSaved: () => Pro
   }
 
   const set =
-    (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    (key: keyof typeof form) =>
+    (
+      e: React.ChangeEvent<
+        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+      >,
+    ) =>
       setForm({ ...form, [key]: e.target.value });
 
   return (
-    <Card title="Detaljer">
+    <Card title={t("details")}>
       <form onSubmit={submit} className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Navn">
-            <input required className={inputClass} value={form.name} onChange={set("name")} />
+          <Field label={to("name")}>
+            <input
+              required
+              className={inputClass}
+              value={form.name}
+              onChange={set("name")}
+            />
           </Field>
-          <Field label="Organisasjonsnummer">
-            <input inputMode="numeric" className={inputClass} value={form.orgNumber} onChange={set("orgNumber")} />
+          <Field label={to("orgNumberLabel")}>
+            <input
+              inputMode="numeric"
+              className={inputClass}
+              value={form.orgNumber}
+              onChange={set("orgNumber")}
+            />
           </Field>
-          <Field label="Kontaktperson">
-            <input className={inputClass} value={form.contactName} onChange={set("contactName")} />
+          <Field label={to("contactName")}>
+            <input
+              className={inputClass}
+              value={form.contactName}
+              onChange={set("contactName")}
+            />
           </Field>
-          <Field label="E-post til kontaktperson">
-            <input type="email" className={inputClass} value={form.contactEmail} onChange={set("contactEmail")} />
+          <Field label={to("contactEmail")}>
+            <input
+              type="email"
+              className={inputClass}
+              value={form.contactEmail}
+              onChange={set("contactEmail")}
+            />
           </Field>
-          <Field label="Telefon til kontaktperson">
-            <input type="tel" className={inputClass} value={form.contactPhone} onChange={set("contactPhone")} />
+          <Field label={to("contactPhone")}>
+            <input
+              type="tel"
+              className={inputClass}
+              value={form.contactPhone}
+              onChange={set("contactPhone")}
+            />
           </Field>
-          <Field label="Faktura-e-post">
-            <input type="email" className={inputClass} value={form.invoiceEmail} onChange={set("invoiceEmail")} />
+          <Field label={t("invoiceEmail")}>
+            <input
+              type="email"
+              className={inputClass}
+              value={form.invoiceEmail}
+              onChange={set("invoiceEmail")}
+            />
           </Field>
-          <Field label="Fakturaadresse">
-            <textarea rows={3} className={`${inputClass} py-2`} value={form.invoiceAddress} onChange={set("invoiceAddress")} />
+          <Field label={t("invoiceAddress")}>
+            <textarea
+              rows={3}
+              className={`${inputClass} py-2`}
+              value={form.invoiceAddress}
+              onChange={set("invoiceAddress")}
+            />
           </Field>
-          <Field label="Notat" hint="Bare synlig for superadmin.">
-            <textarea rows={3} className={`${inputClass} py-2`} value={form.note} onChange={set("note")} />
+          <Field label={t("note")} hint={t("noteHint")}>
+            <textarea
+              rows={3}
+              className={`${inputClass} py-2`}
+              value={form.note}
+              onChange={set("note")}
+            />
           </Field>
-          <Field label="Status" hint="Suspendert stenger callsenteret for alle brukerne der.">
-            <select className={inputClass} value={form.status} onChange={set("status")}>
-              <option value="active">Aktiv</option>
-              <option value="suspended">Suspendert</option>
+          <Field label={t("status")} hint={t("statusHint")}>
+            <select
+              className={inputClass}
+              value={form.status}
+              onChange={set("status")}
+            >
+              <option value="active">{ta("organizationState.active")}</option>
+              <option value="suspended">
+                {ta("organizationState.suspended")}
+              </option>
             </select>
           </Field>
-          <Field label="Prøveperiode til" hint="Etter denne datoen stenges callsenteret. Tom = ingen prøveperiode.">
-            <input type="date" className={inputClass} value={form.trialEndsAt} onChange={set("trialEndsAt")} />
+          <Field label={to("trialUntil")} hint={t("trialHint")}>
+            <input
+              type="date"
+              className={inputClass}
+              value={form.trialEndsAt}
+              onChange={set("trialEndsAt")}
+            />
           </Field>
-          <Field
-            label="Lagringstid for opptak"
-            hint="Opptak, transkripsjoner og AI-rapporter slettes automatisk etter dette. Gjelder nye samtaler."
-          >
-            <select className={inputClass} value={form.recordingRetentionMonths} onChange={set("recordingRetentionMonths")}>
+          <Field label={t("retention")} hint={t("retentionHint")}>
+            <select
+              className={inputClass}
+              value={form.recordingRetentionMonths}
+              onChange={set("recordingRetentionMonths")}
+            >
               {[3, 6, 9, 12].map((m) => (
                 <option key={m} value={m}>
-                  {m} måneder
+                  {t("retentionMonths", { count: m })}
                 </option>
               ))}
             </select>
@@ -200,7 +297,7 @@ function Details({ org, onSaved }: { org: OrganizationDetail; onSaved: () => Pro
         {message && <p role="status">{message}</p>}
         <div>
           <button type="submit" className={primaryButton} disabled={saving}>
-            {saving ? "Lagrer …" : "Lagre"}
+            {saving ? ts("saving") : ts("save")}
           </button>
         </div>
       </form>
@@ -210,12 +307,20 @@ function Details({ org, onSaved }: { org: OrganizationDetail; onSaved: () => Pro
 
 // The call centre's languages (docs/plan.md, section 19): the pages for users without their own
 // choice, the notes and the AI control, and the languages spoken in its calls (for Soniox).
-function Languages({ org, onSaved }: { org: OrganizationDetail; onSaved: () => Promise<void> }) {
+function Languages({
+  org,
+  onSaved,
+}: {
+  org: OrganizationDetail;
+  onSaved: () => Promise<void>;
+}) {
   const t = useTranslations("languages");
   const [form, setForm] = useState({
     defaultLocale: org.defaultLocale ?? "nb",
     contentLocale: org.contentLocale ?? "nb",
-    transcriptionLanguages: org.transcriptionLanguages?.length ? org.transcriptionLanguages : ["no"],
+    transcriptionLanguages: org.transcriptionLanguages?.length
+      ? org.transcriptionLanguages
+      : ["no"],
   });
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -227,7 +332,10 @@ function Languages({ org, onSaved }: { org: OrganizationDetail; onSaved: () => P
     setError(null);
     setMessage(null);
     try {
-      await adminFetch(`/organizations/${org.id}`, { method: "PATCH", body: form });
+      await adminFetch(`/organizations/${org.id}`, {
+        method: "PATCH",
+        body: form,
+      });
       await onSaved();
       setMessage(t("saved"));
     } catch (e) {
@@ -238,7 +346,11 @@ function Languages({ org, onSaved }: { org: OrganizationDetail; onSaved: () => P
   }
 
   const choose = (key: "defaultLocale" | "contentLocale") => (
-    <select className={inputClass} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value as Locale })}>
+    <select
+      className={inputClass}
+      value={form[key]}
+      onChange={(e) => setForm({ ...form, [key]: e.target.value as Locale })}
+    >
       {LOCALE_CODES.map((code) => (
         <option key={code} value={code} lang={LOCALES[code].tag}>
           {LOCALES[code].name}
@@ -262,7 +374,9 @@ function Languages({ org, onSaved }: { org: OrganizationDetail; onSaved: () => P
         <SpokenLanguages
           label={t("transcriptionLanguages")}
           value={form.transcriptionLanguages}
-          onChange={(next) => setForm({ ...form, transcriptionLanguages: next })}
+          onChange={(next) =>
+            setForm({ ...form, transcriptionLanguages: next })
+          }
         />
         <ErrorMessage message={error} />
         {message && <p role="status">{message}</p>}
@@ -276,7 +390,15 @@ function Languages({ org, onSaved }: { org: OrganizationDetail; onSaved: () => P
   );
 }
 
-function Modules({ org, onSaved }: { org: OrganizationDetail; onSaved: () => Promise<void> }) {
+function Modules({
+  org,
+  onSaved,
+}: {
+  org: OrganizationDetail;
+  onSaved: () => Promise<void>;
+}) {
+  const t = useTranslations("admin.organizations");
+  const td = useTranslations("domain");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -284,7 +406,10 @@ function Modules({ org, onSaved }: { org: OrganizationDetail; onSaved: () => Pro
     setBusy(key);
     setError(null);
     try {
-      await adminFetch(`/organizations/${org.id}`, { method: "PATCH", body: { modules: { [key]: enabled } } });
+      await adminFetch(`/organizations/${org.id}`, {
+        method: "PATCH",
+        body: { modules: { [key]: enabled } },
+      });
       await onSaved();
     } catch (e) {
       setError((e as Error).message);
@@ -294,28 +419,34 @@ function Modules({ org, onSaved }: { org: OrganizationDetail; onSaved: () => Pro
   }
 
   return (
-    <Card title="Moduler">
+    <Card title={t("modules")}>
       <ul className="grid gap-3 sm:grid-cols-2">
-        {org.modules.filter((m) => isModuleKey(m.key)).map((m) => {
-          const info = MODULES[m.key as keyof typeof MODULES];
-          return (
-            <li key={m.key}>
-              <label className="flex min-h-11 items-start gap-3">
-                <input
-                  type="checkbox"
-                  className="mt-1 size-5 accent-brand"
-                  checked={m.enabled}
-                  disabled={busy !== null}
-                  onChange={(e) => toggle(m.key, e.target.checked)}
-                />
-                <span>
-                  <span className="font-semibold">{info.name}</span>
-                  <span className="block text-sm text-muted">{info.description}</span>
-                </span>
-              </label>
-            </li>
-          );
-        })}
+        {org.modules
+          .filter((m) => isModuleKey(m.key))
+          .map((m) => {
+            const key = m.key as "sales";
+            return (
+              <li key={m.key}>
+                <label className="flex min-h-11 items-start gap-3">
+                  <input
+                    type="checkbox"
+                    className="mt-1 size-5 accent-brand"
+                    checked={m.enabled}
+                    disabled={busy !== null}
+                    onChange={(e) => toggle(m.key, e.target.checked)}
+                  />
+                  <span>
+                    <span className="font-semibold">
+                      {td(`modules.${key}.name`)}
+                    </span>
+                    <span className="block text-sm text-muted">
+                      {td(`modules.${key}.description`)}
+                    </span>
+                  </span>
+                </label>
+              </li>
+            );
+          })}
       </ul>
       <div className="mt-3">
         <ErrorMessage message={error} />
@@ -325,23 +456,37 @@ function Modules({ org, onSaved }: { org: OrganizationDetail; onSaved: () => Pro
 }
 
 function Members({ org }: { org: OrganizationDetail }) {
+  const t = useTranslations("admin.organization");
+  const td = useTranslations("domain");
   return (
-    <Card title={`Brukere (${org.members.length})`}>
+    <Card title={t("members", { count: org.members.length })}>
       {org.members.length === 0 ? (
-        <p className="text-muted">Ingen brukere ennå. Inviter admin for callsenteret under.</p>
+        <p className="text-muted">{t("noMembers")}</p>
       ) : (
         <ul className="divide-y divide-line">
           {org.members.map((m) => (
-            <li key={m.userId} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <li
+              key={m.userId}
+              className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between"
+            >
               <div>
-                <Link href={`/admin/brukere/${m.userId}`} className="font-semibold text-brand">
+                <Link
+                  href={`/admin/brukere/${m.userId}`}
+                  className="font-semibold text-brand"
+                >
                   {m.name}
                 </Link>
-                <p className="text-sm text-muted">{[m.phone, m.email].filter(Boolean).join(" · ") || "Ingen kontaktinfo"}</p>
+                <p className="text-sm text-muted">
+                  {[m.phone, m.email].filter(Boolean).join(" · ") ||
+                    t("noContact")}
+                </p>
               </div>
               <p className="text-sm">
-                {m.roleName} · {m.status === "disabled" ? "Deaktivert i callsenteret" : USER_STATUS[m.userStatus]} · sist innlogget{" "}
-                {formatDateTime(m.lastLoginAt)}
+                {m.roleName} ·{" "}
+                {m.status === "disabled"
+                  ? t("disabledHere")
+                  : td(`userStatus.${m.userStatus}`)}{" "}
+                · {t("lastLogin", { date: formatDateTime(m.lastLoginAt) })}
               </p>
             </li>
           ))}
@@ -351,10 +496,27 @@ function Members({ org }: { org: OrganizationDetail }) {
   );
 }
 
-function Invite({ org, onInvited }: { org: OrganizationDetail; onInvited: () => Promise<void> }) {
-  const [form, setForm] = useState({ fullName: "", phone: "", email: "", roleKey: "admin" });
+function Invite({
+  org,
+  onInvited,
+}: {
+  org: OrganizationDetail;
+  onInvited: () => Promise<void>;
+}) {
+  const t = useTranslations("admin.organization");
+  const to = useTranslations("admin.organizations");
+  const [form, setForm] = useState({
+    fullName: "",
+    phone: "",
+    email: "",
+    roleKey: "admin",
+  });
   const [error, setError] = useState<string | null>(null);
-  const [link, setLink] = useState<{ url: string; expiresAt: string; emailedTo: string | null } | null>(null);
+  const [link, setLink] = useState<{
+    url: string;
+    expiresAt: string;
+    emailedTo: string | null;
+  } | null>(null);
   // The person already has a login elsewhere: added without a link.
   const [added, setAdded] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -368,12 +530,20 @@ function Invite({ org, onInvited }: { org: OrganizationDetail; onInvited: () => 
     setAdded(false);
     setCopied(false);
     try {
-      const result = await adminFetch<{ link: string | null; expiresAt: string | null; emailed: boolean }>(`/organizations/${org.id}/invitations`, {
+      const result = await adminFetch<{
+        link: string | null;
+        expiresAt: string | null;
+        emailed: boolean;
+      }>(`/organizations/${org.id}/invitations`, {
         method: "POST",
         body: form,
       });
       if (result.link && result.expiresAt) {
-        setLink({ url: result.link, expiresAt: result.expiresAt, emailedTo: result.emailed ? form.email.trim() : null });
+        setLink({
+          url: result.link,
+          expiresAt: result.expiresAt,
+          emailedTo: result.emailed ? form.email.trim() : null,
+        });
       } else {
         setAdded(true);
       }
@@ -396,18 +566,29 @@ function Invite({ org, onInvited }: { org: OrganizationDetail; onInvited: () => 
     }
   }
 
-  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm({ ...form, [key]: e.target.value });
+  const set =
+    (key: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm({ ...form, [key]: e.target.value });
 
   return (
-    <Card title="Inviter bruker">
+    <Card title={t("invite")}>
       <form onSubmit={submit} className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Navn">
-            <input required className={inputClass} value={form.fullName} onChange={set("fullName")} />
+          <Field label={to("name")}>
+            <input
+              required
+              className={inputClass}
+              value={form.fullName}
+              onChange={set("fullName")}
+            />
           </Field>
-          <Field label="Rolle">
-            <select className={inputClass} value={form.roleKey} onChange={set("roleKey")}>
+          <Field label={t("role")}>
+            <select
+              className={inputClass}
+              value={form.roleKey}
+              onChange={set("roleKey")}
+            >
               {org.roles.map((r) => (
                 <option key={r.key} value={r.key}>
                   {r.name}
@@ -415,40 +596,56 @@ function Invite({ org, onInvited }: { org: OrganizationDetail; onInvited: () => 
               ))}
             </select>
           </Field>
-          <Field label="Mobilnummer" hint="Med Vipps kobles brukeren automatisk via mobilnummeret.">
-            <input type="tel" className={inputClass} value={form.phone} onChange={set("phone")} />
+          <Field label={t("mobile")} hint={t("mobileHint")}>
+            <input
+              type="tel"
+              className={inputClass}
+              value={form.phone}
+              onChange={set("phone")}
+            />
           </Field>
-          <Field label="E-post">
-            <input type="email" className={inputClass} value={form.email} onChange={set("email")} />
+          <Field label={t("email")}>
+            <input
+              type="email"
+              className={inputClass}
+              value={form.email}
+              onChange={set("email")}
+            />
           </Field>
         </div>
         <ErrorMessage message={error} />
         <div>
           <button type="submit" className={primaryButton} disabled={saving}>
-            {saving ? "Lager invitasjon …" : "Lag invitasjon"}
+            {saving ? t("creatingInvite") : t("createInvite")}
           </button>
         </div>
       </form>
       {added && (
         <p role="status" className="mt-6 rounded-lg border border-line p-4">
-          Personen er allerede bruker av VeriQall og er lagt til. Av sikkerhetshensyn lages det ingen lenke: callsenteret vises
-          når hen logger inn med sin egen BankID, Vipps eller passkey.
+          {t("alreadyUser")}
         </p>
       )}
       {link && (
         <div className="mt-6 rounded-lg border border-line p-4">
-          <p className="font-semibold">Invitasjonslenke</p>
+          <p className="font-semibold">{t("inviteLink")}</p>
           {link.emailedTo && (
             <p className="mt-1" role="status">
-              Sendt på e-post til {link.emailedTo}.
+              {t("emailedTo", { email: link.emailedTo })}
             </p>
           )}
           <p className="mt-1 text-sm text-muted">
-            {link.emailedTo ? "Du kan også sende lenken selv, for eksempel på SMS." : "Send lenken til personen."} Den kan brukes én gang og gjelder til {formatDateTime(link.expiresAt)}. Den vises bare nå.
+            {link.emailedTo ? t("sendYourself") : t("sendToPerson")}{" "}
+            {t("linkValid", { date: formatDateTime(link.expiresAt) })}
           </p>
-          <p className="mt-3 break-all rounded-lg bg-bg p-3 font-mono text-sm">{link.url}</p>
-          <button type="button" className={`${secondaryButton} mt-3`} onClick={copy}>
-            {copied ? "Kopiert" : "Kopier lenke"}
+          <p className="mt-3 break-all rounded-lg bg-bg p-3 font-mono text-sm">
+            {link.url}
+          </p>
+          <button
+            type="button"
+            className={`${secondaryButton} mt-3`}
+            onClick={copy}
+          >
+            {copied ? t("copied") : t("copyLink")}
           </button>
         </div>
       )}
@@ -456,13 +653,23 @@ function Invite({ org, onInvited }: { org: OrganizationDetail; onInvited: () => 
   );
 }
 
-function Invitations({ org, onChanged }: { org: OrganizationDetail; onChanged: () => Promise<void> }) {
+function Invitations({
+  org,
+  onChanged,
+}: {
+  org: OrganizationDetail;
+  onChanged: () => Promise<void>;
+}) {
+  const t = useTranslations("admin.organization");
+  const ta = useTranslations("admin");
   const [error, setError] = useState<string | null>(null);
 
   async function revoke(invitationId: string) {
     setError(null);
     try {
-      await adminFetch(`/organizations/${org.id}/invitations/${invitationId}`, { method: "DELETE" });
+      await adminFetch(`/organizations/${org.id}/invitations/${invitationId}`, {
+        method: "DELETE",
+      });
       await onChanged();
     } catch (e) {
       setError((e as Error).message);
@@ -471,21 +678,29 @@ function Invitations({ org, onChanged }: { org: OrganizationDetail; onChanged: (
 
   if (org.invitations.length === 0) return null;
   return (
-    <Card title="Invitasjoner">
+    <Card title={t("invitations")}>
       <ul className="divide-y divide-line">
         {org.invitations.map((inv) => {
-          const state = invitationState(inv);
+          const state = invitationKey(inv);
           return (
-            <li key={inv.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <li
+              key={inv.id}
+              className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+            >
               <div>
                 <p className="font-semibold">{inv.name}</p>
                 <p className="text-sm text-muted">
-                  Laget {formatDateTime(inv.createdAt)} · {state}
+                  {t("invitationMade", { date: formatDateTime(inv.createdAt) })}{" "}
+                  · {ta(`invitationState.${state}`)}
                 </p>
               </div>
-              {state === "Venter" && (
-                <button type="button" className={secondaryButton} onClick={() => revoke(inv.id)}>
-                  Trekk tilbake
+              {state === "pending" && (
+                <button
+                  type="button"
+                  className={secondaryButton}
+                  onClick={() => revoke(inv.id)}
+                >
+                  {t("revoke")}
                 </button>
               )}
             </li>
