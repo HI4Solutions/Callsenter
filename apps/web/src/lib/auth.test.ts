@@ -17,7 +17,7 @@ describe("login helpers", () => {
   });
 
   it("has a Norwegian message for every error code, and a fallback", () => {
-    for (const code of ["avbrutt", "utlopt", "ukjent", "invitasjon", "deaktivert", "allerede_koblet", "ikke_satt_opp", "feil"]) {
+    for (const code of ["avbrutt", "utlopt", "ukjent", "invitasjon", "deaktivert", "allerede_koblet", "navn_ulikt", "ikke_satt_opp", "feil"]) {
       expect(LOGIN_ERRORS[code]).toBeTruthy();
     }
     expect(loginErrorMessage("noe_annet")).toBe(LOGIN_ERRORS.feil);

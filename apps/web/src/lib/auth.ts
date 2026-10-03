@@ -16,6 +16,8 @@ export const LOGIN_ERRORS: Record<string, string> = {
   invitasjon: "Invitasjonen er ugyldig, brukt eller utløpt. Be om en ny invitasjon.",
   deaktivert: "Brukeren din er deaktivert. Ta kontakt med lederen din.",
   allerede_koblet: "Denne innloggingen er allerede koblet til en annen bruker.",
+  navn_ulikt:
+    "Navnet i BankID stemmer ikke med navnet på brukeren din, så BankID ble ikke koblet til. Be en administrator rette navnet ditt, og prøv igjen.",
   ikke_satt_opp: "Denne innloggingsmetoden er ikke satt opp ennå.",
   feil: "Noe gikk galt under innloggingen. Prøv igjen om litt.",
 };
