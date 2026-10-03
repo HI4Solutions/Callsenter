@@ -9,6 +9,8 @@ type Catalog = Record<string, string>;
 
 export const MESSAGES: Record<Exclude<Locale, "nb">, Catalog> = {
   en: {
+    "E-postadressen er ugyldig.": "The e-mail address is invalid.",
+    "For mange henvendelser. Prøv igjen senere.": "Too many requests. Try again later.",
     "Ugyldig dato: {label}.": "Invalid date: {label}.",
     "Fra-datoen må være før til-datoen.": "The from date must be before the to date.",
     "Velg kostnad eller innbetaling.": "Choose cost or payment received.",
@@ -255,6 +257,8 @@ export const MESSAGES: Record<Exclude<Locale, "nb">, Catalog> = {
     "Forsøk på å godta med Vipps av en annen enn kjøperen. Navnet eller mobilnummeret stemte ikke. Salget venter fortsatt.": "Attempt to accept with Vipps by someone other than the buyer. The name or mobile number did not match. The sale is still waiting.",
   },
   sv: {
+    "E-postadressen er ugyldig.": "E-postadressen är ogiltig.",
+    "For mange henvendelser. Prøv igjen senere.": "För många förfrågningar. Försök igen senare.",
     "Ugyldig dato: {label}.": "Ogiltigt datum: {label}.",
     "Fra-datoen må være før til-datoen.": "Från-datumet måste vara före till-datumet.",
     "Velg kostnad eller innbetaling.": "Välj kostnad eller inbetalning.",
@@ -501,6 +505,8 @@ export const MESSAGES: Record<Exclude<Locale, "nb">, Catalog> = {
     "Forsøk på å godta med Vipps av en annen enn kjøperen. Navnet eller mobilnummeret stemte ikke. Salget venter fortsatt.": "Försök att godkänna med Vipps av någon annan än köparen. Namnet eller mobilnumret stämde inte. Försäljningen väntar fortfarande.",
   },
   da: {
+    "E-postadressen er ugyldig.": "E-mailadressen er ugyldig.",
+    "For mange henvendelser. Prøv igjen senere.": "For mange henvendelser. Prøv igen senere.",
     "Ugyldig dato: {label}.": "Ugyldig dato: {label}.",
     "Fra-datoen må være før til-datoen.": "Fra-datoen skal være før til-datoen.",
     "Velg kostnad eller innbetaling.": "Vælg omkostning eller indbetaling.",
@@ -747,6 +753,8 @@ export const MESSAGES: Record<Exclude<Locale, "nb">, Catalog> = {
     "Forsøk på å godta med Vipps av en annen enn kjøperen. Navnet eller mobilnummeret stemte ikke. Salget venter fortsatt.": "Forsøg på at acceptere med Vipps af en anden end køberen. Navnet eller mobilnummeret passede ikke. Salget venter stadig.",
   },
   de: {
+    "E-postadressen er ugyldig.": "Die E-Mail-Adresse ist ungültig.",
+    "For mange henvendelser. Prøv igjen senere.": "Zu viele Anfragen. Versuchen Sie es später erneut.",
     "Ugyldig dato: {label}.": "Ungültiges Datum: {label}.",
     "Fra-datoen må være før til-datoen.": "Das Von-Datum muss vor dem Bis-Datum liegen.",
     "Velg kostnad eller innbetaling.": "Wählen Sie Kosten oder Zahlungseingang.",
@@ -996,6 +1004,8 @@ export const MESSAGES: Record<Exclude<Locale, "nb">, Catalog> = {
 
 export const LABELS: Record<Exclude<Locale, "nb">, Catalog> = {
   en: {
+    "Telefon": "Phone",
+    "Firma": "Company",
     "fra": "from",
     "til": "to",
     "beløp": "amount",
@@ -1084,6 +1094,8 @@ export const LABELS: Record<Exclude<Locale, "nb">, Catalog> = {
     "Dashboard og coaching": "Dashboard and coaching",
   },
   sv: {
+    "Telefon": "Telefon",
+    "Firma": "Företag",
     "fra": "från",
     "til": "till",
     "beløp": "belopp",
@@ -1172,6 +1184,8 @@ export const LABELS: Record<Exclude<Locale, "nb">, Catalog> = {
     "Dashboard og coaching": "Dashboard och coaching",
   },
   da: {
+    "Telefon": "Telefon",
+    "Firma": "Firma",
     "fra": "fra",
     "til": "til",
     "beløp": "beløb",
@@ -1260,6 +1274,8 @@ export const LABELS: Record<Exclude<Locale, "nb">, Catalog> = {
     "Dashboard og coaching": "Dashboard og coaching",
   },
   de: {
+    "Telefon": "Telefon",
+    "Firma": "Firma",
     "fra": "von",
     "til": "bis",
     "beløp": "Betrag",

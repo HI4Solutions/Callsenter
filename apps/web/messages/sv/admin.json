@@ -369,7 +369,19 @@
     "selectedOrganizations": "Valda callcenter",
     "noOrganizations": "Inga callcenter ännu.",
     "active": "Aktivt",
-    "publish": "Publicera"
+    "publish": "Publicera",
+    "contact": {
+      "title": "Förfrågningar",
+      "intro": "Från kontaktformuläret på landningssidan. Svara via e-post och markera förfrågan som hanterad.",
+      "none": "Inga förfrågningar ännu.",
+      "open": "Ny",
+      "handled": "Hanterad {date} av {name}",
+      "markHandled": "Markera som hanterad",
+      "reopen": "Öppna igen",
+      "phone": "Telefon",
+      "company": "Företag",
+      "language": "Språk"
+    }
   },
   "security": {
     "title": "Säkerhet",

@@ -115,3 +115,29 @@ describe("growth", () => {
     expect((await call(admin, "DELETE", `/admin/growth/events/${event.body.id}`)).status).toBe(200);
   });
 });
+
+describe("contact requests", () => {
+  it("come in from the landing page without a session, and superadmins handle them", async () => {
+    const admin = await superadmin();
+    const name = `Kari ${randomBytes(3).toString("hex")}`;
+    const sent = await call("", "POST", "/contact", { body: { name, email: "kari@example.test", company: "Nord", message: "Vi vil se en demo." } });
+    expect(sent.status).toBe(201);
+    // A bot that fills the hidden field gets the same answer, and nothing is stored.
+    const bot = await call("", "POST", "/contact", { body: { name: "Bot", email: "bot@example.test", message: "x", website: "http://spam" } });
+    expect(bot.status).toBe(201);
+    expect((await call("", "POST", "/contact", { body: { name, email: "not-an-email", message: "x" } })).body.error).toBe("E-postadressen er ugyldig.");
+    expect((await call("", "POST", "/contact", { body: { name, email: "a@b.c" } })).status).toBe(400);
+
+    const list = await call(admin, "GET", "/admin/contact-requests");
+    expect(list.status).toBe(200);
+    const mine = list.body.find((r: { name: string }) => r.name === name);
+    expect(mine).toMatchObject({ email: "kari@example.test", company: "Nord", phone: null, handledAt: null, locale: "nb" });
+    expect(list.body.some((r: { name: string }) => r.name === "Bot")).toBe(false);
+
+    const handled = await call(admin, "PATCH", `/admin/contact-requests/${mine.id}`, { body: { handled: true } });
+    expect(handled.status).toBe(200);
+    expect(handled.body.handledByName).toBe("Melding Admin");
+    expect(handled.body.handledAt).toBeTruthy();
+    expect((await call(admin, "PATCH", `/admin/contact-requests/${mine.id}`, { body: { handled: false } })).body.handledAt).toBeNull();
+  });
+});

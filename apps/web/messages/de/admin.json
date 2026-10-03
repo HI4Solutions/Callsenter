@@ -369,7 +369,19 @@
     "selectedOrganizations": "Ausgewählte Callcenter",
     "noOrganizations": "Noch keine Callcenter.",
     "active": "Aktiv",
-    "publish": "Veröffentlichen"
+    "publish": "Veröffentlichen",
+    "contact": {
+      "title": "Anfragen",
+      "intro": "Aus dem Kontaktformular der Landingpage. Per E-Mail antworten und die Anfrage als erledigt markieren.",
+      "none": "Noch keine Anfragen.",
+      "open": "Neu",
+      "handled": "Erledigt am {date} von {name}",
+      "markHandled": "Als erledigt markieren",
+      "reopen": "Wieder öffnen",
+      "phone": "Telefon",
+      "company": "Firma",
+      "language": "Sprache"
+    }
   },
   "security": {
     "title": "Sicherheit",

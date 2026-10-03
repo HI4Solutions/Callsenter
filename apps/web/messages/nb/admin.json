@@ -369,7 +369,19 @@
     "selectedOrganizations": "Valgte callsentre",
     "noOrganizations": "Ingen callsentre ennå.",
     "active": "Aktiv",
-    "publish": "Publiser"
+    "publish": "Publiser",
+    "contact": {
+      "title": "Henvendelser",
+      "intro": "Fra kontaktskjemaet på landingssiden. Svar på e-post, og merk henvendelsen som behandlet.",
+      "none": "Ingen henvendelser ennå.",
+      "open": "Ny",
+      "handled": "Behandlet {date} av {name}",
+      "markHandled": "Merk som behandlet",
+      "reopen": "Åpne igjen",
+      "phone": "Telefon",
+      "company": "Firma",
+      "language": "Språk"
+    }
   },
   "security": {
     "title": "Sikkerhet",

@@ -188,3 +188,33 @@ export async function deleteGrowthEvent(db: pg.Pool, session: Session, id: strin
     return { id };
   });
 }
+
+// --- Contact requests from the landing page (docs/plan.md, section 20) -------------------------
+
+const CONTACT_COLUMNS = `r.id, r.name, r.email, r.phone, r.company, r.message, r.locale, r.created_at as "createdAt",
+       r.handled_at as "handledAt", u.full_name as "handledByName"`;
+
+export async function listContactRequests(db: pg.Pool, session: Session) {
+  return platform(db, session, async (c) => {
+    const { rows } = await c.query(
+      `select ${CONTACT_COLUMNS} from contact_requests r left join users u on u.id = r.handled_by
+       order by r.handled_at is not null, r.created_at desc limit 500`,
+    );
+    return rows;
+  });
+}
+
+// Marks a request handled (or open again), with who did it.
+export async function setContactRequestHandled(db: pg.Pool, session: Session, id: string, body: Body) {
+  if (typeof body.handled !== "boolean") throw new BadRequest("Ugyldig verdi.");
+  return platform(db, session, async (c) => {
+    const { rows } = await c.query(
+      `update contact_requests r set handled_at = case when $2 then now() end, handled_by = case when $2 then app.current_user_id() end
+       where r.id = $1 returning r.id`,
+      [id, body.handled],
+    );
+    if (!rows.length) throw new NotFound();
+    const { rows: out } = await c.query(`select ${CONTACT_COLUMNS} from contact_requests r left join users u on u.id = r.handled_by where r.id = $1`, [id]);
+    return out[0];
+  });
+}
