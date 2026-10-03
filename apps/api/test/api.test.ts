@@ -11,7 +11,11 @@ describe("api handler", () => {
     const res = await createHandler({ checkDatabase: async () => true })(request("GET", "/health"));
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body!)).toEqual({ status: "ok" });
-    expect(res.headers).toMatchObject({ "cache-control": "no-store" });
+    expect(res.headers).toMatchObject({
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+      "strict-transport-security": "max-age=63072000; includeSubDomains",
+    });
   });
 
   it("reports unavailable without leaking the error", async () => {

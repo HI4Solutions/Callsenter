@@ -5,9 +5,9 @@ CloudFormation (YAML) for VeriQall, én stack per lag og miljø. Alle stacker he
 | Mal | Stack | Innhold | Deployes av |
 |---|---|---|---|
 | `bootstrap.yml` | `veriqall-<miljø>-bootstrap` | artefaktbøtte, CloudFormation-rolle, tillegg til GitHub-rollen | admin, én gang per miljø |
-| `network.yml` | `veriqall-<miljø>-network` | VPC, subnett, S3-endepunkt, NAT-instans (staging) eller NAT Gateway (prod) | `deploy.sh` |
-| `data.yml` | `veriqall-<miljø>-data` | KMS-nøkkel, RDS Postgres 17, lydbøtte, app-hemmelighet | `deploy.sh` |
-| `app.yml` | `veriqall-<miljø>-app` | API- og migrator-Lambda, HTTP API | `deploy.sh` |
+| `network.yml` | `veriqall-<miljø>-network` | VPC, subnett, S3-endepunkt, NAT-instans (staging) eller NAT Gateway (prod), varslingsemnet for alarmene | `deploy.sh` |
+| `data.yml` | `veriqall-<miljø>-data` | KMS-nøkkel, RDS Postgres 17, lydbøtte, app-hemmelighet, lagringstid for databaseloggen, alarmer for databasen | `deploy.sh` |
+| `app.yml` | `veriqall-<miljø>-app` | API-, worker- og migrator-Lambda, HTTP API, morgenkjøringen, alarmer for Lambda og API | `deploy.sh` |
 | `amplify-web.yml` | `veriqall-<miljø>-web` | Amplify-appen (Next.js) | admin, manuelt |
 
 ## Slik deployes et miljø
@@ -32,17 +32,41 @@ En deploy kan også startes manuelt: **Actions → Deploy to staging → Run wor
 
 ## Valgfrie variabler på GitHub Environment
 
-- `ALERT_EMAIL`: e-post når NAT-instansen er nede (staging).
+- `ALERT_EMAIL`: e-post for alarmene i miljøet (se Overvåking). AWS sender først en e-post der abonnementet må bekreftes.
 - `API_DOMAIN_NAME` og `API_CERTIFICATE_ARN`: eget domene for API-et, for eksempel `api.staging.veriqall.no`, med ACM-sertifikat validert via CNAME hos one.com. Stack-outputen `ApiDomainTarget` er CNAME-målet.
 - `IDURA_DOMAIN`: Idura-domenet for BankID, uten `https://`. Mangler den, er BankID-knappen «ikke satt opp».
 - `APP_ORIGIN`: adressen til web-appen. Standard er `https://staging.veriqall.no` og `https://app.veriqall.no`.
-- `EMAIL_DOMAIN`: slår på e-post og morgenkjøringen (fakturaer, kl. 04:00 UTC via EventBridge). Domenet e-post sendes fra (`noreply@`), `staging.veriqall.no` i staging og `veriqall.no` i produksjon. Lager SES-identiteten. Krever at bootstrap-stacken er oppdatert med SES- og EventBridge-rettigheter (kjør steg 1 på nytt med den nye malen). Deploy-loggen og stack-outputen `EmailDnsRecords` viser DNS-postene som skal inn hos one.com: tre DKIM-CNAME-er, og MX og SPF for `mail.<domene>`. Legg i tillegg inn DMARC (`_dmarc.<domene>` TXT `v=DMARC1; p=none;`). Til SES-kontoen er tatt ut av sandkassen (søkes om én gang per konto og region), kan det bare sendes til verifiserte adresser.
+- `EMAIL_DOMAIN`: slår på e-post (invitasjoner og fakturaer). Domenet e-post sendes fra (`noreply@`), `staging.veriqall.no` i staging og `veriqall.no` i produksjon. Lager SES-identiteten. Krever at bootstrap-stacken er oppdatert med SES- og EventBridge-rettigheter (kjør steg 1 på nytt med den nye malen). Deploy-loggen og stack-outputen `EmailDnsRecords` viser DNS-postene som skal inn hos one.com: tre DKIM-CNAME-er, og MX og SPF for `mail.<domene>`. Legg i tillegg inn DMARC (`_dmarc.<domene>` TXT `v=DMARC1; p=none;`). Til SES-kontoen er tatt ut av sandkassen (søkes om én gang per konto og region), kan det bare sendes til verifiserte adresser.
 
 ## Kapasitet
 
 - **Lambda-kvoten** i `eu-north-1` er 1000 samtidige kjøringer (økt 3. oktober 2026, gjelder kontoen). Nye kontoer har 10, så en ny konto for produksjon må få kvoten økt før første deploy.
 - **Workeren** har et tak på 200 samtidige kjøringer (`WorkerConcurrency` i `infra/app.yml`), så bitvis transkripsjon aldri tar API-ets del av kvoten. Kontoen må beholde minst 100 kjøringer uten reservasjon.
 - **API-et** tåler 200 kall i sekundet, med topper på 500 (`ApiRateLimit` og `ApiBurstLimit`), for alle callsentre samlet. Hvert pågående opptak bruker omtrent ett kall annethvert sekund.
+
+## Overvåking
+
+Alarmene sender til SNS-emnet `veriqall-<miljø>-alerts`, som sender e-post til `ALERT_EMAIL`. Uten `ALERT_EMAIL` vises alarmene bare i CloudWatch. Hver alarm sier også fra når den er tilbake til normalt.
+
+| Alarm | Slår til når |
+|---|---|
+| `veriqall-<miljø>-api-errors` | API-Lambdaen feiler minst 5 ganger på 5 minutter |
+| `veriqall-<miljø>-api-throttles` | API-Lambdaen blir strupet (Lambda-kvoten er brukt opp) |
+| `veriqall-<miljø>-api-5xx` | HTTP API-et svarer 5xx minst 10 ganger på 5 minutter |
+| `veriqall-<miljø>-worker-errors` | workeren feiler minst 5 ganger på 5 minutter (biter, samtaler, notater) |
+| `veriqall-<miljø>-worker-throttles` | workeren har nådd taket (`WorkerConcurrency`), så biter venter |
+| `veriqall-<miljø>-daily-run` | EventBridge fikk ikke startet morgenkjøringen |
+| `veriqall-<miljø>-billing` | faktureringen i morgenkjøringen eller en faktura-e-post feilet (se workerens logg) |
+| `veriqall-<miljø>-db-cpu` | databasen har brukt over 80 % CPU i 15 minutter |
+| `veriqall-<miljø>-db-storage` | databasen har under 2 GB ledig lagring |
+| `veriqall-<miljø>-db-connections` | over 60 tilkoblinger (`DbConnectionsAlarmThreshold`, db.t4g.micro tåler rundt 80) |
+| NAT-instansen (staging) | NAT-instansen kjører ikke, så Lambdaene kommer ikke ut på nettet |
+
+**Morgenkjøringen** (kl. 04:00 UTC via EventBridge) går uansett om e-post er satt opp: fakturaer og faste avtaler, uteblitte betalinger, USD/NOK-kursen, og ryddingen som sletter samtaler etter lagringstiden også i callsentre som ikke lenger tar opp. Uten e-post sendes bare ingen fakturaer på e-post.
+
+**Databaseloggen** (`/aws/rds/instance/veriqall-<miljø>/postgresql`, med pgAudit og tilkoblinger) lages av RDS selv. En liten funksjon i data-stacken (`veriqall-<miljø>-db-log-settings`) gir den lagringstid (`LogRetentionDays`, 365 dager) og miljøets KMS-nøkkel ved hver endring.
+
+**Artefaktbøtta** beholder Lambda-pakkene stackene bruker (under 2 MB hver), så en deploy som feiler lenge etter forrige deploy, kan rulles tilbake. Bare overskrevne versjoner slettes, etter 30 dager. Endringen 3. oktober 2026 gjelder først når bootstrap-stacken er oppdatert (kjør steg 1 på nytt med den nye malen). Til da slettes pakker som er eldre enn 90 dager.
 
 Vipps-verten er `api.vipps.no` (produksjon) i begge miljøer. Staging bruker egne nøkler fra en salgsenhet i Vipps-produksjon, se `docs/auth.md`.
 
