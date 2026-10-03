@@ -3,11 +3,15 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ErrorMessage, Field, inputClass } from "@/components/admin/field";
+import { ErrorMessage } from "@/components/admin/field";
 import { Coaching } from "@/components/work/coaching";
 import { DashboardView } from "@/components/work/dashboard-view";
+import type { FlagFilter } from "@/components/work/flag-charts";
+import { PeriodCalls } from "@/components/work/period-calls";
+import { PeriodPicker, useStoredPeriod } from "@/components/work/period-picker";
 import { NoAccess, useWorkMe } from "@/components/work/work-shell";
-import { canSeeDashboard, type Dashboard, PERIODS, periodStart } from "@/lib/dashboard";
+import { canSeeCalls } from "@/lib/calls";
+import { canSeeDashboard, type Dashboard } from "@/lib/dashboard";
 import { formatDate } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 
@@ -15,7 +19,8 @@ import { orgFetch } from "@/lib/org";
 export default function SellerPage() {
   const { id } = useParams<{ id: string }>();
   const me = useWorkMe();
-  const [days, setDays] = useState(30);
+  const [period, setPeriod] = useStoredPeriod();
+  const [flag, setFlag] = useState<FlagFilter>("all");
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const visible = me ? canSeeDashboard(me) : false;
@@ -23,7 +28,7 @@ export default function SellerPage() {
   useEffect(() => {
     if (!visible) return;
     let cancelled = false;
-    const params = new URLSearchParams({ scope: "seller", target: id, from: periodStart(days) });
+    const params = new URLSearchParams({ scope: "seller", target: id, from: period.from, to: period.to });
     orgFetch<Dashboard>(`/dashboard?${params}`)
       .then((d) => {
         if (cancelled) return;
@@ -34,7 +39,7 @@ export default function SellerPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, days, visible]);
+  }, [id, period.from, period.to, visible]);
 
   if (!visible) return <NoAccess text="Dashboard og coaching er ikke slått på for callsenteret." />;
 
@@ -52,18 +57,15 @@ export default function SellerPage() {
             </p>
           )}
         </div>
-        <Field label="Periode">
-          <select className={inputClass} value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            {PERIODS.map((p) => (
-              <option key={p.days} value={p.days}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <PeriodPicker value={period} onChange={setPeriod} />
       </div>
       <ErrorMessage message={error} />
-      {!data ? !error && <p className="text-muted">Laster …</p> : <DashboardView data={data} sellerLinks={false} />}
+      {!data ? (
+        !error && <p className="text-muted">Laster …</p>
+      ) : (
+        <DashboardView data={data} sellerLinks={false} flagFilter={flag} onFlag={setFlag} />
+      )}
+      {me && data && canSeeCalls(me) && <PeriodCalls from={data.from} to={data.to} scope={{ userId: id }} filter={flag} onFilter={setFlag} />}
       {data && <Coaching sellerId={id} sellerName={data.targetName} />}
     </section>
   );

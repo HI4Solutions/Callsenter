@@ -350,7 +350,16 @@ Beslutninger 2. oktober (til godkjenning):
 
 | Del | Innhold |
 |---|---|
-| Database | `0016_dashboard_coaching.sql`: `coaching_notes` med RLS, `app.can_coach` og `app.dashboard` |
+**Utvidet 3. oktober (Nadeems ønske):** ledere ser dagens samtaler og AI-flaggene med en gang.
+
+- **Periode:** I dag (standard), I går, Denne uken, Forrige uke (uker fra mandag), Denne måneden, Forrige måned, Siste 30 og 90 dager, Hittil i år, eller to datoer (høyst ett år). Valget huskes på enheten.
+- **Ledere starter med det de leder:** hele callsenteret med `dashboard.all`, ellers sitt team.
+- **AI-kontroll:** én stolpe med Brudd, Avvik, Godkjent og Ikke kontrollert, med antall og andel. Et klikk på en del viser de samtalene i listen under. «N flagg er ikke behandlet» viser dem som venter på behandling.
+- **Utvikling:** flaggene per time for én dag, per dag inntil 45 dager, ellers per uke, med tabellvisning.
+- **Samtaler i perioden:** tid, varighet, selger, kunde og team, flagg og om det er behandlet, filtrert på Alle, Brudd, Avvik, Ikke behandlet, Godkjent eller Ikke kontrollert. Listen følger samtaletilgangen (`calls.read.*`), og et klikk åpner samtalen.
+- **Logg på samtalesiden** (`audit.read`): hvem som har åpnet, spilt av og søkt i samtalen, og hva som er gjort (statusendringer, AI-kontroll, behandling av flagg, notater og justeringer). Aldri teksten.
+
+| Database | `0016_dashboard_coaching.sql`: `coaching_notes` med RLS, `app.can_coach` og `app.dashboard`; `0024_dashboard_flags.sql`: flagg per dag og time, og indekser for samtaleloggen |
 | API | `GET /org/dashboard` (`scope` = me, seller, team eller all, `target`, `from`, `to`), `GET`/`POST /org/coaching` og `POST /org/coaching/{id}/read` |
 | Web | `/oversikt` (Meg, team og hele callsenteret), `/oversikt/selgere/[id]` og tilbakemelding på samtalesiden |
 
