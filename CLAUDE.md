@@ -39,7 +39,7 @@ Ferdig:
 
 Ikke gjort:
 - Vipps-knappen må byttes til Vipps' offisielle før produksjon.
-- Produksjon er ikke opprettet, og skal ikke opprettes før lansering. Be om økt Lambda-kvote (nye kontoer har 10 samtidige kjøringer) før produksjon.
+- Produksjon er ikke opprettet, og skal ikke opprettes før lansering. Lambda-kvoten er økt til 1000 i kontoen (3. oktober); en egen produksjonskonto må få den økt på nytt.
 - Egne domener for produksjon (`app.veriqall.no`, `api.veriqall.no`). I staging virker `staging.veriqall.no` og `api.staging.veriqall.no`.
 - CloudTrail til egen kryptert bøtte (revisjonslogg lag 1 i `docs/plan.md`, seksjon 3) er ikke satt opp.
 - Environment `production` er ikke verifisert (Claude har ikke tilgang til Environments-APIet). Sjekk at det finnes og krever godkjenning av Nadeem.
@@ -57,6 +57,7 @@ Ikke gjort:
 - Fase 4A (dashboard og coaching, `docs/plan.md`, seksjon 15): `/oversikt` med egne tall, teamets eller hele callsenterets, og tilbakemeldinger fra leder til selger. Migrasjonen `0016_dashboard_coaching.sql`. Bygget på fase 3-branchen. Beslutningene venter på godkjenning.
 - Fase 3 (salgsverifisering, dokumentasjon og klager, `docs/plan.md`, seksjon 14): kunden godtar tilbudet via lenke med BankID eller Vipps (`apps/api/src/confirm`, `/bekreft/[token]`), dokumentasjon per salg (`/salg/[id]/dokumentasjon`) og klagesaker (`/klager`). Migrasjonene `0014_sale_confirmations.sql` og `0015_complaints.sql`. Bygget på fase 2-branchen. Beslutningene venter på Nadeems godkjenning.
 - Brukervennlighet (3. oktober): menyen i toppen er én rad med egen mobilmeny, fanene har tekst og kan rulles på mobil, feilsider har «Prøv igjen», Samtalestudio viser kildevalget før «Start opptak» og har Stopp nederst på mobil, og tall vises med vanlig sats (ikke `tabular-nums`).
+- Kapasitet (3. oktober): workeren har tak på 200 samtidige kjøringer, og API-et tåler 200 kall i sekundet (topper 500), se `infra/README.md` under Kapasitet.
 - Fase 1, PR F1 (grunndata): kunder (privat og bedrift, ingen fødselsnumre) og produkter med versjonerte produktmaler, migrasjonen `0011_customers_products.sql`, API under `/org/customers` og `/org/products`, og sidene `/kunder` og `/produkter` (`docs/plan.md`, seksjon 12).
 
 **Neste steg:** Test fase 2 i staging (Soniox-nøkkel fra EU-prosjekt, Claude slått på i Bedrock, moduler på for callsenteret). Test fase 3 i staging (lenke til kunden, aksept med BankID og Vipps, klage med dokumentasjon). Test fase 4A og 4B i staging (dashboard, coaching og fakturering). Alle fasene i planen er bygget. Det som gjenstår, er Nadeems gjennomgang av beslutningene i seksjon 13–16, juridiske avklaringer, SMS-leverandør, e-post (SES), Stripe og produksjon.

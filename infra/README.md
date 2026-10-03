@@ -38,6 +38,12 @@ En deploy kan også startes manuelt: **Actions → Deploy to staging → Run wor
 - `APP_ORIGIN`: adressen til web-appen. Standard er `https://staging.veriqall.no` og `https://app.veriqall.no`.
 - `EMAIL_DOMAIN`: slår på e-post og morgenkjøringen (fakturaer, kl. 04:00 UTC via EventBridge). Domenet e-post sendes fra (`noreply@`), `staging.veriqall.no` i staging og `veriqall.no` i produksjon. Lager SES-identiteten. Krever at bootstrap-stacken er oppdatert med SES- og EventBridge-rettigheter (kjør steg 1 på nytt med den nye malen). Deploy-loggen og stack-outputen `EmailDnsRecords` viser DNS-postene som skal inn hos one.com: tre DKIM-CNAME-er, og MX og SPF for `mail.<domene>`. Legg i tillegg inn DMARC (`_dmarc.<domene>` TXT `v=DMARC1; p=none;`). Til SES-kontoen er tatt ut av sandkassen (søkes om én gang per konto og region), kan det bare sendes til verifiserte adresser.
 
+## Kapasitet
+
+- **Lambda-kvoten** i `eu-north-1` er 1000 samtidige kjøringer (økt 3. oktober 2026, gjelder kontoen). Nye kontoer har 10, så en ny konto for produksjon må få kvoten økt før første deploy.
+- **Workeren** har et tak på 200 samtidige kjøringer (`WorkerConcurrency` i `infra/app.yml`), så bitvis transkripsjon aldri tar API-ets del av kvoten. Kontoen må beholde minst 100 kjøringer uten reservasjon.
+- **API-et** tåler 200 kall i sekundet, med topper på 500 (`ApiRateLimit` og `ApiBurstLimit`), for alle callsentre samlet. Hvert pågående opptak bruker omtrent ett kall annethvert sekund.
+
 Vipps-verten er `api.vipps.no` (produksjon) i begge miljøer. Staging bruker egne nøkler fra en salgsenhet i Vipps-produksjon, se `docs/auth.md`.
 
 ## Etter første deploy

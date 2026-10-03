@@ -34,6 +34,21 @@ Parameters:
   LogRetentionDays:
     Type: Number
     Default: 365
+  WorkerConcurrency:
+    Type: Number
+    Default: 200
+    MinValue: 1
+    Description: >-
+      Most worker runs at once (reserved concurrency). Each piece of 15 seconds is a run, so a
+      cap keeps the worker from taking the API's share of the account's Lambda quota (1000 in
+      eu-north-1). The account must keep at least 100 unreserved.
+  ApiRateLimit:
+    Type: Number
+    Default: 200
+    Description: Requests per second for the whole HTTP API, across all call centres.
+  ApiBurstLimit:
+    Type: Number
+    Default: 500
   EmailDomain:
     Type: String
     Default: ""
@@ -358,6 +373,7 @@ Resources:
       Role: !GetAtt WorkerRole.Arn
       MemorySize: 1024
       Timeout: 900
+      ReservedConcurrentExecutions: !Ref WorkerConcurrency
       VpcConfig:
         SubnetIds: !Split [",", !ImportValue {"Fn::Sub": "veriqall-${Environment}-private-subnets"}]
         SecurityGroupIds:
@@ -451,9 +467,11 @@ Resources:
       ApiId: !Ref HttpApi
       StageName: $default
       AutoDeploy: true
+      # Each recording in progress makes about one request every two seconds (pieces, upload
+      # URLs, polling), so 20 per second ran out at around 40 recordings at once.
       DefaultRouteSettings:
-        ThrottlingBurstLimit: 50
-        ThrottlingRateLimit: 20
+        ThrottlingBurstLimit: !Ref ApiBurstLimit
+        ThrottlingRateLimit: !Ref ApiRateLimit
       AccessLogSettings:
         DestinationArn: !GetAtt ApiAccessLogGroup.Arn
         Format: >-
