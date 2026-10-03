@@ -117,3 +117,17 @@ body {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
+
+/* A table wider than its card: a soft shadow on the side it can be scrolled towards. The covers
+   move with the content and hide the shadow at the ends ("scrolling shadows"). Not for tables
+   whose cells have their own background. */
+.scroll-x {
+  --scroll-bg: var(--surface);
+  --scroll-shadow: color-mix(in srgb, var(--fg) 22%, transparent);
+  overflow-x: auto;
+  background:
+    linear-gradient(to right, var(--scroll-bg) 30%, transparent) left center / 2.5rem 100% no-repeat local,
+    linear-gradient(to left, var(--scroll-bg) 30%, transparent) right center / 2.5rem 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, var(--scroll-shadow), transparent) left center / 0.875rem 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, var(--scroll-shadow), transparent) right center / 0.875rem 100% no-repeat scroll;
+}

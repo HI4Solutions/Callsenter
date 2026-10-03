@@ -39,31 +39,31 @@ export default function InvoicesPage() {
 
   return (
     <section className="flex flex-col gap-8">
+      <div>
+        <h1 className="text-3xl font-extrabold tracking-tight">Økonomi</h1>
+        <p className="mt-2 text-muted">En sendt faktura får neste nummer og kan ikke endres. Feil rettes med kreditnota.</p>
+      </div>
+      <EconomyNav />
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Økonomi</h1>
-          <p className="mt-2 text-muted">En sendt faktura får neste nummer og kan ikke endres. Feil rettes med kreditnota.</p>
-        </div>
+        <Field label="Vis">
+          <select className={`${inputClass} sm:w-64`} value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="">Alle</option>
+            <option value="draft">Utkast</option>
+            <option value="scheduled">Planlagt</option>
+            <option value="sent">Sendt, ikke betalt</option>
+            <option value="overdue">Forfalt</option>
+            <option value="payment_missed">Betaling uteblitt</option>
+            <option value="paid">Betalt</option>
+            <option value="credited">Kreditert</option>
+          </select>
+        </Field>
         {!creating && (
           <button type="button" className={primaryButton} onClick={() => setCreating(true)}>
             Ny faktura
           </button>
         )}
       </div>
-      <EconomyNav />
       {creating && <NewInvoice onCancel={() => setCreating(false)} />}
-      <Field label="Vis">
-        <select className={`${inputClass} sm:w-64`} value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="">Alle</option>
-          <option value="draft">Utkast</option>
-          <option value="scheduled">Planlagt</option>
-          <option value="sent">Sendt, ikke betalt</option>
-          <option value="overdue">Forfalt</option>
-          <option value="payment_missed">Betaling uteblitt</option>
-          <option value="paid">Betalt</option>
-          <option value="credited">Kreditert</option>
-        </select>
-      </Field>
       <ErrorMessage message={error} />
       {!invoices ? (
         !error && <p className="text-muted">Laster …</p>

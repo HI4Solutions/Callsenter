@@ -164,6 +164,18 @@ export function kr(value: string | number | null): string {
   return value === null ? "–" : `${nok.format(Number(value))}\u00a0kr`;
 }
 
+// Two decimals, or up to four below one dollar (a single AI call costs fractions of a cent).
+export function usd(value: string | number | null): string {
+  if (value === null) return "–";
+  const n = Number(value);
+  return new Intl.NumberFormat("nb-NO", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: Math.abs(n) < 1 ? 4 : 2,
+  }).format(n);
+}
+
 export function percent(rate: number): string {
   return `${Math.round(rate * 100)}\u00a0%`;
 }

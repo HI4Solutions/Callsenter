@@ -100,12 +100,17 @@ export function SaleDocumentationView({ doc }: { doc: SaleDocumentation }) {
                 <Flag level={FLAG_LEVEL[c.analysis.flag]} />
                 <span>{c.analysis.summary}</span>
               </div>
-              <ul className="mt-2 flex flex-col gap-1">
+              <ul className="mt-3 flex flex-col gap-3">
                 {c.analysis.findings.map((f, i) => (
-                  <li key={i} className="[overflow-wrap:anywhere]">
-                    <strong>{f.label}</strong> ({FINDING_KIND[f.kind]}, {f.level === "green" ? "godkjent" : f.level === "yellow" ? "avvik" : "brudd"})
-                    {f.quote && <> – «{f.quote}»{f.startMs !== null && ` [${formatDuration(f.startMs)}]`}</>}
-                    {f.comment && <span className="text-muted"> {f.comment}</span>}
+                  <li key={i} className="flex flex-col items-start gap-1.5 sm:flex-row sm:gap-3">
+                    <span className="shrink-0">
+                      <Flag level={FLAG_LEVEL[f.level]} />
+                    </span>
+                    <span className="min-w-0 pt-0.5 [overflow-wrap:anywhere]">
+                      <strong>{f.label}</strong> <span className="text-muted">({FINDING_KIND[f.kind]})</span>
+                      {f.quote && <> – «{f.quote}»{f.startMs !== null && ` [${formatDuration(f.startMs)}]`}</>}
+                      {f.comment && <span className="text-muted"> {f.comment}</span>}
+                    </span>
                   </li>
                 ))}
               </ul>

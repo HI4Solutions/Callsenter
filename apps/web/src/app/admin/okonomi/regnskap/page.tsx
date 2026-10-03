@@ -7,7 +7,7 @@ import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from 
 import { EconomyNav } from "@/components/billing/economy-nav";
 import { osloToday } from "@/components/billing/use-invoice-form";
 import { adminFetch, formatDate, toCsv } from "@/lib/admin";
-import { kr, percent } from "@/lib/billing";
+import { kr, percent, usd } from "@/lib/billing";
 
 interface Summary {
   from: string;
@@ -105,22 +105,20 @@ export default function AccountingPage() {
 
   return (
     <section className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Økonomi</h1>
-          <p className="mt-2 text-muted">Inntekter regnes når pengene kommer inn. Mva holdes utenfor omsetningen. Stripe kommer når det er koblet til.</p>
-        </div>
-        <Field label="Periode">
-          <select className={inputClass} value={preset} onChange={(e) => setPreset(e.target.value)}>
-            {options.map((o) => (
-              <option key={o.key} value={o.key}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </Field>
+      <div>
+        <h1 className="text-3xl font-extrabold tracking-tight">Økonomi</h1>
+        <p className="mt-2 text-muted">Inntekter regnes når pengene kommer inn. Mva holdes utenfor omsetningen. Stripe kommer når det er koblet til.</p>
       </div>
       <EconomyNav />
+      <Field label="Periode">
+        <select className={`${inputClass} sm:w-64`} value={preset} onChange={(e) => setPreset(e.target.value)}>
+          {options.map((o) => (
+            <option key={o.key} value={o.key}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </Field>
       <ErrorMessage message={error} />
       {summary && (
         <>
@@ -201,7 +199,7 @@ function MonthChart({ months }: { months: Month[] }) {
       <div className="flex flex-col gap-10">
         <ColumnChart title="Nettoomsetning uten mva (kr)" points={months.map((m) => ({ label: monthName(m.month), value: Math.max(0, Math.round(m.revenue)) }))} unit="kr" />
         <ColumnChart title="Kostnader (kr)" points={months.map((m) => ({ label: monthName(m.month), value: Math.max(0, Math.round(m.costs)) }))} unit="kr" />
-        <div className="-mx-2 overflow-x-auto">
+        <div className="-mx-2 scroll-x">
           <table className="w-full min-w-[32rem] text-left text-sm">
             <thead className="text-muted">
               <tr>
@@ -288,7 +286,7 @@ function RevenueReport({ today }: { today: string }) {
       </div>
       <ErrorMessage message={error} />
       {rows && (
-        <div className="-mx-2 mt-4 overflow-x-auto">
+        <div className="-mx-2 mt-4 scroll-x">
           <table className="w-full min-w-[36rem] text-left text-sm">
             <thead className="text-muted">
               <tr>
@@ -445,7 +443,7 @@ function Entries({ today, onChanged }: { today: string; onChanged: () => void })
                   {formatDate(e.occurredOn)} · {e.kind === "income" ? `innbetaling, ${percent(e.vatRate)} mva` : "kostnad"}
                 </span>
               </span>
-              <span className="whitespace-nowrap">{e.currency === "USD" ? `${e.amount} USD` : kr(e.amount)}</span>
+              <span className="whitespace-nowrap">{e.currency === "USD" ? usd(e.amount) : kr(e.amount)}</span>
               <button
                 type="button"
                 className={secondaryButton}
@@ -553,7 +551,7 @@ function FixedRow({
           {cost.endsMonth ? ` til ${monthName(cost.endsMonth.slice(0, 7))}` : ""}
         </span>
       </span>
-      <span className="whitespace-nowrap">{cost.currency === "USD" ? `${cost.amount} USD` : kr(cost.amount)}/mnd</span>
+      <span className="whitespace-nowrap">{cost.currency === "USD" ? usd(cost.amount) : kr(cost.amount)} per måned</span>
       <button type="button" className={secondaryButton} onClick={() => setEditing(true)}>
         Endre
       </button>

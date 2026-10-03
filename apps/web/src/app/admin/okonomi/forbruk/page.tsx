@@ -6,7 +6,7 @@ import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadSt
 import { EconomyNav } from "@/components/billing/economy-nav";
 import { osloToday } from "@/components/billing/use-invoice-form";
 import { adminFetch, formatDate } from "@/lib/admin";
-import { kr } from "@/lib/billing";
+import { kr, usd } from "@/lib/billing";
 
 interface Summary {
   from: string | null;
@@ -42,8 +42,6 @@ interface Prices {
 }
 
 const num = new Intl.NumberFormat("nb-NO");
-const usdFormat = new Intl.NumberFormat("nb-NO", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 4 });
-const usd = (v: number) => usdFormat.format(v);
 const PROVIDER = { bankid: "BankID", vipps: "Vipps" } as const;
 const SERVICE: Record<string, string> = {
   soniox_async_hour: "Soniox, per time lyd (etter samtalen)",
@@ -221,7 +219,7 @@ function Tile({ label, value, note }: { label: string; value: string; note: stri
 function Table({ head, rows }: { head: string[]; rows: (string | number)[][] }) {
   if (!rows.length) return <p className="text-muted">Ikke noe forbruk.</p>;
   return (
-    <div className="-mx-2 overflow-x-auto">
+    <div className="-mx-2 scroll-x">
       <table className="w-full text-left text-sm">
         <thead className="text-muted">
           <tr>
@@ -279,7 +277,7 @@ function OrganizationTable({ rows, query }: { rows: OrgRow[] | null; query: stri
       {!rows ? (
         <p className="text-muted">Laster …</p>
       ) : (
-        <div className="-mx-2 overflow-x-auto">
+        <div className="-mx-2 scroll-x">
           <table className="w-full min-w-[48rem] text-left text-sm">
             <thead className="text-muted">
               <tr>
@@ -459,7 +457,7 @@ function PriceTable() {
         <LoadState error={error} />
       ) : (
         <form onSubmit={save} className="flex flex-col gap-6">
-          <div className="-mx-2 overflow-x-auto">
+          <div className="-mx-2 scroll-x">
             <table className="w-full min-w-[32rem] text-left text-sm">
               <thead className="text-muted">
                 <tr>
@@ -481,7 +479,7 @@ function PriceTable() {
                           inputMode="decimal"
                           aria-label={`${m.name}, ${k === "input" ? "inn" : "ut"}`}
                           className={`${inputClass} w-28`}
-                          value={String(m[k])}
+                          value={String(m[k]).replace(".", ",")}
                           onChange={(e) => setDraft({ ...draft, models: draft.models.map((x, j) => (j === i ? { ...x, [k]: e.target.value as unknown as number } : x)) })}
                         />
                       </td>
@@ -497,7 +495,7 @@ function PriceTable() {
                 <input
                   inputMode="decimal"
                   className={inputClass}
-                  value={s.amount === null ? "" : String(s.amount)}
+                  value={s.amount === null ? "" : String(s.amount).replace(".", ",")}
                   onChange={(e) =>
                     setDraft({
                       ...draft,

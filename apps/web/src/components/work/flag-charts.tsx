@@ -126,7 +126,7 @@ export function FlagColumns({ title, columns }: { title: string; columns: FlagCo
         ))}
       </ul>
       {table ? (
-        <div className="-mx-2 overflow-x-auto">
+        <div className="-mx-2 scroll-x">
           <table className="w-full min-w-[28rem] text-left text-sm">
             <thead className="text-muted">
               <tr>

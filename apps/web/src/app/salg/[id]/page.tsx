@@ -86,9 +86,6 @@ export default function SalePage() {
         )}
       </div>
       <ErrorMessage message={error} />
-      {canManage && SALE_TRANSITIONS[sale.status].length > 0 && (
-        <StatusActions key={sale.status} sale={sale} onChanged={load} onError={setError} />
-      )}
       <Card title="Salget">
         <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[12rem_1fr]">
           {rows.map(([label, value]) => (
@@ -100,6 +97,9 @@ export default function SalePage() {
         </dl>
         {sale.note && <p className="mt-4 whitespace-pre-wrap [overflow-wrap:anywhere] rounded-lg bg-bg p-3">{sale.note}</p>}
       </Card>
+      {canManage && SALE_TRANSITIONS[sale.status].length > 0 && (
+        <StatusActions key={sale.status} sale={sale} onChanged={load} onError={setError} />
+      )}
       <Confirmations sale={sale} canManage={canManage && (me?.modules?.includes("sale_verification") ?? false)} onChanged={load} />
       <LinkedCalls query={`saleId=${sale.id}`} />
       <Card title="Historikk">
@@ -120,10 +120,15 @@ export default function SalePage() {
   );
 }
 
+// Rejected, withdrawn and cancelled end the sale for good.
+const FINAL: readonly SaleStatus[] = ["rejected", "withdrawn", "cancelled"];
+
 function StatusActions({ sale, onChanged, onError }: { sale: SaleDetail; onChanged: () => Promise<unknown>; onError: (message: string | null) => void }) {
   const [next, setNext] = useState<SaleStatus | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const forward = SALE_TRANSITIONS[sale.status].filter((s) => !FINAL.includes(s));
+  const ending = SALE_TRANSITIONS[sale.status].filter((s) => FINAL.includes(s));
 
   async function save(event: React.FormEvent) {
     event.preventDefault();
@@ -139,6 +144,7 @@ function StatusActions({ sale, onChanged, onError }: { sale: SaleDetail; onChang
     }
   }
 
+  const final = next !== null && FINAL.includes(next);
   return (
     <Card title="Endre status">
       {next ? (
@@ -146,12 +152,13 @@ function StatusActions({ sale, onChanged, onError }: { sale: SaleDetail; onChang
           <p>
             Ny status: <strong>{SALE_STATUSES[next]}</strong>
           </p>
-          <Field label="Begrunnelse" hint="Valgfritt. Vises i historikken.">
+          {final && <p>Dette avslutter salget, og statusen kan ikke endres senere.</p>}
+          <Field label="Begrunnelse" hint={final ? "Skriv gjerne hvorfor. Vises i historikken." : "Valgfritt. Vises i historikken."}>
             <textarea rows={2} maxLength={1000} className={`${inputClass} py-2`} value={note} onChange={(e) => setNote(e.target.value)} />
           </Field>
           <div className="flex flex-wrap gap-2">
-            <button type="submit" disabled={busy} className={primaryButton}>
-              Lagre status
+            <button type="submit" disabled={busy} className={final ? secondaryButton : primaryButton}>
+              Lagre som {SALE_STATUSES[next].toLowerCase()}
             </button>
             <button type="button" className={secondaryButton} onClick={() => setNext(null)}>
               Avbryt
@@ -159,12 +166,26 @@ function StatusActions({ sale, onChanged, onError }: { sale: SaleDetail; onChang
           </div>
         </form>
       ) : (
-        <div className="flex flex-wrap gap-2">
-          {SALE_TRANSITIONS[sale.status].map((status) => (
-            <button key={status} type="button" className={secondaryButton} onClick={() => setNext(status)}>
-              {SALE_ACTIONS[status]}
-            </button>
-          ))}
+        <div className="flex flex-col gap-4">
+          {forward.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {forward.map((status, i) => (
+                <button key={status} type="button" className={i === 0 ? primaryButton : secondaryButton} onClick={() => setNext(status)}>
+                  {SALE_ACTIONS[status]}
+                </button>
+              ))}
+            </div>
+          )}
+          {ending.length > 0 && (
+            <div className={`flex flex-wrap items-center gap-2 ${forward.length ? "border-t border-line pt-4" : ""}`}>
+              <span className="text-sm text-muted">Avslutte salget:</span>
+              {ending.map((status) => (
+                <button key={status} type="button" className={secondaryButton} onClick={() => setNext(status)}>
+                  {SALE_ACTIONS[status]}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </Card>

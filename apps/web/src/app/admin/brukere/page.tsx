@@ -110,7 +110,7 @@ export default function UsersPage() {
                     </div>
                     <div className="flex flex-col items-start gap-1 sm:items-end">
                       <StatusBadge tone={TONE[u.status]}>{USER_STATUS[u.status]}</StatusBadge>
-                      <span className="text-sm text-muted">Sist innlogget {formatDateTime(u.lastLoginAt)}</span>
+                      <span className="text-sm text-muted">{u.lastLoginAt ? `Sist innlogget ${formatDateTime(u.lastLoginAt)}` : "Aldri innlogget"}</span>
                     </div>
                   </Link>
                 </li>

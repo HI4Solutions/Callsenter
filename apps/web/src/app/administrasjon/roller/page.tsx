@@ -1,5 +1,6 @@
 "use client";
 
+import { PERMISSION_GROUPS } from "@veriqall/shared";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
@@ -21,6 +22,15 @@ interface Permission {
   description: string;
   held: boolean;
   requiresBankId: boolean;
+}
+
+// The role's permissions under the catalog's areas (PERMISSION_GROUPS), and any unknown ones
+// last.
+function groupPermissions(keys: string[]): { name: string; permissions: string[] }[] {
+  const groups = PERMISSION_GROUPS.map((g) => ({ name: g.name, permissions: g.permissions.filter((p) => keys.includes(p)) as string[] }));
+  const known = new Set<string>(PERMISSION_GROUPS.flatMap((g) => g.permissions));
+  groups.push({ name: "Annet", permissions: keys.filter((k) => !known.has(k)) });
+  return groups.filter((g) => g.permissions.length > 0);
 }
 
 export default function RolesPage() {
@@ -105,9 +115,26 @@ export default function RolesPage() {
                 {r.isDefault && " · standardrolle"}
               </span>
             </div>
-            <p className="mt-2 text-sm">
-              {r.permissions.length ? r.permissions.map((p) => describe.get(p) ?? p).join(", ") : "Ingen rettigheter"}
-            </p>
+            {r.permissions.length ? (
+              <dl className="mt-3 flex flex-col gap-2">
+                {groupPermissions(r.permissions).map((g) => (
+                  <div key={g.name} className="flex flex-col gap-1 sm:flex-row sm:gap-3">
+                    <dt className="text-sm font-semibold text-muted sm:w-44 sm:shrink-0 sm:pt-0.5">{g.name}</dt>
+                    <dd>
+                      <ul className="flex flex-wrap gap-1.5">
+                        {g.permissions.map((p) => (
+                          <li key={p} className="rounded-full border border-line px-2.5 py-0.5 text-sm">
+                            {describe.get(p) ?? p}
+                          </li>
+                        ))}
+                      </ul>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <p className="mt-2 text-sm">Ingen rettigheter</p>
+            )}
             {!r.mine && (
               <div className="mt-4 flex flex-wrap gap-2">
                 <button type="button" className={secondaryButton} onClick={() => setEditing(r)}>
@@ -176,40 +203,42 @@ function RoleEditor({
         <Field label="Navn">
           <input required maxLength={100} className={`${inputClass} sm:max-w-sm`} value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <fieldset>
-          <legend className="text-sm font-semibold">Rettigheter</legend>
-          <ul className="mt-2 grid gap-1 sm:grid-cols-2">
-            {permissions.map((p) => {
-              // A permission you do not hold can stay on a role, but you cannot add it.
-              const locked = !p.held && !chosen.has(p.key);
-              return (
-                <li key={p.key}>
-                  <label className={`flex min-h-11 items-start gap-3 ${locked ? "opacity-60" : ""}`}>
-                    <input
-                      type="checkbox"
-                      className="mt-1 size-5 accent-brand"
-                      checked={chosen.has(p.key)}
-                      disabled={locked}
-                      onChange={(e) => {
-                        const next = new Set(chosen);
-                        if (e.target.checked) next.add(p.key);
-                        else next.delete(p.key);
-                        setChosen(next);
-                      }}
-                    />
-                    <span>
-                      {p.description}
-                      <span className="block text-sm text-muted">
-                        {p.requiresBankId && "Krever BankID eller passkey. "}
-                        {!p.held && "Du har ikke denne selv."}
+        {groupPermissions(permissions.map((p) => p.key)).map((group) => (
+          <fieldset key={group.name}>
+            <legend className="text-sm font-semibold">{group.name}</legend>
+            <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+              {permissions.filter((p) => group.permissions.includes(p.key)).map((p) => {
+                // A permission you do not hold can stay on a role, but you cannot add it.
+                const locked = !p.held && !chosen.has(p.key);
+                return (
+                  <li key={p.key}>
+                    <label className={`flex min-h-11 items-start gap-3 ${locked ? "opacity-60" : ""}`}>
+                      <input
+                        type="checkbox"
+                        className="mt-1 size-5 accent-brand"
+                        checked={chosen.has(p.key)}
+                        disabled={locked}
+                        onChange={(e) => {
+                          const next = new Set(chosen);
+                          if (e.target.checked) next.add(p.key);
+                          else next.delete(p.key);
+                          setChosen(next);
+                        }}
+                      />
+                      <span>
+                        {p.description}
+                        <span className="block text-sm text-muted">
+                          {p.requiresBankId && "Krever BankID eller passkey. "}
+                          {!p.held && "Du har ikke denne selv."}
+                        </span>
                       </span>
-                    </span>
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-        </fieldset>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          </fieldset>
+        ))}
         <ErrorMessage message={error} />
         <div className="flex flex-wrap gap-3">
           <button type="submit" className={primaryButton} disabled={saving}>

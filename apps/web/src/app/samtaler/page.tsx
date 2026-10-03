@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { CallList } from "@/components/work/call-list";
 import { NoAccess, useWorkMe } from "@/components/work/work-shell";
+import { EmptyState } from "@/components/empty-state";
 import { CALL_STATUS, type CallStatus, type CallSummary, canSeeCalls } from "@/lib/calls";
 import { orgFetch } from "@/lib/org";
 
@@ -118,7 +119,23 @@ export default function CallsPage() {
       {!calls ? (
         !error && <p className="text-muted">Laster …</p>
       ) : calls.length === 0 ? (
-        <p className="text-muted">{query || flag || status || mine || review ? "Ingen samtaler passer filteret." : "Ingen samtaler ennå."}</p>
+        query || flag || status || mine || review ? (
+          <p className="text-muted">Ingen samtaler passer filteret.</p>
+        ) : (
+          <EmptyState title="Ingen samtaler ennå">
+            {canRecord ? (
+              <>
+                Ta opp den første i{" "}
+                <Link href="/samtaler/opptak" className="font-semibold text-brand">
+                  Samtalestudio
+                </Link>
+                . Den transkriberes mens dere snakker, og sjekkes mot produktmalen etterpå.
+              </>
+            ) : (
+              "Samtalene du kan se, vises her når de er tatt opp."
+            )}
+          </EmptyState>
+        )
       ) : (
         <CallList calls={calls} />
       )}

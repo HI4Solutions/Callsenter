@@ -49,7 +49,7 @@ export default function RolesAndModulesPage() {
           </Card>
 
           <Card title="Standardroller og rettigheter">
-            <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <div className="-mx-4 scroll-x px-4 sm:mx-0 sm:px-0">
               <table className="w-full min-w-[40rem] border-collapse text-sm">
                 <caption className="sr-only">Rettigheter per standardrolle</caption>
                 <thead>

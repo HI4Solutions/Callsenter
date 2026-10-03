@@ -60,7 +60,7 @@ export default function UserPage() {
           {user.platformAdmin && <span className="font-semibold text-brand">Superadmin</span>}
         </div>
         <p className="mt-2 text-muted">
-          Opprettet {formatDate(user.createdAt)} · sist innlogget {formatDateTime(user.lastLoginAt)}
+          Opprettet {formatDate(user.createdAt)} · {user.lastLoginAt ? `sist innlogget ${formatDateTime(user.lastLoginAt)}` : "aldri innlogget"}
         </p>
       </div>
 
