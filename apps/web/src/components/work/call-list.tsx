@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { CallStatusBadge } from "@/components/calls/call-status";
 import { Flag } from "@/components/flag";
 import { type CallSummary, FLAG_LEVEL, formatDuration } from "@/lib/calls";
@@ -12,6 +13,7 @@ function customerAfterTitle(c: CallSummary): string | null {
 
 // Calls as a list of links; used on /samtaler, the customer page and the sale page.
 export function CallList({ calls, showCustomer = true }: { calls: CallSummary[]; showCustomer?: boolean }) {
+  const t = useTranslations("dashboard.calls");
   return (
     <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
       {calls.map((c) => (
@@ -19,17 +21,19 @@ export function CallList({ calls, showCustomer = true }: { calls: CallSummary[];
           <Link href={`/samtaler/${c.id}`} className="flex flex-col gap-2 p-4 hover:bg-bg sm:flex-row sm:items-center sm:justify-between">
             <span className="flex min-w-0 flex-col gap-1">
               <span className="font-semibold">
-                {c.title || (showCustomer && c.customerName) || c.productName || "Samtale"}
+                {c.title || (showCustomer && c.customerName) || c.productName || t("call")}
                 {showCustomer && customerAfterTitle(c) && <span className="font-normal text-muted"> · {customerAfterTitle(c)}</span>}
               </span>
               <span className="text-sm text-muted">
-                {[formatDateTime(c.startedAt), c.userName, formatDuration(c.durationMs), c.productName, c.reference].filter(Boolean).join(" · ")}
+                {[formatDateTime(c.startedAt), c.userName, formatDuration(c.durationMs), c.productName, c.reference]
+                  .filter(Boolean)
+                  .join(" · ")}
               </span>
               {c.match && <span className="text-sm [overflow-wrap:anywhere]">… {c.match} …</span>}
             </span>
             <span className="flex shrink-0 flex-wrap items-center gap-2">
               {c.flag ? <Flag level={FLAG_LEVEL[c.flag]} /> : <CallStatusBadge status={c.status} />}
-              {c.flag && c.flag !== "green" && !c.reviewedAt && <span className="text-sm text-muted">Ikke behandlet</span>}
+              {c.flag && c.flag !== "green" && !c.reviewedAt && <span className="text-sm text-muted">{t("unreviewed")}</span>}
             </span>
           </Link>
         </li>

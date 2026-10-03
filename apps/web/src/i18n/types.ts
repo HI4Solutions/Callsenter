@@ -3,6 +3,7 @@ import type { Locale } from "@veriqall/shared";
 import type account from "../../messages/nb/account.json";
 import type common from "../../messages/nb/common.json";
 import type confirm from "../../messages/nb/confirm.json";
+import type dashboard from "../../messages/nb/dashboard.json";
 import type domain from "../../messages/nb/domain.json";
 import type languages from "../../messages/nb/languages.json";
 import type login from "../../messages/nb/login.json";
@@ -16,6 +17,7 @@ export interface Messages {
   confirm: typeof confirm;
   languages: typeof languages;
   domain: typeof domain;
+  dashboard: typeof dashboard;
 }
 
 declare module "next-intl" {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { ErrorMessage } from "@/components/admin/field";
 import { Coaching } from "@/components/work/coaching";
@@ -18,6 +19,8 @@ import { orgFetch } from "@/lib/org";
 // One seller's numbers and feedback, for their leader (or the seller themself).
 export default function SellerPage() {
   const { id } = useParams<{ id: string }>();
+  const t = useTranslations("dashboard");
+  const tc = useTranslations("common");
   const me = useWorkMe();
   const [period, setPeriod] = useStoredPeriod();
   const [flag, setFlag] = useState<FlagFilter>("all");
@@ -41,16 +44,16 @@ export default function SellerPage() {
     };
   }, [id, period.from, period.to, visible]);
 
-  if (!visible) return <NoAccess text="Dashboard og coaching er ikke slått på for callsenteret." />;
+  if (!visible) return <NoAccess text={t("page.notEnabled")} />;
 
   return (
     <section className="flex flex-col gap-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Link href="/oversikt" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">
-            ← Oversikt
+            {t("seller.back")}
           </Link>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{data?.targetName ?? "Selger"}</h1>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{data?.targetName ?? t("seller.fallbackName")}</h1>
           {data && (
             <p className="mt-2 text-muted">
               {formatDate(data.from)}–{formatDate(data.to)}
@@ -61,11 +64,13 @@ export default function SellerPage() {
       </div>
       <ErrorMessage message={error} />
       {!data ? (
-        !error && <p className="text-muted">Laster …</p>
+        !error && <p className="text-muted">{tc("loading")}</p>
       ) : (
         <DashboardView data={data} sellerLinks={false} flagFilter={flag} onFlag={setFlag} />
       )}
-      {me && data && canSeeCalls(me) && <PeriodCalls from={data.from} to={data.to} scope={{ userId: id }} filter={flag} onFilter={setFlag} />}
+      {me && data && canSeeCalls(me) && (
+        <PeriodCalls from={data.from} to={data.to} scope={{ userId: id }} filter={flag} onFilter={setFlag} />
+      )}
       {data && <Coaching sellerId={id} sellerName={data.targetName} />}
     </section>
   );
