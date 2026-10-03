@@ -380,7 +380,15 @@
       "reopen": "Wieder öffnen",
       "phone": "Telefon",
       "company": "Firma",
-      "language": "Sprache"
+      "language": "Sprache",
+      "reply": "Antworten",
+      "replyHint": "Wird an {email} in der Sprache gesendet, in der die Person geschrieben hat, mit Ihrer E-Mail-Adresse als Antwortadresse.",
+      "send": "Antwort senden",
+      "sending": "Wird gesendet …",
+      "replies": "Gesendete Antworten",
+      "replyBy": "{name}, {date}",
+      "notSent": "Nicht gesendet",
+      "noEmail": "E-Mail ist nicht eingerichtet, daher können von hier noch keine Antworten gesendet werden."
     }
   },
   "security": {

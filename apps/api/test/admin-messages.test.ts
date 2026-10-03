@@ -3,6 +3,7 @@ import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import { describe, expect, it } from "vitest";
 import { api, auth, createOrg, createUser, makePlatformAdmin, member, owner } from "../../../packages/db/test/helpers.ts";
 import { createHandler } from "../src/api.ts";
+import { type Email, setMailer } from "../src/email.ts";
 import { sha256 } from "../src/auth/crypto.ts";
 import type { AuthDeps } from "../src/auth/types.ts";
 
@@ -130,14 +131,52 @@ describe("contact requests", () => {
 
     const list = await call(admin, "GET", "/admin/contact-requests");
     expect(list.status).toBe(200);
-    const mine = list.body.find((r: { name: string }) => r.name === name);
+    expect(list.body.emailEnabled).toBe(false);
+    const mine = list.body.requests.find((r: { name: string }) => r.name === name);
     expect(mine).toMatchObject({ email: "kari@example.test", company: "Nord", phone: null, handledAt: null, locale: "nb" });
-    expect(list.body.some((r: { name: string }) => r.name === "Bot")).toBe(false);
+    expect(list.body.requests.some((r: { name: string }) => r.name === "Bot")).toBe(false);
 
     const handled = await call(admin, "PATCH", `/admin/contact-requests/${mine.id}`, { body: { handled: true } });
     expect(handled.status).toBe(200);
     expect(handled.body.handledByName).toBe("Melding Admin");
     expect(handled.body.handledAt).toBeTruthy();
     expect((await call(admin, "PATCH", `/admin/contact-requests/${mine.id}`, { body: { handled: false } })).body.handledAt).toBeNull();
+  });
+});
+
+describe("replies to contact requests", () => {
+  it("e-mail the visitor in their language, with the superadmin as Reply-To, and keep the reply", async () => {
+    const userId = await createUser("Svar Admin");
+    await makePlatformAdmin(userId);
+    await owner.query("update users set email = $2 where id = $1", [userId, `svar-${userId.slice(0, 8)}@example.test`]);
+    const admin = await cookieFor(userId);
+    const name = `Sven ${randomBytes(3).toString("hex")}`;
+    await call("", "POST", "/contact", { body: { name, email: "sven@example.test", message: "Kan vi få en demo?\nVi är 40 säljare." } });
+    // The visitor wrote in Swedish.
+    await owner.query("update contact_requests set locale = 'sv' where name = $1", [name]);
+    const id = (await owner.query("select id from contact_requests where name = $1", [name])).rows[0].id;
+
+    setMailer(null);
+    expect((await call(admin, "POST", `/admin/contact-requests/${id}/replies`, { body: { message: "Hej!" } })).body.error).toBe("E-post er ikke satt opp.");
+
+    const sent: Email[] = [];
+    setMailer(async (email) => {
+      sent.push(email);
+      return "msg-reply";
+    });
+    try {
+      const replied = await call(admin, "POST", `/admin/contact-requests/${id}/replies`, { body: { message: "Hej Sven, absolut." } });
+      expect(replied.status).toBe(201);
+      expect(sent[0]).toMatchObject({ to: "sven@example.test", replyTo: `svar-${userId.slice(0, 8)}@example.test`, subject: "Svar på din förfrågan till VeriQall" });
+      expect(sent[0]!.text).toContain("Hej Sven, absolut.");
+      expect(sent[0]!.text).toContain("> Vi är 40 säljare.");
+      expect(replied.body.replies).toHaveLength(1);
+      expect(replied.body.replies[0]).toMatchObject({ body: "Hej Sven, absolut.", sentTo: "sven@example.test", sent: true, sentByName: "Svar Admin" });
+      // Replying marks the request handled.
+      expect(replied.body.handledByName).toBe("Svar Admin");
+      expect((await call(admin, "POST", `/admin/contact-requests/${id}/replies`, { body: { message: "" } })).status).toBe(400);
+    } finally {
+      setMailer(undefined);
+    }
   });
 });

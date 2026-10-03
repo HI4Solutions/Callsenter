@@ -380,7 +380,15 @@
       "reopen": "Reopen",
       "phone": "Phone",
       "company": "Company",
-      "language": "Language"
+      "language": "Language",
+      "reply": "Reply",
+      "replyHint": "Sent to {email} in the language the person wrote in, with your e-mail address as the reply-to address.",
+      "send": "Send reply",
+      "sending": "Sending …",
+      "replies": "Replies sent",
+      "replyBy": "{name}, {date}",
+      "notSent": "Not sent",
+      "noEmail": "E-mail is not set up, so replies cannot be sent from here yet."
     }
   },
   "security": {

@@ -380,7 +380,15 @@
       "reopen": "Åbn igen",
       "phone": "Telefon",
       "company": "Firma",
-      "language": "Sprog"
+      "language": "Sprog",
+      "reply": "Svar",
+      "replyHint": "Sendes til {email} på det sprog, personen skrev på, med din e-mailadresse som svaradresse.",
+      "send": "Send svar",
+      "sending": "Sender …",
+      "replies": "Sendte svar",
+      "replyBy": "{name}, {date}",
+      "notSent": "Ikke sendt",
+      "noEmail": "E-mail er ikke sat op, så svar kan ikke sendes herfra endnu."
     }
   },
   "security": {

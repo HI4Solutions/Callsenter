@@ -12,5 +12,6 @@
   "perMonth": "{amount}/mnd",
   "once": "{amount} engangs",
   "orgNumber": "org.nr. {number}",
-  "documentId": "Dokument-ID: {hash}"
+  "documentId": "Dokument-ID: {hash}",
+  "cancel": "Avbryt"
 }

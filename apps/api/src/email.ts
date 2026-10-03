@@ -19,6 +19,8 @@ export interface Email {
   text: string;
   html?: string;
   attachments?: Attachment[];
+  // Where answers go, for example the superadmin who wrote a reply.
+  replyTo?: string;
 }
 
 // RFC 2047 for headers with non-ASCII characters (æøå).
@@ -38,6 +40,7 @@ export function mimeMessage(from: string, email: Email): Uint8Array {
   const lines = [
     `From: ${from.replace(/^([^<]+)</, (_, name: string) => `${header(name.trim())} <`)}`,
     `To: ${email.to}`,
+    ...(email.replyTo ? [`Reply-To: ${email.replyTo}`] : []),
     `Subject: ${header(email.subject)}`,
     "MIME-Version: 1.0",
     `Content-Type: multipart/mixed; boundary="${mixed}"`,
@@ -87,6 +90,7 @@ function sesMailer(): Mailer | null {
       const result = await client.send(
         new SendEmailCommand({
           FromEmailAddress: from,
+          ReplyToAddresses: email.replyTo ? [email.replyTo] : undefined,
           Destination: { ToAddresses: [email.to], BccAddresses: email.bcc },
           Content: { Raw: { Data: mimeMessage(from, email) } },
         }),
@@ -96,6 +100,7 @@ function sesMailer(): Mailer | null {
     const result = await client.send(
       new SendEmailCommand({
         FromEmailAddress: from,
+        ReplyToAddresses: email.replyTo ? [email.replyTo] : undefined,
         Destination: { ToAddresses: [email.to] },
         Content: {
           Simple: {

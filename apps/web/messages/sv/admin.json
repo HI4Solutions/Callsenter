@@ -380,7 +380,15 @@
       "reopen": "Öppna igen",
       "phone": "Telefon",
       "company": "Företag",
-      "language": "Språk"
+      "language": "Språk",
+      "reply": "Svara",
+      "replyHint": "Skickas till {email} på det språk personen skrev på, med din e-postadress som svarsadress.",
+      "send": "Skicka svar",
+      "sending": "Skickar …",
+      "replies": "Skickade svar",
+      "replyBy": "{name}, {date}",
+      "notSent": "Inte skickat",
+      "noEmail": "E-post är inte konfigurerad, så svar kan inte skickas härifrån ännu."
     }
   },
   "security": {

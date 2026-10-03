@@ -402,19 +402,20 @@ function Editor({
 }
 
 
-// Requests from the landing page's contact form (docs/plan.md, section 20). Answered by e-mail;
-// marking one handled records who did it.
+// Requests from the landing page's contact form (docs/plan.md, section 20). A reply is e-mailed
+// to the visitor in their language, with the superadmin's own address as Reply-To, and kept here;
+// replying marks the request handled.
 function ContactRequests() {
   const t = useTranslations("admin.messages.contact");
   const tc = useTranslations("common");
-  const [list, setList] = useState<ContactRequest[] | null>(null);
+  const [data, setData] = useState<{ emailEnabled: boolean; requests: ContactRequest[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(
     () =>
-      adminFetch<ContactRequest[]>("/contact-requests")
-        .then((rows) => {
-          setList(rows);
+      adminFetch<{ emailEnabled: boolean; requests: ContactRequest[] }>("/contact-requests")
+        .then((d) => {
+          setData(d);
           setError(null);
         })
         .catch((e: Error) => setError(e.message)),
@@ -436,14 +437,15 @@ function ContactRequests() {
   return (
     <Card title={t("title")}>
       <p className="text-sm text-muted">{t("intro")}</p>
+      {data && !data.emailEnabled && <p className="mt-2 text-sm">{t("noEmail")}</p>}
       <ErrorMessage message={error} />
-      {list === null ? (
+      {data === null ? (
         <p className="mt-4 text-muted">{tc("loading")}</p>
-      ) : list.length === 0 ? (
+      ) : data.requests.length === 0 ? (
         <p className="mt-4 text-muted">{t("none")}</p>
       ) : (
         <ul className="mt-4 divide-y divide-line">
-          {list.map((r) => (
+          {data.requests.map((r) => (
             <li key={r.id} className="flex flex-col gap-2 py-4">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="font-semibold">{r.name}</span>
@@ -463,6 +465,21 @@ function ContactRequests() {
                 {r.locale && ` · ${t("language")}: ${LOCALES[r.locale as keyof typeof LOCALES]?.name ?? r.locale}`}
               </p>
               <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{r.message}</p>
+              {r.replies.length > 0 && (
+                <div className="mt-1 flex flex-col gap-2 border-l-2 border-line pl-4">
+                  <p className="text-sm font-semibold">{t("replies")}</p>
+                  {r.replies.map((x) => (
+                    <div key={x.id}>
+                      <p className="text-sm text-muted">
+                        {t("replyBy", { name: x.sentByName ?? "", date: formatDateTime(x.createdAt) })}
+                        {!x.sent && ` · ${t("notSent")}`}
+                      </p>
+                      <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{x.body}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {data.emailEnabled && <ReplyForm request={r} onSent={reload} onError={setError} />}
               <div>
                 <button type="button" className={secondaryButton} onClick={() => setHandled(r.id, !r.handledAt)}>
                   {r.handledAt ? t("reopen") : t("markHandled")}
@@ -473,6 +490,55 @@ function ContactRequests() {
         </ul>
       )}
     </Card>
+  );
+}
+
+function ReplyForm({ request, onSent, onError }: { request: ContactRequest; onSent: () => Promise<unknown>; onError: (message: string | null) => void }) {
+  const t = useTranslations("admin.messages.contact");
+  const tc = useTranslations("common");
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function send(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    onError(null);
+    try {
+      await adminFetch(`/contact-requests/${request.id}/replies`, { method: "POST", body: { message: text } });
+      setText("");
+      setOpen(false);
+    } catch (e) {
+      onError((e as Error).message);
+    } finally {
+      setBusy(false);
+      await onSent();
+    }
+  }
+
+  if (!open) {
+    return (
+      <div>
+        <button type="button" className={primaryButton} onClick={() => setOpen(true)}>
+          {t("reply")}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <form onSubmit={send} className="flex flex-col gap-2">
+      <Field label={t("reply")} hint={t("replyHint", { email: request.email })}>
+        <textarea className={`${inputClass} min-h-32 py-2`} required maxLength={10000} value={text} onChange={(e) => setText(e.target.value)} />
+      </Field>
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" className={primaryButton} disabled={busy || !text.trim()}>
+          {busy ? t("sending") : t("send")}
+        </button>
+        <button type="button" className={secondaryButton} onClick={() => setOpen(false)}>
+          {tc("cancel")}
+        </button>
+      </div>
+    </form>
   );
 }
 

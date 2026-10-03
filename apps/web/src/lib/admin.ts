@@ -521,4 +521,5 @@ export interface ContactRequest {
   createdAt: string;
   handledAt: string | null;
   handledByName: string | null;
+  replies: { id: string; body: string; sentTo: string; sent: boolean; createdAt: string; sentByName: string | null }[];
 }

@@ -55,4 +55,21 @@ describe("contact requests", () => {
     const recipients = (await auth.query<{ email: string }>("select email from app.contact_request_recipients() as email")).rows.map((r) => r.email);
     expect(recipients).toContain(`super-${admin.slice(0, 8)}@example.test`);
   });
+
+  it("keep replies for superadmins only", async () => {
+    const { rows } = await create("192.0.2.50");
+    const id = rows[0]!.id;
+    const admin = await createUser("Svar Admin");
+    await makePlatformAdmin(admin);
+    await as(api, { userId: admin }, async (db) => {
+      await db.query("insert into contact_replies (contact_request_id, body, sent_to, sent_by) values ($1, 'Hei', 'kari@example.test', $2)", [id, admin]);
+      expect((await db.query("select count(*)::int as n from contact_replies where contact_request_id = $1", [id])).rows[0].n).toBe(1);
+    });
+    const org = await createOrg();
+    const seller = await member(org, "seller");
+    await as(api, { userId: seller, orgId: org }, async (db) => {
+      expect((await db.query("select id from contact_replies where contact_request_id = $1", [id])).rows).toHaveLength(0);
+      await expect(db.query("insert into contact_replies (contact_request_id, body, sent_to) values ($1, 'x', 'y')", [id])).rejects.toThrow(/row-level security/);
+    });
+  });
 });

@@ -14,7 +14,7 @@ import {
   revokeInvitation,
   updateOrganization,
 } from "./organizations.ts";
-import { addGrowthEvent, createAnnouncement, deleteAnnouncement, deleteGrowthEvent, growth, listAnnouncements, listContactRequests, setContactRequestHandled, updateAnnouncement } from "./messages.ts";
+import { addGrowthEvent, createAnnouncement, deleteAnnouncement, deleteGrowthEvent, growth, listAnnouncements, listContactRequests, replyContactRequest, setContactRequestHandled, updateAnnouncement } from "./messages.ts";
 import { getThread, listThreads, reply as replyThread, setThreadStatus, startThread } from "../org/threads.ts";
 import { accessLog, auditLog, blockIp, listBlockedIps, securityOverview, unblockIp } from "./security.ts";
 import {
@@ -84,6 +84,7 @@ const THREAD = /^\/admin\/threads\/([^/]+)$/;
 const THREAD_MESSAGES = /^\/admin\/threads\/([^/]+)\/messages$/;
 const ANNOUNCEMENT = /^\/admin\/announcements\/([^/]+)$/;
 const CONTACT_REQUEST = /^\/admin\/contact-requests\/([^/]+)$/;
+const CONTACT_REPLY = /^\/admin\/contact-requests\/([^/]+)\/replies$/;
 const GROWTH_EVENT = /^\/admin\/growth\/events\/([^/]+)$/;
 const USER_PASSKEY = /^\/admin\/users\/([^/]+)\/passkeys\/([^/]+)$/;
 const INVOICE = /^\/admin\/invoices\/([^/]+)$/;
@@ -199,6 +200,8 @@ export async function handleAdmin(
     if (method === "GET" && path === "/admin/contact-requests") return reply(200, await listContactRequests(deps.appDb, session));
     match = CONTACT_REQUEST.exec(path);
     if (match && isUuid(match[1]) && method === "PATCH") return reply(200, await setContactRequestHandled(deps.appDb, session, match[1], body()));
+    match = CONTACT_REPLY.exec(path);
+    if (match && isUuid(match[1]) && method === "POST") return reply(201, await replyContactRequest(deps.appDb, session, match[1], body()));
     if (path === "/admin/system") {
       if (method === "GET") return reply(200, await getSystem(deps.appDb, session));
       if (method === "PATCH") return reply(200, await updateSystem(deps.appDb, session, body()));
