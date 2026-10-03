@@ -202,7 +202,7 @@ export class CallRecorder {
       try {
         const { url, contentType } = await apiFetch<{ url: string; contentType: string }>(`/org/calls/${this.#callId}/pieces`, {
           method: "POST",
-          body: { seq, startMs },
+          body: { seq, startMs, size: blob.size },
         });
         const res = await fetch(url, { method: "PUT", body: blob, headers: { "content-type": contentType } });
         if (!res.ok) throw new Error(`upload ${res.status}`);
@@ -331,7 +331,7 @@ export class CallRecorder {
         try {
           const { url, contentType } = await apiFetch<{ url: string; contentType: string }>(`/org/calls/${this.#callId}/chunks`, {
             method: "POST",
-            body: { seq: item.seq },
+            body: { seq: item.seq, size: item.blob.size },
           });
           const res = await fetch(url, { method: "PUT", body: item.blob, headers: { "content-type": contentType } });
           if (!res.ok) throw new Error(`upload ${res.status}`);
@@ -422,7 +422,7 @@ export class CallRecorder {
 export async function uploadFile(callId: string, file: File) {
   const { url, contentType } = await apiFetch<{ url: string; contentType: string }>(`/org/calls/${callId}/chunks`, {
     method: "POST",
-    body: { seq: 0 },
+    body: { seq: 0, size: file.size },
   });
   const res = await fetch(url, { method: "PUT", body: file, headers: { "content-type": contentType } });
   if (!res.ok) throw new RecorderError("Opplastingen feilet. Prøv igjen.");

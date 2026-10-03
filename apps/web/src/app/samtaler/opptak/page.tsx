@@ -1,5 +1,6 @@
 "use client";
 
+import { MAX_CHUNK_BYTES } from "@veriqall/shared";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/admin/card";
@@ -315,6 +316,10 @@ export default function StudioPage() {
   async function upload(file: File) {
     if (!file.type.startsWith("audio/")) {
       setError("Velg en lydfil (for eksempel mp3, m4a, wav eller webm).");
+      return;
+    }
+    if (file.size > MAX_CHUNK_BYTES) {
+      setError("Lydfilen er for stor. Den kan være høyst 200 MB.");
       return;
     }
     reset();

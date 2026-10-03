@@ -1,7 +1,7 @@
 // The worker's job for one call (docs/plan.md, section 13): join the uploaded chunks into one
 // recording, transcribe it with Soniox (and delete it there at once), check it against the
 // product template with Claude, and write the report. Runs as app_worker, outside any session.
-import { AI_MODELS, DEFAULT_AI_MODEL, isAiModelKey } from "@veriqall/shared";
+import { AI_MODELS, DEFAULT_AI_MODEL, isAiModelKey, MAX_RECORDING_BYTES } from "@veriqall/shared";
 import type pg from "pg";
 import type { Ai } from "./ai.ts";
 import { type Segment, type Soniox, toSegments } from "./soniox.ts";
@@ -44,6 +44,7 @@ interface CallRow {
 // Shown to users; the details go to the log.
 const FAILED = {
   noAudio: "Ingen lyd ble lastet opp.",
+  tooLarge: "Opptaket er for stort til å behandles (høyst 300 MB).",
   transcription: "Transkriberingen feilet. Prøv igjen.",
   notEnabled: "Transkribering er ikke slått på for callsenteret.",
   notConfigured: "Transkribering er ikke satt opp ennå.",
@@ -133,6 +134,8 @@ async function joinChunks(deps: WorkerDeps, call: CallRow): Promise<{ key: strin
     a.key.localeCompare(b.key),
   );
   if (!chunks.length) throw new CallFailure(FAILED.noAudio);
+  // Read into memory to be joined, so the total is checked first.
+  if (chunks.reduce((n, c) => n + c.size, 0) > MAX_RECORDING_BYTES) throw new CallFailure(FAILED.tooLarge);
   // Chunks from one MediaRecorder are pieces of one file: joined in order they play as one.
   const parts = await Promise.all(chunks.map((c) => deps.store.get(c.key)));
   const bytes = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));

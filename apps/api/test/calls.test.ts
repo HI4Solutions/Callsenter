@@ -159,7 +159,7 @@ async function record(cookie: string, body: Record<string, unknown>) {
   expect(created.status).toBe(201);
   const id = created.body.id as string;
   for (const [seq, text] of ["del1-", "del2"].entries()) {
-    const chunk = await call(cookie, "POST", `/org/calls/${id}/chunks`, { seq });
+    const chunk = await call(cookie, "POST", `/org/calls/${id}/chunks`, { seq, size: 1000 });
     expect(chunk.status).toBe(200);
     objects.set(chunk.body.url.replace("https://s3.test/put/", ""), new TextEncoder().encode(text));
   }
@@ -267,13 +267,13 @@ describe("calls: transcription in pieces", () => {
     expect(created.body).toMatchObject({ mode: "chunked", realtime: null });
     const id = created.body.id as string;
     for (let seq = 0; seq < pieces; seq++) {
-      const piece = await call(cookie, "POST", `/org/calls/${id}/pieces`, { seq, startMs: seq * 15_000 });
+      const piece = await call(cookie, "POST", `/org/calls/${id}/pieces`, { seq, startMs: seq * 15_000, size: 1000 });
       expect(piece.status).toBe(200);
       objects.set(piece.body.url.replace("https://s3.test/put/", ""), new TextEncoder().encode(`bit${seq}`));
       expect((await call(cookie, "POST", `/org/calls/${id}/pieces/${seq}/uploaded`)).status).toBe(200);
       expect(startedPieces).toContain(`${id}:${seq}`);
     }
-    const chunk = await call(cookie, "POST", `/org/calls/${id}/chunks`, { seq: 0 });
+    const chunk = await call(cookie, "POST", `/org/calls/${id}/chunks`, { seq: 0, size: 1000 });
     objects.set(chunk.body.url.replace("https://s3.test/put/", ""), new TextEncoder().encode("helt-opptak"));
     return id;
   }
@@ -326,9 +326,9 @@ describe("calls: transcription in pieces", () => {
     const seller = await sessionFor(await member(s.org, "seller"), s.org);
     const other = await sessionFor(await member(s.org, "seller"), s.org);
     const created = await call(seller, "POST", "/org/calls", { source: "microphone", mime: "audio/webm" });
-    expect((await call(other, "POST", `/org/calls/${created.body.id}/pieces`, { seq: 0, startMs: 0 })).status).toBe(404);
+    expect((await call(other, "POST", `/org/calls/${created.body.id}/pieces`, { seq: 0, startMs: 0, size: 1000 })).status).toBe(404);
     expect((await call(other, "GET", `/org/calls/${created.body.id}/pieces`)).status).toBe(404);
-    expect((await call(seller, "POST", `/org/calls/${created.body.id}/pieces`, { seq: 0, startMs: -1 })).status).toBe(400);
+    expect((await call(seller, "POST", `/org/calls/${created.body.id}/pieces`, { seq: 0, startMs: -1, size: 1000 })).status).toBe(400);
   });
 });
 
@@ -339,7 +339,7 @@ describe("calls: studio", () => {
     const created = await call(seller, "POST", "/org/calls", { source: "tab", mime: "audio/webm", productId: s.productId });
     const id = created.body.id as string;
     expect((await call(seller, "PATCH", `/org/calls/${id}`, { note: "Kunden har avtale med Fjordkraft til mars." })).status).toBe(200);
-    const chunk = await call(seller, "POST", `/org/calls/${id}/chunks`, { seq: 0 });
+    const chunk = await call(seller, "POST", `/org/calls/${id}/chunks`, { seq: 0, size: 1000 });
     objects.set(chunk.body.url.replace("https://s3.test/put/", ""), new TextEncoder().encode("lyd"));
     await call(seller, "POST", `/org/calls/${id}/complete`, {});
     prompts.length = 0;
@@ -452,7 +452,11 @@ describe("calls: access", () => {
     const created = await call(seller, "POST", "/org/calls", { source: "microphone", mime: "audio/webm" });
     const id = created.body.id;
     expect((await call(other, "GET", `/org/calls/${id}`)).status).toBe(404);
-    expect((await call(other, "POST", `/org/calls/${id}/chunks`, { seq: 0 })).status).toBe(404);
+    expect((await call(other, "POST", `/org/calls/${id}/chunks`, { seq: 0, size: 1000 })).status).toBe(404);
+    // The size is signed into the upload URL, so it must be given and within the limit.
+    expect((await call(seller, "POST", `/org/calls/${id}/chunks`, { seq: 0 })).status).toBe(400);
+    expect((await call(seller, "POST", `/org/calls/${id}/chunks`, { seq: 0, size: 201 * 1024 * 1024 })).body.error).toMatch(/for stor/);
+    expect((await call(seller, "POST", `/org/calls/${id}/pieces`, { seq: 0, startMs: 0, size: 11 * 1024 * 1024 })).status).toBe(400);
     expect((await call(seller, "POST", `/org/calls/${id}/complete`, {})).body.error).toBe("Ingen lyd er lastet opp.");
     const compliance = await sessionFor(await member(s.org, "compliance"), s.org);
     expect((await call(compliance, "POST", "/org/calls", { source: "upload", mime: "audio/mpeg" })).status).toBe(403);
@@ -507,7 +511,7 @@ describe("calls: settings, retention and housekeeping", () => {
     expect((await call(seller, "GET", `/org/calls/${id}`)).status).toBe(404);
 
     const abandoned = await call(seller, "POST", "/org/calls", { source: "microphone", mime: "audio/webm" });
-    const chunk = await call(seller, "POST", `/org/calls/${abandoned.body.id}/chunks`, { seq: 0 });
+    const chunk = await call(seller, "POST", `/org/calls/${abandoned.body.id}/chunks`, { seq: 0, size: 1000 });
     objects.set(chunk.body.url.replace("https://s3.test/put/", ""), new TextEncoder().encode("rest"));
     await owner.query("update calls set last_chunk_at = now() - interval '4 hours' where id = $1", [abandoned.body.id]);
 
