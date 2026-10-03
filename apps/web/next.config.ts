@@ -9,6 +9,10 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 // workspace dependencies resolve and are included in the server bundle (needed on Amplify).
 const repoRoot = path.join(import.meta.dirname, "../..");
 
+// Once the landing page is published (src/lib/site.ts), the front page may be indexed; every
+// other page is still behind login.
+const landingPublished = process.env.NEXT_PUBLIC_LANDING_PUBLISHED === "1";
+
 const config: NextConfig = {
   reactStrictMode: true,
   // Pages ending in .dev.tsx (the design system at /design) exist only in development.
@@ -18,11 +22,14 @@ const config: NextConfig = {
   async headers() {
     return [
       {
+        // The app is behind login and nothing in it is for search engines. A header rather than
+        // robots.txt: crawlers must be allowed to fetch a page to see that it is not to be indexed.
+        source: landingPublished ? "/:path+" : "/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
         source: "/:path*",
         headers: [
-          // The app is behind login and nothing in it is for search engines. A header rather than
-          // robots.txt: crawlers must be allowed to fetch a page to see that it is not to be indexed.
-          { key: "X-Robots-Tag", value: "noindex, nofollow" },
           // No other site may show the app in a frame (clickjacking on login, admin and the
           // customer's acceptance page).
           { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'" },
