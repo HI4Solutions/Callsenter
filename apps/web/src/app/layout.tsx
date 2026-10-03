@@ -9,11 +9,13 @@ import { AccountMenu } from "@/components/account-menu";
 import { Announcements } from "@/components/announcements";
 import { FormatLocale } from "@/components/format-locale";
 import { Logo } from "@/components/logo";
+import { SITE_URL } from "@/lib/site";
 import { THEME_COLORS, themeInitScript } from "@/lib/theme";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("shell");
   return {
+    metadataBase: new URL(SITE_URL),
     title: { default: "VeriQall", template: "%s · VeriQall" },
     description: t("description"),
     icons: { icon: "/brand/favicon.svg", apple: "/brand/apple-touch-icon.png" },

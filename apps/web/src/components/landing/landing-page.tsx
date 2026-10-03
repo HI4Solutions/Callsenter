@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ContactForm } from "@/components/landing/contact-form";
+import { LandingJsonLd } from "@/components/landing/landing-json-ld";
 import { Flag, type FlagLevel } from "@/components/flag";
 import { LanguagePicker } from "@/components/language-picker";
 
@@ -19,10 +20,12 @@ const tint = "bg-[color-mix(in_srgb,var(--brand)_7%,var(--surface))]";
 // landing namespace; the product mock in the hero is built from the app's own Flag component, so
 // green, yellow and red mean what they mean in the app.
 export function LandingPage() {
+  const tm = useTranslations("landing.meta");
   // "Be om en demo" scrolls to the contact form at the bottom.
   const demoHref = "#kontakt";
   return (
     <div className="flex flex-col gap-20 sm:gap-24">
+      <LandingJsonLd description={tm("description")} />
       <Hero demoHref={demoHref} />
       <Why />
       <How />

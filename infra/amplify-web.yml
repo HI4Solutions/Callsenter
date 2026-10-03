@@ -15,6 +15,11 @@ Parameters:
     Description: >-
       Secrets Manager secret (plain text) holding a classic GitHub token with only the
       admin:repo_hook scope. Amplify uses it once to register the repository webhook.
+  LandingPublished:
+    Type: String
+    AllowedValues: ["0", "1"]
+    Default: "0"
+    Description: '"1" publishes the landing page at /.'
 
 Conditions:
   IsProduction: !Equals [!Ref Environment, production]
@@ -59,6 +64,13 @@ Resources:
         # The API (login, /me). Built into the browser bundle, not a secret.
         - Name: NEXT_PUBLIC_API_URL
           Value: !If [IsProduction, https://api.veriqall.no, https://api.staging.veriqall.no]
+        # The site's own address, for links in metadata (Open Graph, sitemap).
+        - Name: NEXT_PUBLIC_SITE_URL
+          Value: !If [IsProduction, https://veriqall.no, https://staging.veriqall.no]
+        # "1" publishes the landing page at / and lets search engines index it (docs/plan.md,
+        # section 20). Until then / sends visitors to login.
+        - Name: NEXT_PUBLIC_LANDING_PUBLISHED
+          Value: !Ref LandingPublished
       # Monorepo (npm workspaces): install from the repo root, build from apps/web.
       BuildSpec: |
         version: 1

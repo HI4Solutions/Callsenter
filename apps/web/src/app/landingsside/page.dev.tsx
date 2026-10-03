@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 import { LandingPage } from "@/components/landing/landing-page";
+import { landingMetadata } from "@/lib/landing-metadata";
 
 // The landing page without login, for local work (docs/plan.md, section 20). A .dev.tsx page:
 // next.config.ts only builds it in development, so on staging and production /landingsside does
-// not exist; there superadmins see it at /forhandsvisning/landingsside. To publish it: render
-// <LandingPage /> from src/app/page.tsx instead of the redirect to /logg-inn, and let search
-// engines index / (next.config.ts and layout.tsx say noindex for the whole app).
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("landing.meta");
-  return { title: t("title"), description: t("description") };
+// not exist; there superadmins see it at /forhandsvisning/landingsside. Publishing is the
+// NEXT_PUBLIC_LANDING_PUBLISHED switch (src/lib/site.ts): then / shows the page and search
+// engines may index it.
+export function generateMetadata(): Promise<Metadata> {
+  return landingMetadata();
 }
 
 export default function LandingPreviewPage() {
