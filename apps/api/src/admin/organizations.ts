@@ -6,7 +6,7 @@ import type pg from "pg";
 import { randomToken, sha256 } from "../auth/crypto.ts";
 import type { Session } from "../auth/session.ts";
 import { sendInvitation } from "../email.ts";
-import { spokenLanguages } from "../i18n.ts";
+import { spokenLanguages } from "../i18n/worker.ts";
 import { withSession } from "../me.ts";
 import {
   BadRequest,

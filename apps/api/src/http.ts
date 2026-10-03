@@ -1,11 +1,14 @@
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "aws-lambda";
+import { translateBody } from "./i18n/translate.ts";
 
 export type Result = APIGatewayProxyStructuredResultV2;
 
 // On every answer: HTTPS only, and the content type is not to be guessed.
 const SECURITY = { "strict-transport-security": "max-age=63072000; includeSubDomains", "x-content-type-options": "nosniff" };
 
+// The API's own texts in the body (errors, status notes) go out in the request's language.
 export function json(statusCode: number, body: unknown, headers: Record<string, string> = {}): Result {
+  body = translateBody(body);
   return {
     statusCode,
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...SECURITY, ...headers },

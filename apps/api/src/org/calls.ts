@@ -18,7 +18,7 @@ import type { Session } from "../auth/session.ts";
 import type { CallServices } from "../calls/services.ts";
 import { SONIOX_REALTIME_MODEL, SONIOX_REALTIME_URL } from "../calls/soniox.ts";
 import { defaultReport, extension } from "../calls/process.ts";
-import { localeOr, spokenLanguages } from "../i18n.ts";
+import { localeOr, spokenLanguages } from "../i18n/worker.ts";
 import { chunkKey, pieceKey } from "../calls/store.ts";
 import { withSession } from "../me.ts";
 

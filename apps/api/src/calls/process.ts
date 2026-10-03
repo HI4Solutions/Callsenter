@@ -3,7 +3,7 @@
 // product template with Claude, and write the report. Runs as app_worker, outside any session.
 import { AI_MODELS, DEFAULT_AI_MODEL, isAiModelKey, type Locale, localeFromSoniox, MAX_RECORDING_BYTES } from "@veriqall/shared";
 import type pg from "pg";
-import { localeOr, WORKER_TEXTS, writeIn } from "../i18n.ts";
+import { localeOr, WORKER_TEXTS, writeIn } from "../i18n/worker.ts";
 import type { Ai } from "./ai.ts";
 import { mainLanguage, type Segment, type Soniox, toSegments } from "./soniox.ts";
 import { audioKey, callPrefix, pieceKey, type AudioStore } from "./store.ts";

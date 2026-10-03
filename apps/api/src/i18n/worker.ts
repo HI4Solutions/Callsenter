@@ -2,7 +2,7 @@
 // The pages have their own messages in apps/web/messages/. A new language in
 // packages/shared/src/locales.ts needs its entry here; the type makes it required.
 import { DEFAULT_LOCALE, isLocale, LOCALES, type Locale, MAX_TRANSCRIPTION_LANGUAGES, SONIOX_LANGUAGE } from "@veriqall/shared";
-import { BadRequest, type Body } from "./admin/validate.ts";
+import { BadRequest, type Body } from "../admin/validate.ts";
 
 interface WorkerTexts {
   // The AI control's comment on a required point the model left out.
