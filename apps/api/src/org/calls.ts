@@ -63,6 +63,15 @@ function localeParam(body: Body, key: string): Locale | null | undefined {
   return value;
 }
 
+// A call centre that has locked the language of its notes takes no other.
+async function assertLanguageOpen(c: pg.PoolClient, locale: Locale | null | undefined) {
+  if (!locale) return;
+  const { rows } = await c.query<{ locked: boolean; locale: string }>(
+    "select content_locale_locked as locked, content_locale as locale from organizations where id = app.current_org_id()",
+  );
+  if (rows[0]?.locked && rows[0].locale !== locale) throw new BadRequest("Callsenteret har låst språket for notater.");
+}
+
 function uuidOrNull(body: Body, key: string, label: string): string | null | undefined {
   const value = body[key];
   if (value === undefined) return undefined;
@@ -111,6 +120,7 @@ export async function createCall(db: pg.Pool, session: Session, services: CallSe
   const created = await withSession(db, session, async (c) => {
     if (!(await moduleEnabled(c, "transcription"))) throw new BadRequest("Transkribering er ikke slått på for callsenteret.");
     if (notes.length) await activeTemplates(c, notes);
+    await assertLanguageOpen(c, outputLocale);
     const settings = await transcriptionMode(c);
     // An uploaded file has no live text.
     const mode = source === "upload" ? "chunked" : settings.mode;
@@ -469,7 +479,8 @@ export async function getCall(db: pg.Pool, session: Session, callId: string, met
               c.template_version_id as "templateVersionId", coalesce(tv.required_points, '[]') as "requiredPoints",
               c.user_id = app.current_user_id() as "isOwn", c.note_templates as "noteTemplateIds",
               c.output_locale as "outputLocale", c.spoken_languages as "spokenLanguages",
-              o.content_locale as "defaultOutputLocale", o.transcription_languages as "defaultSpokenLanguages",
+              o.content_locale as "defaultOutputLocale", o.content_locale_locked as "outputLocaleLocked",
+              o.transcription_languages as "defaultSpokenLanguages",
               (select language from transcripts where call_id = c.id) as "transcriptLanguage"
        ${FROM} join organizations o on o.id = c.organization_id where c.id = $1`,
       [callId],
@@ -552,6 +563,7 @@ export async function updateCall(db: pg.Pool, session: Session, services: CallSe
     if (!rows[0]) throw new NotFound();
     if (!sets.length) return false;
     if (values.note_templates) await activeTemplates(c, values.note_templates as string[]);
+    await assertLanguageOpen(c, values.output_locale as Locale | null | undefined);
     try {
       const updated = await c.query<{ template_version_id: string | null }>(
         `update calls set ${sets.map(([k], i) => `${k} = $${i + 2}`).join(", ")} where id = $1 returning template_version_id`,
@@ -605,12 +617,13 @@ export async function requestNote(db: pg.Pool, session: Session, services: CallS
   const requested = localeParam(body, "locale") ?? null;
   const created = await withSession(db, session, async (c) => {
     const call = await c.query<{ status: string; locale: string }>(
-      `select c.status, coalesce(c.output_locale, o.content_locale) as locale
+      `select c.status, case when o.content_locale_locked then o.content_locale else coalesce(c.output_locale, o.content_locale) end as locale
        from calls c join organizations o on o.id = c.organization_id where c.id = $1`,
       [callId],
     );
     if (!call.rows[0]) throw new NotFound();
     if (!["transcribed", "analyzed"].includes(call.rows[0].status)) throw new BadRequest("Samtalen er ikke ferdig transkribert ennå.");
+    await assertLanguageOpen(c, requested);
     const locale = requested ?? localeOr(call.rows[0].locale);
     const chosen = ids.length ? await activeTemplates(c, ids) : [await defaultTemplate(c, locale)];
     const made: string[] = [];

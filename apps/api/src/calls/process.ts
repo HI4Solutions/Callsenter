@@ -563,7 +563,8 @@ export function defaultReport(locale: Locale) {
 // The language a call's notes and AI control are written in: the call's, else the call centre's.
 async function outputLocale(db: pg.Pool, callId: string): Promise<Locale> {
   const { rows } = await db.query<{ locale: string }>(
-    "select coalesce(c.output_locale, o.content_locale) as locale from calls c join organizations o on o.id = c.organization_id where c.id = $1",
+    `select case when o.content_locale_locked then o.content_locale else coalesce(c.output_locale, o.content_locale) end as locale
+     from calls c join organizations o on o.id = c.organization_id where c.id = $1`,
     [callId],
   );
   return localeOr(rows[0]?.locale);
@@ -736,8 +737,12 @@ export async function processReport(deps: WorkerDeps, reportId: string): Promise
     const noteTemplate = report.template_id
       ? (await deps.db.query<{ instructions: string }>("select instructions from report_templates where id = $1", [report.template_id])).rows[0]
       : undefined;
-    // In the language asked for in the studio, else the call's.
-    const locale = report.locale ? localeOr(report.locale) : await outputLocale(deps.db, report.call_id);
+    // In the language asked for in the studio, else the call's; always the call centre's when it
+    // has locked the language.
+    const locked = (
+      await deps.db.query<{ locked: boolean }>("select content_locale_locked as locked from organizations where id = $1", [report.organization_id])
+    ).rows[0]?.locked;
+    const locale = report.locale && !locked ? localeOr(report.locale) : await outputLocale(deps.db, report.call_id);
     const instructions = noteTemplate?.instructions ?? defaultReport(locale).instructions;
     const result = await deps.ai.text(
       await chosenModel(deps.db),

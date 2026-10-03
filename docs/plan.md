@@ -565,7 +565,7 @@ Besluttet av Nadeem 3. oktober 2026: VeriQall skal finnes på norsk (bokmål), e
 | Språket notater og AI-kontroll skrives på | Selgeren per samtale i Samtalestudio (`calls.output_locale`), og per notat ved «Regenerer» (`reports.locale`) | Callsenterets (`organizations.content_locale`) |
 | Språkene som snakkes i samtalen | Selgeren per samtale (`calls.spoken_languages`) | Callsenterets liste (`organizations.transcription_languages`, standard norsk) |
 
-Superadmin setter callsenterets språk under Callsentre. Språkene i samtalen er ikke begrenset til sidenes språk: Soniox kjenner igjen over 60 språk, og listen i velgeren viser navnene på brukerens språk (fra nettleseren). Soniox får språkene som hint og merker hvert ord med språket det hørte. Transkripsjonen får språket som ble hørt mest (`transcripts.language`).
+Superadmin setter callsenterets språk under Callsentre. Med «Lås språket for notater» (`organizations.content_locale_locked`) skrives alle notater og AI-kontroller på callsenterets språk: selgeren får ikke velge et annet i Samtalestudio eller ved «Regenerer», og API-et avviser forsøk. Språkene i samtalen er ikke begrenset til sidenes språk: Soniox kjenner igjen over 60 språk, og listen i velgeren viser navnene på brukerens språk (fra nettleseren). Soniox får språkene som hint og merker hvert ord med språket det hørte. Transkripsjonen får språket som ble hørt mest (`transcripts.language`).
 
 **Hvordan det er bygget:**
 

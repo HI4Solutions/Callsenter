@@ -37,6 +37,7 @@ export interface OrganizationDetail {
   // The call centre's languages (docs/plan.md, section 19).
   defaultLocale?: Locale;
   contentLocale?: Locale;
+  contentLocaleLocked?: boolean;
   transcriptionLanguages?: string[];
   contactName: string | null;
   contactEmail: string | null;

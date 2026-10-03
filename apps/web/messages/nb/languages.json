@@ -16,5 +16,8 @@
   "transcriptionLanguages": "Språk i samtalene",
   "save": "Lagre språk",
   "saving": "Lagrer …",
-  "saved": "Lagret."
+  "saved": "Lagret.",
+  "lockContent": "Lås språket for notater",
+  "lockContentHint": "Selgerne kan da ikke velge et annet språk for notater og AI-kontroll.",
+  "locked": "Låst av callsenteret: {language}"
 }

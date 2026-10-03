@@ -16,5 +16,8 @@
   "transcriptionLanguages": "Sprachen in den Gesprächen",
   "save": "Sprachen speichern",
   "saving": "Wird gespeichert …",
-  "saved": "Gespeichert."
+  "saved": "Gespeichert.",
+  "lockContent": "Sprache für Notizen sperren",
+  "lockContentHint": "Verkäufer können dann keine andere Sprache für Notizen und die KI-Prüfung wählen.",
+  "locked": "Vom Callcenter festgelegt: {language}"
 }
