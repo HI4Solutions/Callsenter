@@ -1,23 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage } from "@/components/admin/field";
 import { Flag } from "@/components/flag";
 import type { FlagFilter } from "@/components/work/flag-charts";
-import { CALL_STATUS, type CallSummary, FLAG_LEVEL, formatDuration } from "@/lib/calls";
+import { type CallSummary, FLAG_LEVEL, formatDuration } from "@/lib/calls";
 import { formatDateTime } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 
-const FILTERS: { key: FlagFilter; label: string }[] = [
-  { key: "all", label: "Alle" },
-  { key: "red", label: "Brudd" },
-  { key: "yellow", label: "Avvik" },
-  { key: "unreviewed", label: "Ikke behandlet" },
-  { key: "green", label: "Godkjent" },
-  { key: "unchecked", label: "Ikke kontrollert" },
-];
+const FILTERS: FlagFilter[] = ["all", "red", "yellow", "unreviewed", "green", "unchecked"];
 
 const PARAMS: Record<FlagFilter, Record<string, string>> = {
   all: {},
@@ -44,6 +38,11 @@ export function PeriodCalls({
   filter: FlagFilter;
   onFilter: (f: FlagFilter) => void;
 }) {
+  const t = useTranslations("dashboard.calls");
+  const td = useTranslations("domain");
+  const tc = useTranslations("common");
+  const filterLabel = (f: FlagFilter) =>
+    f === "red" ? td("flag.violation") : f === "yellow" ? td("flag.deviation") : f === "green" ? td("flag.approved") : t(f);
   const [calls, setCalls] = useState<CallSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,28 +64,28 @@ export function PeriodCalls({
   }, [from, to, scope.userId, scope.teamId, filter]);
 
   return (
-    <Card title="Samtaler i perioden">
+    <Card title={t("title")}>
       <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Vis samtaler">
+        <div className="flex flex-wrap gap-2" role="group" aria-label={t("filterLabel")}>
           {FILTERS.map((f) => (
             <button
-              key={f.key}
+              key={f}
               type="button"
-              aria-pressed={filter === f.key}
-              onClick={() => onFilter(f.key)}
+              aria-pressed={filter === f}
+              onClick={() => onFilter(f)}
               className={`min-h-11 rounded-full border px-4 text-sm font-semibold ${
-                filter === f.key ? "border-brand bg-brand text-on-brand" : "border-line bg-surface hover:bg-bg"
+                filter === f ? "border-brand bg-brand text-on-brand" : "border-line bg-surface hover:bg-bg"
               }`}
             >
-              {f.label}
+              {filterLabel(f)}
             </button>
           ))}
         </div>
         <ErrorMessage message={error} />
         {!calls ? (
-          !error && <p className="text-muted">Laster …</p>
+          !error && <p className="text-muted">{tc("loading")}</p>
         ) : calls.length === 0 ? (
-          <p className="text-muted">Ingen samtaler her i perioden.</p>
+          <p className="text-muted">{t("empty")}</p>
         ) : (
           <>
             <ul className="divide-y divide-line">
@@ -101,28 +100,30 @@ export function PeriodCalls({
                       {c.durationMs ? ` · ${formatDuration(c.durationMs)}` : ""}
                     </span>
                     <span className="min-w-0 [overflow-wrap:anywhere]">
-                      <span className="font-semibold">{c.userName ?? "Ukjent selger"}</span>
+                      <span className="font-semibold">{c.userName ?? t("unknownSeller")}</span>
                       <span className="text-muted">
                         {" · "}
-                        {c.customerName || c.title || c.productName || "Uten kunde"}
-                        {c.teamName ? ` · Team ${c.teamName}` : ""}
+                        {c.customerName || c.title || c.productName || t("noCustomer")}
+                        {c.teamName ? ` · ${t("team", { name: c.teamName })}` : ""}
                       </span>
                     </span>
                     <span className="flex flex-wrap items-center gap-2">
                       {c.flag ? (
                         <Flag level={FLAG_LEVEL[c.flag]} />
                       ) : (
-                        <span className="text-sm text-muted">{c.status === "analyzed" ? "Ikke kontrollert" : CALL_STATUS[c.status]}</span>
+                        <span className="text-sm text-muted">
+                          {c.status === "analyzed" ? t("unchecked") : td(`callStatus.${c.status}`)}
+                        </span>
                       )}
                       {c.flag && c.flag !== "green" && (
-                        <span className="text-sm text-muted">{c.reviewedAt ? "Behandlet" : "Ikke behandlet"}</span>
+                        <span className="text-sm text-muted">{c.reviewedAt ? t("reviewed") : t("unreviewed")}</span>
                       )}
                     </span>
                   </Link>
                 </li>
               ))}
             </ul>
-            {calls.length === 200 && <p className="text-sm text-muted">Viser de 200 nyeste. Velg en kortere periode for å se alle.</p>}
+            {calls.length === 200 && <p className="text-sm text-muted">{t("capped")}</p>}
           </>
         )}
       </div>

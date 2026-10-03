@@ -3,7 +3,7 @@
 // the same {placeholders} (src/i18n/messages.test.ts). A new namespace is added here.
 import type { Locale } from "@veriqall/shared";
 
-export const NAMESPACES = ["common", "shell", "login", "account", "confirm", "languages", "domain", "org", "threads", "calls", "work", "sales", "customers", "products", "complaints", "economy"] as const;
+export const NAMESPACES = ["common", "shell", "login", "account", "confirm", "languages", "domain", "org", "threads", "calls", "work", "sales", "customers", "products", "complaints", "economy", "dashboard"] as const;
 
 export type Namespace = (typeof NAMESPACES)[number];
 
