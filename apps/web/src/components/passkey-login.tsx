@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import {
+  LOGIN_BUTTON,
+  LoginButtonContent,
+} from "@/components/provider-buttons";
 import { loginWithPasskey, passkeyErrorMessage } from "@/lib/passkey";
 
 // "Logg inn med passkey" on the login page. Not offered with an invitation link: a first login
@@ -28,9 +32,11 @@ export function PasskeyLogin({ next }: { next?: string }) {
         type="button"
         onClick={login}
         disabled={busy}
-        className="inline-flex min-h-12 items-center justify-center rounded-lg border border-line bg-surface px-5 font-semibold disabled:opacity-60"
+        className={`${LOGIN_BUTTON} border border-line bg-surface disabled:opacity-60`}
       >
-        {busy ? "Venter på passkey …" : "Logg inn med passkey"}
+        <LoginButtonContent icon={<KeyIcon />}>
+          {busy ? "Venter på passkey …" : "Logg inn med passkey"}
+        </LoginButtonContent>
       </button>
       {error && (
         <p role="alert" className="text-sm">
@@ -38,5 +44,25 @@ export function PasskeyLogin({ next }: { next?: string }) {
         </p>
       )}
     </div>
+  );
+}
+
+function KeyIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={22}
+      height={22}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="8" cy="15" r="4.5" />
+      <path d="M11.2 11.8 20 3M16.5 6.5l2.5 2.5M14 9l2 2" />
+    </svg>
   );
 }

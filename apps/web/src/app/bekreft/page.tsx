@@ -131,7 +131,7 @@ export default function ConfirmPage() {
         </label>
         <p className="text-sm text-muted">Tilbudet må godtas av kjøperen selv. Du godtar ved å identifisere deg, og vi bruker bare navnet ditt (og mobilnummeret ved Vipps) som bevis.</p>
         <ErrorMessage message={error} />
-        <div className="flex flex-wrap gap-2">
+        <div className="flex max-w-md flex-col gap-3">
           <BankIdButton href={`${API_URL}/confirm/bankid/start?t=${encodeURIComponent(token)}`} disabled={!read}>
             Godta med BankID
           </BankIdButton>
