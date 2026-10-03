@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
 import { DraftEditor, VersionView } from "@/components/work/template-version";
 import { useWorkMe } from "@/components/work/work-shell";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -51,7 +51,7 @@ export default function ProductPage() {
     }
   }
 
-  if (!product) return error ? <ErrorMessage message={error} /> : <p className="text-muted">Laster …</p>;
+  if (!product) return <LoadState error={error} />;
   const draft = product.versions.find((v) => v.status === "draft");
   const published = product.versions.find((v) => v.status === "published");
   const history = product.versions.filter((v) => v.status !== "draft");
@@ -60,7 +60,7 @@ export default function ProductPage() {
   return (
     <section className="flex flex-col gap-8">
       <div>
-        <Link href="/produkter" className="text-sm font-semibold text-brand">
+        <Link href="/produkter" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">
           ← Alle produkter
         </Link>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{product.name}</h1>

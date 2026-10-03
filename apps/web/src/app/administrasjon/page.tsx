@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { useMe } from "@/components/org/org-shell";
 import { formatDateTime, invitationState, toCsv } from "@/lib/format";
@@ -32,7 +32,7 @@ export default function MembersPage() {
     };
   }, []);
 
-  if (!data) return error ? <ErrorMessage message={error} /> : <p className="text-muted">Laster …</p>;
+  if (!data) return <LoadState error={error} />;
 
   const q = query.trim().toLowerCase();
   const shown = q

@@ -49,7 +49,7 @@ export default function ReportTemplatesPage() {
     <section className="flex flex-col gap-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Link href="/samtaler" className="text-sm font-semibold text-brand">
+          <Link href="/samtaler" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">
             ← Alle samtaler
           </Link>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Notatmaler</h1>

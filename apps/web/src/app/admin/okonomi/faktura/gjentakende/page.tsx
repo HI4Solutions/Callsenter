@@ -114,7 +114,7 @@ export default function RecurringPage() {
                   <td className="px-2 py-3">{INTERVAL[a.intervalMonths]}</td>
                   <td className="px-2 py-3">{a.sendDate <= today ? "I dag" : formatDate(a.sendDate)}</td>
                   <td className="px-2 py-3">{formatDate(a.nextDate)}</td>
-                  <td className="px-2 py-3 text-right tabular-nums">{kr(a.lines.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0))}</td>
+                  <td className="px-2 py-3 text-right">{kr(a.lines.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0))}</td>
                   <td className="px-2 py-3">{!a.active ? "Stoppet" : a.paused ? "På pause (betaling uteblitt)" : "Aktiv"}</td>
                   <td className="px-2 py-3 text-right">
                     <div className="flex flex-wrap justify-end gap-2">

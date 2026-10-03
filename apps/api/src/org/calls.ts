@@ -301,6 +301,10 @@ const FROM = `from calls c
     select flag, reviewed_at from call_analyses where call_id = c.id order by created_at desc limit 1
   ) a on true`;
 
+function dayParam(value: string | undefined): string | null {
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) ? value : null;
+}
+
 export async function listCalls(
   db: pg.Pool,
   session: Session,
@@ -315,6 +319,14 @@ export async function listCalls(
   const mine = query.mine === "1";
   // Yellow and red flags nobody has reviewed yet.
   const review = query.review === "1";
+  // From the dashboard: a period of whole days in Norwegian time, a seller or a team, and calls
+  // flagged yellow or red, or not checked by AI.
+  const from = dayParam(query.from);
+  const to = dayParam(query.to);
+  const userId = query.userId && isUuid(query.userId) ? query.userId : null;
+  const teamId = query.teamId && isUuid(query.teamId) ? query.teamId : null;
+  const flagged = query.flagged === "1";
+  const unchecked = query.unchecked === "1";
   return withSession(db, session, async (c) => {
     const { rows } = await c.query(
       `select ${SUMMARY},
@@ -330,9 +342,15 @@ export async function listCalls(
          and ($5::uuid is null or c.sale_id = $5)
          and (not $6 or c.user_id = app.current_user_id())
          and (not $7 or (a.flag in ('yellow', 'red') and a.reviewed_at is null))
+         and ($8::date is null or c.started_at >= $8::date::timestamp at time zone 'Europe/Oslo')
+         and ($9::date is null or c.started_at < ($9::date + 1)::timestamp at time zone 'Europe/Oslo')
+         and ($10::uuid is null or c.user_id = $10)
+         and ($11::uuid is null or c.team_id = $11)
+         and (not $12 or a.flag in ('yellow', 'red'))
+         and (not $13 or a.flag is null)
        order by c.started_at desc
        limit 200`,
-      [q, flag, status, customerId, saleId, mine, review],
+      [q, flag, status, customerId, saleId, mine, review, from, to, userId, teamId, flagged, unchecked],
     );
     // Search results show excerpts of the transcripts: each is a view of that transcript.
     const shown = rows.filter((r) => r.match).map((r) => r.id as string);
@@ -353,6 +371,33 @@ async function logAccess(c: pg.PoolClient, callId: string, action: "view" | "pla
      values (app.current_org_id(), app.current_user_id(), 'call', $1, $2, $3, $4)`,
     [callId, action, meta.ip ?? null, meta.userAgent?.slice(0, 500) ?? null],
   );
+}
+
+// The call's log for leaders (audit.read): who viewed, played and searched it, and what was done
+// with it (recorded, linked, AI control reviewed, notes asked for and adjusted). Never the text.
+export async function callLog(db: pg.Pool, session: Session, callId: string) {
+  return withSession(db, session, async (c) => {
+    const call = await c.query("select 1 from calls where id = $1", [callId]);
+    if (!call.rowCount) throw new NotFound();
+    const access = await c.query(
+      `select l.occurred_at as "at", l.action, l.resource_type as "resource", u.full_name as "userName"
+       from access_log l left join users u on u.id = l.user_id
+       where l.resource_type in ('call', 'call_search') and l.resource_id = $1 and l.organization_id = app.current_org_id()
+       order by l.occurred_at desc limit 200`,
+      [callId],
+    );
+    const changes = await c.query(
+      `select l.occurred_at as "at", l.action, l.table_name as "table", u.full_name as "userName",
+              l.old_data ->> 'status' as "fromStatus", l.new_data ->> 'status' as "toStatus",
+              l.new_data ->> 'flag' as flag, l.new_data ->> 'reviewed_at' as "reviewedAt", l.new_data ->> 'template_name' as "templateName"
+       from audit_log l left join users u on u.id = l.actor_user_id
+       where l.organization_id = app.current_org_id()
+         and ((l.table_name = 'calls' and l.record_id = $1) or (l.new_data ? 'call_id' and l.new_data ->> 'call_id' = $1))
+       order by l.occurred_at desc limit 200`,
+      [callId],
+    );
+    return { access: access.rows, changes: changes.rows };
+  });
 }
 
 // Status only, for polling while the worker runs: no transcript, so no access_log entry.

@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
 import { AdditionalInfo } from "@/components/calls/additional-info";
+import { CallLog } from "@/components/calls/call-log";
 import { NotesPanel } from "@/components/calls/notes-panel";
 import { TranscriptPanel } from "@/components/calls/transcript-panel";
 import { useCall } from "@/components/calls/use-call";
@@ -55,14 +56,14 @@ export default function CallPage() {
     }
   }
 
-  if (!call) return error ? <ErrorMessage message={error} /> : <p className="text-muted">Laster …</p>;
+  if (!call) return <LoadState error={error} />;
   const analysis = call.analyses[0];
   const canPlay = permissions.includes("calls.audio.play") && call.hasAudio;
 
   return (
     <section className="flex flex-col gap-8">
       <div>
-        <Link href="/samtaler" className="text-sm font-semibold text-brand">
+        <Link href="/samtaler" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">
           ← Alle samtaler
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -157,6 +158,7 @@ export default function CallPage() {
       {me?.modules?.includes("dashboard") && (
         <Coaching sellerId={call.userId} sellerName={call.userName} callId={call.id} title="Tilbakemelding på samtalen" />
       )}
+      {permissions.includes("audit.read") && <CallLog callId={call.id} />}
       <Links call={call} canEdit={permissions.includes("calls.upload") && !call.analyses.length && !call.working} onChanged={load} />
     </section>
   );
@@ -208,7 +210,7 @@ function Analysis({
             {f.quote && (
               <p className="mt-2 [overflow-wrap:anywhere]">
                 {f.startMs !== null && onSeek ? (
-                  <button type="button" className="mr-2 font-mono text-sm text-brand tabular-nums" onClick={() => onSeek(f.startMs!)}>
+                  <button type="button" className="mr-2 font-mono text-sm text-brand" onClick={() => onSeek(f.startMs!)}>
                     {formatDuration(f.startMs)}
                   </button>
                 ) : null}

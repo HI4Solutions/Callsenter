@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ErrorMessage, primaryButton } from "@/components/admin/field";
+import { primaryButton, LoadState } from "@/components/admin/field";
 import { SaleDocumentationView } from "@/components/work/sale-documentation";
 import type { SaleDocumentation } from "@/lib/complaints";
 import { orgFetch } from "@/lib/org";
@@ -23,12 +23,12 @@ export default function SaleDocumentationPage() {
     };
   }, [id]);
 
-  if (!doc) return error ? <ErrorMessage message={error} /> : <p className="text-muted">Laster …</p>;
+  if (!doc) return <LoadState error={error} />;
   return (
     <section className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4 print:hidden">
         <div>
-          <Link href={`/salg/${id}`} className="text-sm font-semibold text-brand">
+          <Link href={`/salg/${id}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">
             ← Til salget
           </Link>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Dokumentasjon</h1>
