@@ -312,10 +312,14 @@ describe("HTTP", () => {
     const location = String(start.headers?.location);
     expect(location.startsWith("https://vipps.test/authorize?")).toBe(true);
 
+    // The login is bound to this browser.
+    const binding = (start.cookies?.[0] ?? "").split(";")[0]!;
+    expect(binding).toMatch(/^vq_login=[\w-]{43}$/);
+
     const phone = randomPhone();
     await invite({ phone });
     const query = vipps.approve(location, { sub: randomSub(), phone });
-    const back = await handler()(event("GET", "/auth/vipps/callback", { queryStringParameters: query }));
+    const back = await handler()(event("GET", "/auth/vipps/callback", { queryStringParameters: query, cookies: [binding] }));
     expect(back.statusCode).toBe(302);
     expect(back.headers?.location).toBe("https://app.test/");
     const cookie = back.cookies?.[0] ?? "";
@@ -337,6 +341,17 @@ describe("HTTP", () => {
     expect(logout.statusCode).toBe(204);
     const after = await handler()(event("GET", "/me", { cookies: [token] }));
     expect(after.statusCode).toBe(401);
+  });
+
+  it("refuses to finish a login in another browser than the one that started it", async () => {
+    const start = await handler()(event("GET", "/auth/vipps/start", { queryStringParameters: { next: "/" } }));
+    const phone = randomPhone();
+    await invite({ phone });
+    // Someone sends their own callback link to another person, who has no login cookie.
+    const query = vipps.approve(String(start.headers?.location), { sub: randomSub(), phone });
+    const back = await handler()(event("GET", "/auth/vipps/callback", { queryStringParameters: query, cookies: ["vq_login=someone-else"] }));
+    expect(back.headers?.location).toBe("https://app.test/logg-inn?feil=utlopt");
+    expect((back.cookies ?? []).some((c) => c.startsWith("vq_session="))).toBe(false);
   });
 
   it("says when a provider is not set up yet", async () => {

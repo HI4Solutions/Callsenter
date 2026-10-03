@@ -76,3 +76,5 @@ export interface Identity {
 }
 
 export const SESSION_COOKIE = "vq_session";
+// Binds a login to the browser that started it (login CSRF); lasts the 15 minutes of a login.
+export const LOGIN_COOKIE = "vq_login";

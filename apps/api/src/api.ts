@@ -17,7 +17,7 @@ import { handleAdmin } from "./admin/index.ts";
 import { canEnterOrganization, handleOrg } from "./org/index.ts";
 import { BadRequest, isUuid, parseBody } from "./admin/validate.ts";
 import { myAnnouncements } from "./admin/messages.ts";
-import { sha256 } from "./auth/crypto.ts";
+import { randomToken, sha256 } from "./auth/crypto.ts";
 import { handleCallback, startLogin } from "./auth/flow.ts";
 import {
   authenticationOptions,
@@ -29,7 +29,7 @@ import {
   registrationOptions,
 } from "./auth/passkey.ts";
 import { resolveSession, revokeSession } from "./auth/session.ts";
-import { isProvider, SESSION_COOKIE, type AuthDeps } from "./auth/types.ts";
+import { isProvider, LOGIN_COOKIE, SESSION_COOKIE, type AuthDeps } from "./auth/types.ts";
 import { loadAuthConfig } from "./config.ts";
 import { loadCallServices } from "./calls/runtime.ts";
 import { CONFIRM_COOKIE, rejectConfirmation, resultPage, startConfirmation, TOKEN, viewConfirmation } from "./confirm/index.ts";
@@ -112,14 +112,19 @@ export function createHandler(deps: HandlerDeps) {
           if (!session) return redirect(new URL("/logg-inn?feil=utlopt", auth.config.appOrigin).toString());
           linkUserId = session.userId;
         }
-        return redirect(await startLogin(auth, provider, { invite: query.invite, next: query.next, linkUserId }));
+        const loginBinding = randomToken();
+        return redirect(await startLogin(auth, provider, { invite: query.invite, next: query.next, linkUserId, binding: loginBinding }), [
+          sessionCookie(LOGIN_COOKIE, loginBinding, 15 * 60),
+        ]);
       }
       const binding = readCookie(event, CONFIRM_COOKIE);
-      const result = await handleCallback(auth, provider, query, { ...requestMeta(event), confirmBinding: binding });
+      const loginBinding = readCookie(event, LOGIN_COOKIE);
+      const result = await handleCallback(auth, provider, query, { ...requestMeta(event), confirmBinding: binding, loginBinding });
       const cookies = result.sessionToken
         ? [sessionCookie(SESSION_COOKIE, result.sessionToken, SESSION_MAX_HOURS * 3600)]
         : [];
       if (binding) cookies.push(clearCookie(CONFIRM_COOKIE));
+      if (loginBinding) cookies.push(clearCookie(LOGIN_COOKIE));
       return redirect(result.location, cookies);
     }
 

@@ -15,6 +15,7 @@ export interface RequestMeta {
   userAgent?: string;
   // The cookie set when accepting a sale started (confirm/index.ts).
   confirmBinding?: string;
+  loginBinding?: string;
 }
 
 export interface LoginRedirect {
@@ -77,7 +78,10 @@ export async function logEvent(
 export async function startLogin(
   deps: AuthDeps,
   provider: Provider,
-  options: { invite?: string; next?: string; linkUserId?: string },
+  // binding: a random value the API also sets as a cookie in the browser that starts the login.
+  // The callback must come back with it, so nobody can finish a login started elsewhere in
+  // someone else's browser (login CSRF).
+  options: { invite?: string; next?: string; linkUserId?: string; binding?: string },
 ): Promise<string> {
   const settings = deps.config.providers[provider];
   if (!settings) return loginPage(deps, "ikke_satt_opp");
@@ -97,9 +101,19 @@ export async function startLogin(
   const nonce = randomToken();
   const verifier = randomToken();
   await deps.authDb.query(
-    `insert into auth_states (state_hash, provider, nonce, code_verifier, return_to, invitation_id, link_user_id, created_at)
-     values ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [sha256(state), provider, nonce, verifier, safeReturnPath(options.next), invitationId, options.linkUserId ?? null, deps.now()],
+    `insert into auth_states (state_hash, provider, nonce, code_verifier, return_to, invitation_id, link_user_id, browser_hash, created_at)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [
+      sha256(state),
+      provider,
+      nonce,
+      verifier,
+      safeReturnPath(options.next),
+      invitationId,
+      options.linkUserId ?? null,
+      options.binding ? sha256(options.binding) : null,
+      deps.now(),
+    ],
   );
   return authorizationUrl(deps.fetch, settings, {
     redirectUri: callbackUri(deps, provider),
@@ -283,6 +297,14 @@ export async function handleCallback(
   if (!state) {
     await logEvent(deps, provider, "invalid", meta, undefined, "unknown, used or expired state");
     return { location: loginPage(deps, "utlopt") };
+  }
+
+  // A login started through the API is bound to that browser (see startLogin).
+  if (!state.confirmation_id && state.browser_hash) {
+    if (!meta.loginBinding || !timingSafeEqual(sha256(meta.loginBinding), state.browser_hash)) {
+      await logEvent(deps, provider, "invalid", meta, undefined, "login finished in another browser");
+      return { location: loginPage(deps, "utlopt") };
+    }
   }
 
   if (state.confirmation_id) {
