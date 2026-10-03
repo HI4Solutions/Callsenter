@@ -1,0 +1,199 @@
+{
+  "shell": {
+    "title": "Administration",
+    "pageTitle": "Administration · VeriQall",
+    "eyebrow": "Administration · {organization}",
+    "noApi": "The API address has not been configured.",
+    "noOrganization": "You are not a member of any call centre.",
+    "noAccess": "You do not have access to the administration of this call centre.",
+    "needsStrongLogin": "Administration requires signing in with BankID or a passkey. Sign out and sign in again.",
+    "tabs": {
+      "overview": "Overview",
+      "users": "Users",
+      "teams": "Teams",
+      "roles": "Roles",
+      "messages": "Messages",
+      "invoices": "Invoices"
+    }
+  },
+  "overview": {
+    "title": "Overview",
+    "intro": "{name}. {subscription}",
+    "subscription": {
+      "suspended": "The call centre has been suspended. Please contact VeriQall.",
+      "accessUntil": "Access until {date}.",
+      "trialUntil": "Trial period until {date}.",
+      "active": "Active."
+    },
+    "share": "{count} of {total}",
+    "activeUsers": "Active users",
+    "loggedIn7": "{count} signed in during the last 7 days",
+    "awaitingFirstLogin": "Awaiting first sign-in",
+    "invitationsExpired": "{count} with an expired invitation",
+    "invitationsPending": "{count} valid invitations",
+    "inactive30": "Not signed in for 30 days",
+    "disabled": "{count} deactivated",
+    "unpaid": "Unpaid",
+    "amount": "NOK {amount}",
+    "overdueInvoices": "{count, plural, one {# invoice} other {# invoices}} overdue",
+    "nextDue": "Next due {date}",
+    "nothingOverdue": "Nothing overdue",
+    "transcribedIn": "Transcribed in {month}",
+    "hours": "{hours} h",
+    "login": {
+      "title": "Sign-in",
+      "link": "Users",
+      "passkey": "Passkey",
+      "note": "Of the active users, by the sign-in methods they have linked. Administration and access to all calls require BankID or a passkey."
+    },
+    "teams": {
+      "title": "Teams",
+      "link": "Teams",
+      "note": "Members per team, including those who have not signed in yet.",
+      "withoutTeam": "{count} are not in any team.",
+      "empty": "No teams yet. Teams are needed for team leaders and for figures per team."
+    },
+    "activity": {
+      "title": "Activity in {month}",
+      "team": "Team",
+      "calls": "Calls",
+      "sales": "Sales",
+      "confirmed": "Confirmed",
+      "noTeam": "No team",
+      "more": "Figures per seller and per day are under <link>Call centre → Overview</link>."
+    },
+    "usage": {
+      "title": "Usage",
+      "thisMonth": "This month",
+      "previousMonth": "Last month",
+      "hours": "Hours transcribed",
+      "controls": "AI controls",
+      "notes": "Notes",
+      "note": "Counted as on the invoice: each call once."
+    },
+    "roles": {
+      "title": "Roles",
+      "link": "Roles"
+    },
+    "invoices": {
+      "title": "Invoices",
+      "link": "All invoices",
+      "unpaid": "Unpaid",
+      "overdue": "Overdue",
+      "nextDue": "Next due",
+      "lastPaid": "Last payment"
+    },
+    "modules": {
+      "title": "Modules",
+      "empty": "No modules are enabled.",
+      "note": "Modules are enabled and disabled by VeriQall. Send a message under Messages if you need more."
+    }
+  },
+  "users": {
+    "title": "Users",
+    "intro": "Invite users, give them a role and team, and deactivate those who leave.",
+    "exportCsv": "Export CSV",
+    "csv": {
+      "name": "Name",
+      "phone": "Mobile",
+      "email": "Email",
+      "role": "Role",
+      "team": "Team",
+      "status": "Status",
+      "lastLogin": "Last signed in"
+    },
+    "csvFile": "users-{date}.csv",
+    "search": "Search",
+    "searchPlaceholder": "Name, mobile or email",
+    "noMatch": "No users match the search.",
+    "you": "(you)",
+    "noContact": "No contact details",
+    "lastLogin": "last signed in {when}",
+    "role": "Role",
+    "team": "Team",
+    "noTeam": "No team",
+    "lacksPermissions": "(requires permissions you do not have)",
+    "confirmDisable": "Deactivate {name}? The user will lose access to the call centre.",
+    "disable": "Deactivate",
+    "enable": "Reactivate",
+    "invite": {
+      "title": "Invite user",
+      "name": "Name",
+      "phone": "Mobile number",
+      "phoneHint": "With Vipps, the user is linked via their mobile number.",
+      "email": "Email",
+      "creating": "Creating invitation …",
+      "create": "Create invitation",
+      "added": "This person already uses VeriQall and has been added. For security reasons no link is created: the call centre appears when they sign in with their own BankID, Vipps or passkey.",
+      "link": "Invitation link",
+      "emailed": "Sent by email to {email}.",
+      "alsoSendYourself": "You can also send the link yourself, for example by text message.",
+      "sendIt": "Send the link to the person.",
+      "validity": "It can be used once and is valid until {date}. It is only shown now.",
+      "copied": "Copied",
+      "copy": "Copy link"
+    },
+    "invitations": {
+      "title": "Invitations",
+      "created": "Created {date} · {state}",
+      "state": {
+        "used": "Used",
+        "revoked": "Withdrawn",
+        "expired": "Expired",
+        "pending": "Pending"
+      },
+      "revoke": "Withdraw"
+    }
+  },
+  "teams": {
+    "title": "Teams",
+    "intro": "Teams give leaders access to the calls and sales of their sellers.",
+    "new": "New team",
+    "name": "Name",
+    "create": "Create team",
+    "list": "Teams ({count})",
+    "empty": "No teams yet",
+    "emptyHint": "Create the first one above. Teams are needed for team leaders, and for figures per team on the dashboard.",
+    "archived": "Archived teams",
+    "restore": "Restore",
+    "members": "{count, plural, one {# member} other {# members}}",
+    "saveName": "Save name",
+    "archive": "Archive",
+    "confirmArchive": "Archive {name}? Its members will have no team."
+  },
+  "roles": {
+    "title": "Roles",
+    "intro": "A role is a set of permissions. You can only grant permissions you hold yourself, and you cannot change your own role.",
+    "new": "New role",
+    "otherGroup": "Other",
+    "confirmArchive": "Archive the role {name}?",
+    "yours": "(your role)",
+    "users": "{count, plural, one {# user} other {# users}}",
+    "defaultRole": "default role",
+    "noPermissions": "No permissions",
+    "edit": "Edit",
+    "archive": "Archive",
+    "archived": "Archived roles",
+    "restore": "Restore",
+    "editTitle": "Edit {name}",
+    "name": "Name",
+    "requiresStrongLogin": "Requires BankID or a passkey.",
+    "notHeld": "You do not hold this yourself.",
+    "saving": "Saving …",
+    "save": "Save",
+    "create": "Create role",
+    "cancel": "Cancel"
+  },
+  "invoices": {
+    "title": "Invoices",
+    "intro": "Invoices from VeriQall to the call centre.",
+    "empty": "No invoices yet.",
+    "due": ", due {date}",
+    "all": "← All invoices",
+    "downloadPdf": "Download PDF"
+  },
+  "messages": {
+    "title": "Messages",
+    "intro": "Conversations with VeriQall. Everyone with access to the administration can see them."
+  }
+}

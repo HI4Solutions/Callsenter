@@ -2,7 +2,12 @@
 import type { Locale } from "@veriqall/shared";
 import type { FlagLevel } from "@/components/flag";
 
-export type CallStatus = "recording" | "processing" | "transcribed" | "analyzed" | "failed";
+export type CallStatus =
+  | "recording"
+  | "processing"
+  | "transcribed"
+  | "analyzed"
+  | "failed";
 export type Level = "green" | "yellow" | "red";
 
 export interface CallSummary {
@@ -62,7 +67,13 @@ export interface CallDetail extends CallSummary {
   outputLocaleLocked: boolean;
   defaultSpokenLanguages: string[];
   transcriptLanguage: Locale | null;
-  segments: { seq: number; speaker: string | null; startMs: number; endMs: number; text: string }[];
+  segments: {
+    seq: number;
+    speaker: string | null;
+    startMs: number;
+    endMs: number;
+    text: string;
+  }[];
   analyses: {
     id: string;
     flag: Level;
@@ -126,6 +137,8 @@ export interface CreatedCall {
   realtime: RealtimeConfig | null;
 }
 
+// Norwegian labels, kept for pages not yet translated. Translated pages use the domain namespace
+// (domain.callStatus, domain.callSource, domain.findingKind, domain.flag).
 export const CALL_STATUS: Record<CallStatus, string> = {
   recording: "Tar opp",
   processing: "Transkriberes",
@@ -141,7 +154,11 @@ export const SOURCE: Record<CallSummary["source"], string> = {
 };
 
 // AI flags use the reserved colors (CLAUDE.md, "Farger") with their names.
-export const FLAG_LEVEL: Record<Level, FlagLevel> = { green: "approved", yellow: "deviation", red: "violation" };
+export const FLAG_LEVEL: Record<Level, FlagLevel> = {
+  green: "approved",
+  yellow: "deviation",
+  red: "violation",
+};
 
 export const FINDING_KIND: Record<Finding["kind"], string> = {
   required_point: "Obligatorisk punkt",
@@ -160,17 +177,30 @@ export function formatDuration(ms: number | null): string {
   return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
 }
 
-export function canSeeCalls(me: { permissions: string[]; modules?: string[] }): boolean {
+export function canSeeCalls(me: {
+  permissions: string[];
+  modules?: string[];
+}): boolean {
   return (
     (me.modules ?? []).includes("transcription") &&
-    ["calls.read.own", "calls.read.team", "calls.read.all", "calls.upload"].some((p) => me.permissions.includes(p))
+    [
+      "calls.read.own",
+      "calls.read.team",
+      "calls.read.all",
+      "calls.upload",
+    ].some((p) => me.permissions.includes(p))
   );
 }
 
 // The audio type MediaRecorder should use: Opus in WebM where supported (Chrome, Edge, Firefox),
 // otherwise what the browser offers (Safari records MP4/AAC).
 export function recordingMime(isSupported: (type: string) => boolean): string {
-  for (const type of ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"]) {
+  for (const type of [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/ogg;codecs=opus",
+  ]) {
     if (isSupported(type)) return type;
   }
   return "audio/webm";

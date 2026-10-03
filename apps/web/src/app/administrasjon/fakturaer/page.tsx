@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { ErrorMessage } from "@/components/admin/field";
-import { InvoiceStatusBadge } from "@/components/billing/invoice-status";
-import { type InvoiceSummary, invoiceTitle, kr } from "@/lib/billing";
+import { InvoiceStatusBadge, useInvoiceTitle } from "@/components/billing/invoice-status";
+import { type InvoiceSummary, kr } from "@/lib/billing";
 import { formatDate } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 
@@ -12,6 +13,9 @@ type OrgInvoice = Pick<InvoiceSummary, "id" | "kind" | "status" | "number" | "is
 
 // The call centre's invoices from VeriQall (billing.read).
 export default function OrgInvoicesPage() {
+  const t = useTranslations("org.invoices");
+  const tc = useTranslations("common");
+  const invoiceTitle = useInvoiceTitle();
   const [invoices, setInvoices] = useState<OrgInvoice[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,14 +32,14 @@ export default function OrgInvoicesPage() {
   return (
     <section className="flex flex-col gap-6">
       <div>
-        <h2 className="text-2xl font-bold">Fakturaer</h2>
-        <p className="mt-1 text-muted">Fakturaer fra VeriQall til callsenteret.</p>
+        <h2 className="text-2xl font-bold">{t("title")}</h2>
+        <p className="mt-1 text-muted">{t("intro")}</p>
       </div>
       <ErrorMessage message={error} />
       {!invoices ? (
-        !error && <p className="text-muted">Laster …</p>
+        !error && <p className="text-muted">{tc("loading")}</p>
       ) : invoices.length === 0 ? (
-        <p className="text-muted">Ingen fakturaer ennå.</p>
+        <p className="text-muted">{t("empty")}</p>
       ) : (
         <ul className="divide-y divide-line rounded-2xl border border-line bg-surface">
           {invoices.map((i) => (
@@ -45,7 +49,7 @@ export default function OrgInvoicesPage() {
                   <p className="font-semibold">{invoiceTitle(i)}</p>
                   <p className="text-sm text-muted">
                     {formatDate(i.issueDate)}
-                    {i.kind === "invoice" && `, forfall ${formatDate(i.dueDate)}`}
+                    {i.kind === "invoice" && t("due", { date: formatDate(i.dueDate) })}
                   </p>
                 </div>
                 <span className="font-semibold">{kr(i.total)}</span>

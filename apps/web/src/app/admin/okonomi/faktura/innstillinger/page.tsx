@@ -1,15 +1,34 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import {
+  ErrorMessage,
+  Field,
+  inputClass,
+  primaryButton,
+  secondaryButton,
+} from "@/components/admin/field";
 import { EconomyNav } from "@/components/billing/economy-nav";
 import { adminFetch, formatDateTime } from "@/lib/admin";
 import { API_URL } from "@/lib/auth";
 import type { BillingSettings } from "@/lib/billing";
 
 type Form = Record<
-  "companyName" | "orgNumber" | "address" | "email" | "accountNumber" | "footer" | "priceAudioHour" | "priceAiControl" | "dueDays" | "nextNumber" | "invoiceFee" | "recurringDaysBefore" | "copyEmail",
+  | "companyName"
+  | "orgNumber"
+  | "address"
+  | "email"
+  | "accountNumber"
+  | "footer"
+  | "priceAudioHour"
+  | "priceAiControl"
+  | "dueDays"
+  | "nextNumber"
+  | "invoiceFee"
+  | "recurringDaysBefore"
+  | "copyEmail",
   string
 > & {
   vatRegistered: boolean;
@@ -36,6 +55,8 @@ function toForm(s: BillingSettings): Form {
 
 // The seller on every invoice, payment terms, numbering and prices for usage.
 export default function BillingSettingsPage() {
+  const t = useTranslations("economy");
+  const tc = useTranslations("common");
   const [settings, setSettings] = useState<BillingSettings | null>(null);
   const [form, setForm] = useState<Form | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +101,9 @@ export default function BillingSettingsPage() {
           recurringDaysBefore: Number(form.recurringDaysBefore),
           copyEmail: nullable(form.copyEmail),
           vatRegistered: form.vatRegistered,
-          ...(Number(form.nextNumber) !== settings.nextNumber ? { nextNumber: Number(form.nextNumber) } : {}),
+          ...(Number(form.nextNumber) !== settings.nextNumber
+            ? { nextNumber: Number(form.nextNumber) }
+            : {}),
         },
       });
       setSettings(s);
@@ -92,71 +115,149 @@ export default function BillingSettingsPage() {
     setBusy(false);
   }
 
-  const field = (key: keyof Omit<Form, "vatRegistered">, label: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}, hint?: string) => (
+  const field = (
+    key: keyof Omit<Form, "vatRegistered">,
+    label: string,
+    props: React.InputHTMLAttributes<HTMLInputElement> = {},
+    hint?: string,
+  ) => (
     <Field label={label} hint={hint}>
-      <input className={inputClass} value={form![key]} onChange={(e) => setForm({ ...form!, [key]: e.target.value })} {...props} />
+      <input
+        className={inputClass}
+        value={form![key]}
+        onChange={(e) => setForm({ ...form!, [key]: e.target.value })}
+        {...props}
+      />
     </Field>
   );
 
   return (
     <section className="flex flex-col gap-8">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight">Økonomi</h1>
-        <p className="mt-2 text-muted">Avsender, betalingsvilkår og priser. Sendte fakturaer beholder opplysningene de ble sendt med.</p>
+        <h1 className="text-3xl font-extrabold tracking-tight">{t("title")}</h1>
+        <p className="mt-2 text-muted">{t("settings.intro")}</p>
       </div>
       <EconomyNav />
       <ErrorMessage message={error} />
       {!form ? (
-        !error && <p className="text-muted">Laster …</p>
+        !error && <p className="text-muted">{tc("loading")}</p>
       ) : (
         <form onSubmit={save} className="flex flex-col gap-6">
-          <Card title="Avsender">
+          <Card title={t("settings.sender")}>
             <div className="grid gap-4 sm:grid-cols-2">
-              {field("companyName", "Firmanavn", { maxLength: 200 })}
-              {field("orgNumber", "Organisasjonsnummer", { inputMode: "numeric" })}
-              {field("accountNumber", "Kontonummer", { inputMode: "numeric" })}
-              {field("email", "E-post", { type: "email" })}
-              <Field label="Adresse">
-                <textarea rows={3} maxLength={500} className={`${inputClass} py-2`} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+              {field("companyName", t("settings.companyName"), {
+                maxLength: 200,
+              })}
+              {field("orgNumber", t("settings.orgNumber"), {
+                inputMode: "numeric",
+              })}
+              {field("accountNumber", t("settings.accountNumber"), {
+                inputMode: "numeric",
+              })}
+              {field("email", t("settings.email"), { type: "email" })}
+              <Field label={t("settings.address")}>
+                <textarea
+                  rows={3}
+                  maxLength={500}
+                  className={`${inputClass} py-2`}
+                  value={form.address}
+                  onChange={(e) =>
+                    setForm({ ...form, address: e.target.value })
+                  }
+                />
               </Field>
-              <Field label="Bunntekst" hint="Valgfritt. For eksempel kontaktinformasjon.">
-                <textarea rows={3} maxLength={1000} className={`${inputClass} py-2`} value={form.footer} onChange={(e) => setForm({ ...form, footer: e.target.value })} />
+              <Field
+                label={t("settings.footer")}
+                hint={t("settings.footerHint")}
+              >
+                <textarea
+                  rows={3}
+                  maxLength={1000}
+                  className={`${inputClass} py-2`}
+                  value={form.footer}
+                  onChange={(e) => setForm({ ...form, footer: e.target.value })}
+                />
               </Field>
             </div>
             <label className="mt-4 inline-flex min-h-11 items-center gap-2">
-              <input type="checkbox" checked={form.vatRegistered} onChange={(e) => setForm({ ...form, vatRegistered: e.target.checked })} />
-              Registrert i Merverdiavgiftsregisteret (fakturaene får mva)
+              <input
+                type="checkbox"
+                checked={form.vatRegistered}
+                onChange={(e) =>
+                  setForm({ ...form, vatRegistered: e.target.checked })
+                }
+              />
+              {t("settings.vatRegistered")}
             </label>
           </Card>
           <Logo settings={settings!} onChanged={setSettings} />
-          <Card title="Vilkår, gebyr og nummerering">
+          <Card title={t("settings.terms")}>
             <div className="grid gap-4 sm:grid-cols-2">
-              {field("dueDays", "Standard forfall (dager etter sending)", { type: "number", min: 0, max: 90 })}
-              {field("recurringDaysBefore", "Gjentakende: sendes dager før forfall", { type: "number", min: 0, max: 60 })}
-              {field("invoiceFee", "Fakturagebyr eks. mva", { inputMode: "decimal" }, "Tomt: ikke noe gebyr å legge til.")}
-              {field("nextNumber", "Neste fakturanummer", { type: "number", min: 1 }, "Kan bare settes høyere enn det siste brukte nummeret.")}
+              {field("dueDays", t("settings.dueDays"), {
+                type: "number",
+                min: 0,
+                max: 90,
+              })}
+              {field("recurringDaysBefore", t("settings.recurringDaysBefore"), {
+                type: "number",
+                min: 0,
+                max: 60,
+              })}
+              {field(
+                "invoiceFee",
+                t("settings.invoiceFee"),
+                { inputMode: "decimal" },
+                t("settings.invoiceFeeHint"),
+              )}
+              {field(
+                "nextNumber",
+                t("settings.nextNumber"),
+                { type: "number", min: 1 },
+                t("settings.nextNumberHint"),
+              )}
             </div>
           </Card>
-          <Card title="E-post">
+          <Card title={t("settings.emailTitle")}>
             <p className="mb-4 text-sm text-muted">
               {settings?.emailEnabled
-                ? "Fakturaer sendes på e-post fra noreply@ med PDF når de sendes."
-                : "E-post er ikke satt opp ennå (se docs/plan.md, seksjon 17). Til da lastes PDF-en ned og sendes for hånd."}
+                ? t("settings.emailEnabled")
+                : t("settings.emailDisabled")}
             </p>
-            {field("copyEmail", "Kopi av hver faktura til", { type: "email" }, "Blindkopi, for eksempel til regnskapet. Valgfritt.")}
+            {field(
+              "copyEmail",
+              t("settings.copyEmail"),
+              { type: "email" },
+              t("settings.copyEmailHint"),
+            )}
           </Card>
-          <Card title="Priser for forbruk">
+          <Card title={t("settings.usagePrices")}>
             <div className="grid gap-4 sm:grid-cols-2">
-              {field("priceAudioHour", "Pris per time lyd (eks. mva)", { inputMode: "decimal" }, "Tomt: transkribering faktureres ikke som forbruk.")}
-              {field("priceAiControl", "Pris per AI-kontroll (eks. mva)", { inputMode: "decimal" }, "Tomt: AI-kontroll faktureres ikke som forbruk.")}
+              {field(
+                "priceAudioHour",
+                t("settings.priceAudioHour"),
+                { inputMode: "decimal" },
+                t("settings.priceAudioHourHint"),
+              )}
+              {field(
+                "priceAiControl",
+                t("settings.priceAiControl"),
+                { inputMode: "decimal" },
+                t("settings.priceAiControlHint"),
+              )}
             </div>
           </Card>
           <div className="flex flex-wrap items-center gap-3">
             <button type="submit" disabled={busy} className={primaryButton}>
-              Lagre
+              {t("shared.save")}
             </button>
-            {saved && <span role="status">Lagret.</span>}
-            {settings && <span className="text-sm text-muted">Sist endret {formatDateTime(settings.updatedAt)}</span>}
+            {saved && <span role="status">{t("shared.saved")}</span>}
+            {settings && (
+              <span className="text-sm text-muted">
+                {t("shared.lastChanged", {
+                  time: formatDateTime(settings.updatedAt),
+                })}
+              </span>
+            )}
           </div>
         </form>
       )}
@@ -165,7 +266,14 @@ export default function BillingSettingsPage() {
 }
 
 // The logo on invoices (PNG or JPEG, up to 500 kB). No logo: the seller's name in bold instead.
-function Logo({ settings, onChanged }: { settings: BillingSettings; onChanged: (s: BillingSettings) => void }) {
+function Logo({
+  settings,
+  onChanged,
+}: {
+  settings: BillingSettings;
+  onChanged: (s: BillingSettings) => void;
+}) {
+  const t = useTranslations("economy.settings");
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -190,14 +298,18 @@ function Logo({ settings, onChanged }: { settings: BillingSettings; onChanged: (
 
   async function upload(file: File) {
     setError(null);
-    if (file.type !== "image/png" && file.type !== "image/jpeg") return setError("Logoen må være PNG eller JPEG.");
-    if (file.size > 500_000) return setError("Logoen kan være opptil 500 kB.");
+    if (file.type !== "image/png" && file.type !== "image/jpeg")
+      return setError(t("logoType"));
+    if (file.size > 500_000) return setError(t("logoSize"));
     setBusy(true);
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
       let binary = "";
       for (const b of bytes) binary += String.fromCharCode(b);
-      await adminFetch("/billing/logo", { method: "PUT", body: { type: file.type, data: btoa(binary) } });
+      await adminFetch("/billing/logo", {
+        method: "PUT",
+        body: { type: file.type, data: btoa(binary) },
+      });
       onChanged(await adminFetch<BillingSettings>("/billing/settings"));
     } catch (e) {
       setError((e as Error).message);
@@ -206,7 +318,7 @@ function Logo({ settings, onChanged }: { settings: BillingSettings; onChanged: (
   }
 
   async function remove() {
-    if (!window.confirm("Fjerne logoen fra fakturaene?")) return;
+    if (!window.confirm(t("confirmRemoveLogo"))) return;
     setBusy(true);
     try {
       await adminFetch("/billing/logo", { method: "DELETE" });
@@ -219,17 +331,21 @@ function Logo({ settings, onChanged }: { settings: BillingSettings; onChanged: (
   }
 
   return (
-    <Card title="Logo">
+    <Card title={t("logo")}>
       <div className="flex flex-col gap-3">
         {settings.hasLogo && preview ? (
           // eslint-disable-next-line @next/next/no-img-element -- a blob from the API, not a static asset
-          <img src={preview} alt="Logoen på fakturaene" className="max-h-16 max-w-48 self-start rounded bg-white p-2" />
+          <img
+            src={preview}
+            alt={t("logoAlt")}
+            className="max-h-16 max-w-48 self-start rounded bg-white p-2"
+          />
         ) : (
-          <p className="text-sm text-muted">Ingen logo. Fakturaen viser firmanavnet i stedet.</p>
+          <p className="text-sm text-muted">{t("noLogo")}</p>
         )}
         <div className="flex flex-wrap items-center gap-2">
           <label className={`${secondaryButton} cursor-pointer`}>
-            {settings.hasLogo ? "Bytt logo" : "Last opp logo"}
+            {settings.hasLogo ? t("replaceLogo") : t("uploadLogo")}
             <input
               type="file"
               accept="image/png,image/jpeg"
@@ -243,8 +359,13 @@ function Logo({ settings, onChanged }: { settings: BillingSettings; onChanged: (
             />
           </label>
           {settings.hasLogo && (
-            <button type="button" disabled={busy} className={secondaryButton} onClick={remove}>
-              Fjern logo
+            <button
+              type="button"
+              disabled={busy}
+              className={secondaryButton}
+              onClick={remove}
+            >
+              {t("removeLogo")}
             </button>
           )}
         </div>

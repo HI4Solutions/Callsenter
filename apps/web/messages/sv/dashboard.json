@@ -1,0 +1,246 @@
+{
+  "page": {
+    "title": "Översikt",
+    "notEnabled": "Dashboard och coachning är inte aktiverade för callcentret.",
+    "intro": {
+      "me": "Dina egna siffror.",
+      "team": "Team {name}.",
+      "quality": "Kvalitet och regelefterlevnad i hela callcentret.",
+      "all": "Hela callcentret."
+    },
+    "countsOnly": "Siffrorna visar antal, inte innehåll.",
+    "teamField": "Team",
+    "feedbackToYou": "Återkoppling till dig"
+  },
+  "tabs": {
+    "label": "Nivå",
+    "me": "Jag",
+    "team": "Teamet",
+    "teamNamed": "Team {name}",
+    "all": "Callcentret",
+    "quality": "Kvalitet"
+  },
+  "seller": {
+    "back": "← Översikt",
+    "fallbackName": "Säljare"
+  },
+  "period": {
+    "label": "Period",
+    "from": "Från",
+    "to": "Till"
+  },
+  "compare": {
+    "yesterday": "i går",
+    "dayBefore": "dagen innan",
+    "previous": "föregående period"
+  },
+  "stats": {
+    "sales": "Försäljning",
+    "confirmed": "Bekräftade",
+    "calls": "Samtal",
+    "complaints": "Klagomål",
+    "violations": "Brott",
+    "unreviewedFlags": "Obehandlade flaggor",
+    "pending": "{count} väntar på bekräftelse",
+    "confirmedNote": "{confirmed} bekräftade, {rejected} avvisade, {withdrawn} ångrade",
+    "monthlyValue": "Bekräftat värde per månad",
+    "oneOff": "+ {amount} engångs",
+    "hoursRecorded": "{hours} timmar inspelat",
+    "complaintsNote": "{count} öppna. {scope, select, all {Alla i callcentret.} other {På försäljning i urvalet.}}"
+  },
+  "flagCard": {
+    "title": "AI-kontroll",
+    "withoutDeviation": "{share} av de kontrollerade är utan avvikelser.",
+    "unreviewed": "{count, plural, one {# flagga är inte behandlad} other {# flaggor är inte behandlade}}",
+    "allReviewed": "Alla flaggor är behandlade."
+  },
+  "trend": {
+    "title": "Utveckling",
+    "salesPerDay": "Försäljning per dag",
+    "salesPerWeek": "Försäljning per vecka",
+    "callsPerDay": "Samtal per dag",
+    "callsPerWeek": "Samtal per vecka",
+    "unitSales": "försäljningar",
+    "unitCalls": "samtal"
+  },
+  "findings": {
+    "title": "Vanligaste avvikelser",
+    "intro": "Punkterna som AI-kontrollen oftast flaggade. Det är här coachning gör mest nytta.",
+    "violations": "Brott: {count}",
+    "deviations": "Avvikelser: {count}"
+  },
+  "sellers": {
+    "title": "Säljare",
+    "name": "Namn",
+    "sales": "Försäljning",
+    "confirmed": "Bekräftade",
+    "calls": "Samtal",
+    "deviations": "Avvikelser",
+    "violations": "Brott",
+    "complaints": "Klagomål"
+  },
+  "charts": {
+    "perHour": "AI-kontroll per timme",
+    "perDay": "AI-kontroll per dag",
+    "perWeek": "AI-kontroll per vecka",
+    "hour": "Kl. {hour}",
+    "weekFrom": "Veckan från {day}",
+    "unchecked": "Inte kontrollerad",
+    "noCalls": "Inga samtal under perioden.",
+    "showTable": "Visa som tabell",
+    "showChart": "Visa som diagram",
+    "time": "Tid",
+    "chartLabel": "{title}. Använd ”Visa som tabell” för siffrorna.",
+    "part": "{label}: {count}"
+  },
+  "me": {
+    "avgLength": "Snittlängd",
+    "approvedByAi": "Godkänd av AI",
+    "teamAverage": "Snitt i teamet: {value}",
+    "teamShare": "Teamet: {share}",
+    "noTeam": "Du är inte med i ett team, så det finns inget snitt att jämföra med.",
+    "tooFew": "Snittet i team {team} visas när minst tre har varit aktiva under perioden, så att ingen kan räkna ut vad en kollega har gjort.",
+    "benchmark": "Snittet är per säljare i team {team} ({count} aktiva under perioden), utan namn.",
+    "findingsTitle": "Det du oftast glömmer",
+    "findingsIntro": "Punkterna som AI-kontrollen oftast flaggade i dina samtal. Öppna samtalen nedan för att se vad som sades."
+  },
+  "team": {
+    "perMonth": "{amount} per månad",
+    "redAndYellow": "{red} brott och {yellow} avvikelser",
+    "showThem": "Visa dem",
+    "allReviewed": "Alla är behandlade",
+    "sellersTitle": "Säljarna",
+    "noSellers": "Inga säljare under perioden.",
+    "followUpTitle": "Behöver uppföljning",
+    "activityPerDay": "Aktivitet per dag",
+    "activityPerWeek": "Aktivitet per vecka",
+    "metrics": {
+      "sales": "Försäljning",
+      "calls": "Samtal",
+      "redShare": "Andel brott",
+      "unreviewed": "Obehandlade flaggor",
+      "red": "Brott"
+    },
+    "compareBy": "Jämför på",
+    "redShareHint": "Brott som andel av säljarens samtal under perioden.",
+    "redShareValue": "{share} ({red} av {calls})",
+    "show": "Visa",
+    "heatmapCaption": "{metric} per säljare och {unit, select, day {dag} other {vecka}}",
+    "seller": "Säljare",
+    "sum": "Summa",
+    "fewer": "Färre",
+    "more": "Fler",
+    "cell": "{name}, {title}: {value}",
+    "units": {
+      "calls": "{count, plural, one {# samtal} other {# samtal}}",
+      "sales": "{count, plural, one {# försäljning} other {# försäljningar}}",
+      "red": "{count, plural, one {# brott} other {# brott}}"
+    },
+    "reasons": {
+      "unreviewed": "{count, plural, one {# flagga väntar på behandling} other {# flaggor väntar på behandling}}",
+      "breaches": "Brott i {share} av samtalen ({red} av {calls})",
+      "noFeedbackYet": "Har inte fått någon återkoppling än",
+      "noFeedback30": "Ingen återkoppling på över 30 dagar",
+      "inactive": "Inga samtal eller försäljningar under perioden"
+    },
+    "nobodyNeedsFollowUp": "Ingen behöver uppföljning just nu."
+  },
+  "quality": {
+    "openNow": "Obehandlade flaggor nu",
+    "noneWaiting": "Ingen väntar",
+    "oldestToday": "Den äldsta är från i dag",
+    "oldestDays": "{count, plural, one {Den äldsta har väntat i # dygn} other {Den äldsta har väntat i # dygn}}",
+    "reviewed": "Behandlade under perioden",
+    "medianHours": "Median {hours} timmar från kontroll till behandling",
+    "flagged": "Flaggade under perioden",
+    "flaggedNote": "{red} brott och {yellow} avvikelser av {checked} kontrollerade",
+    "complaintsReceived": "Mottagna klagomål",
+    "openNowNote": "{count} öppna nu",
+    "acceptance": "Kundgodkännande",
+    "acceptedOf": "{accepted} av {sent}",
+    "mismatchNote": "{count} där identiteten inte stämde med kunden",
+    "allMatchedNote": "Identiteten stämde i alla",
+    "queue": {
+      "title": "Kön nu",
+      "intro": "Gula och röda flaggor som ingen har behandlat, efter hur länge de har väntat.",
+      "underDay": "Under 1 dygn",
+      "days1to3": "1–3 dygn",
+      "days3to7": "3–7 dygn",
+      "overWeek": "Över 7 dygn",
+      "showPeriod": "Visa de {count} från perioden"
+    },
+    "products": {
+      "title": "Avvikelser per produkt",
+      "none": "Inga kontrollerade samtal med produkt under perioden."
+    },
+    "overTime": "AI-kontroll över tid",
+    "sellers": {
+      "title": "Säljare med högst andel brott",
+      "name": "Namn",
+      "checked": "Kontrollerade",
+      "deviations": "Avvikelser",
+      "violations": "Brott",
+      "redShare": "Andel brott",
+      "none": "Inga säljare med brott i minst tre kontrollerade samtal."
+    },
+    "complaints": {
+      "title": "Klagomål",
+      "received": "Mottagna under perioden, efter status i dag.",
+      "medianDays": "Ärenden som avslutades under perioden tog i median {days} dygn.",
+      "channels": "Kanal: {list}.",
+      "perWeek": "Mottagna klagomål per vecka",
+      "unit": "klagomål"
+    },
+    "acceptanceCard": {
+      "title": "Kundgodkännande",
+      "bankid": "Godkänt med BankID",
+      "vipps": "Godkänt med Vipps",
+      "rejected": "Avvisat",
+      "pending": "Väntar",
+      "expired": "Utgånget",
+      "revoked": "Återkallat",
+      "sent": "Länkar skickade under perioden: {count}.",
+      "mismatch": "{count} godkändes av en person som inte stämde med kunden till namn eller telefonnummer. De bör kontrolleras.",
+      "allMatched": "Alla som godkände stämde med kunden."
+    },
+    "access": {
+      "title": "Åtkomst till inspelningar och transkriberingar",
+      "views": "Öppnade",
+      "plays": "Uppspelade",
+      "downloads": "Nedladdade",
+      "searches": "Sökningar",
+      "caption": "Vilka som har öppnat mest under perioden",
+      "name": "Namn"
+    }
+  },
+  "calls": {
+    "title": "Samtal under perioden",
+    "filterLabel": "Visa samtal",
+    "all": "Alla",
+    "unreviewed": "Inte behandlad",
+    "unchecked": "Inte kontrollerad",
+    "reviewed": "Behandlad",
+    "unknownSeller": "Okänd säljare",
+    "noCustomer": "Utan kund",
+    "team": "Team {name}",
+    "empty": "Inga samtal här under perioden.",
+    "capped": "Visar de 200 senaste. Välj en kortare period för att se alla.",
+    "call": "Samtal"
+  },
+  "coaching": {
+    "title": "Återkoppling",
+    "new": "Ny",
+    "noneOwn": "Ingen återkoppling än.",
+    "noneGiven": "Ingen återkoppling given än.",
+    "callFallback": "Samtal {date}",
+    "readAt": "läst {date}",
+    "unread": "inte läst",
+    "markRead": "Markera som läst",
+    "newTitle": "Ny återkoppling",
+    "newTitleTo": "Ny återkoppling till {name}",
+    "field": "Återkoppling",
+    "hint": "Var konkret: vad hände, och vad kan göras annorlunda nästa gång. Kan inte ändras i efterhand.",
+    "submit": "Ge återkoppling",
+    "sent": "Skickat."
+  }
+}

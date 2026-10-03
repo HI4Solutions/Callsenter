@@ -1,10 +1,12 @@
 "use client";
 
-import { PERMISSION_GROUPS } from "@veriqall/shared";
+import { isPermission, PERMISSION_GROUPS } from "@veriqall/shared";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
 import { apiFetch } from "@/lib/api";
+import { permissionKey } from "@/lib/format";
 
 interface Role {
   id: string;
@@ -25,15 +27,31 @@ interface Permission {
 }
 
 // The role's permissions under the catalog's areas (PERMISSION_GROUPS), and any unknown ones
-// last.
-function groupPermissions(keys: string[]): { name: string; permissions: string[] }[] {
-  const groups = PERMISSION_GROUPS.map((g) => ({ name: g.name, permissions: g.permissions.filter((p) => keys.includes(p)) as string[] }));
+// last ("other").
+function groupPermissions(keys: string[]): { key: (typeof PERMISSION_GROUPS)[number]["key"] | "other"; permissions: string[] }[] {
+  const groups: ReturnType<typeof groupPermissions> = PERMISSION_GROUPS.map((g) => ({
+    key: g.key,
+    permissions: g.permissions.filter((p) => keys.includes(p)) as string[],
+  }));
   const known = new Set<string>(PERMISSION_GROUPS.flatMap((g) => g.permissions));
-  groups.push({ name: "Annet", permissions: keys.filter((k) => !known.has(k)) });
+  groups.push({ key: "other", permissions: keys.filter((k) => !known.has(k)) });
   return groups.filter((g) => g.permissions.length > 0);
 }
 
+// Names of permission groups and permissions in the page language. A permission the catalog
+// does not know keeps the API's description.
+function useCatalogText() {
+  const t = useTranslations("org.roles");
+  const td = useTranslations("domain");
+  return {
+    group: (key: ReturnType<typeof groupPermissions>[number]["key"]) => (key === "other" ? t("otherGroup") : td(`permissionGroups.${key}`)),
+    permission: (key: string, fallback?: string) => (isPermission(key) ? td(`permissions.${permissionKey(key)}`) : (fallback ?? key)),
+  };
+}
+
 export default function RolesPage() {
+  const t = useTranslations("org.roles");
+  const text = useCatalogText();
   const [data, setData] = useState<{ roles: Role[]; permissions: Permission[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Role | "new" | null>(null);
@@ -57,7 +75,7 @@ export default function RolesPage() {
   }, []);
 
   async function setArchived(role: Role, archived: boolean) {
-    if (archived && !window.confirm(`Arkivere rollen ${role.name}?`)) return;
+    if (archived && !window.confirm(t("confirmArchive", { name: role.name }))) return;
     setError(null);
     try {
       await apiFetch(`/org/roles/${role.id}`, { method: "PATCH", body: { archived } });
@@ -76,14 +94,12 @@ export default function RolesPage() {
     <section className="flex flex-col gap-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Roller</h1>
-          <p className="mt-2 max-w-2xl text-muted">
-            En rolle er et sett rettigheter. Du kan bare gi rettigheter du har selv, og du kan ikke endre rollen du har selv.
-          </p>
+          <h1 className="text-3xl font-extrabold tracking-tight">{t("title")}</h1>
+          <p className="mt-2 max-w-2xl text-muted">{t("intro")}</p>
         </div>
         {editing === null && (
           <button type="button" className={primaryButton} onClick={() => setEditing("new")}>
-            Ny rolle
+            {t("new")}
           </button>
         )}
       </div>
@@ -108,23 +124,23 @@ export default function RolesPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-bold">
                 {r.name}
-                {r.mine && <span className="ml-2 text-sm font-medium text-muted">(din rolle)</span>}
+                {r.mine && <span className="ml-2 text-sm font-medium text-muted">{t("yours")}</span>}
               </h2>
               <span className="text-sm text-muted">
-                {r.members} {r.members === 1 ? "bruker" : "brukere"}
-                {r.isDefault && " · standardrolle"}
+                {t("users", { count: r.members })}
+                {r.isDefault && ` · ${t("defaultRole")}`}
               </span>
             </div>
             {r.permissions.length ? (
               <dl className="mt-3 flex flex-col gap-2">
                 {groupPermissions(r.permissions).map((g) => (
-                  <div key={g.name} className="flex flex-col gap-1 sm:flex-row sm:gap-3">
-                    <dt className="text-sm font-semibold text-muted sm:w-44 sm:shrink-0 sm:pt-0.5">{g.name}</dt>
+                  <div key={g.key} className="flex flex-col gap-1 sm:flex-row sm:gap-3">
+                    <dt className="text-sm font-semibold text-muted sm:w-44 sm:shrink-0 sm:pt-0.5">{text.group(g.key)}</dt>
                     <dd>
                       <ul className="flex flex-wrap gap-1.5">
                         {g.permissions.map((p) => (
                           <li key={p} className="rounded-full border border-line px-2.5 py-0.5 text-sm">
-                            {describe.get(p) ?? p}
+                            {text.permission(p, describe.get(p))}
                           </li>
                         ))}
                       </ul>
@@ -133,15 +149,15 @@ export default function RolesPage() {
                 ))}
               </dl>
             ) : (
-              <p className="mt-2 text-sm">Ingen rettigheter</p>
+              <p className="mt-2 text-sm">{t("noPermissions")}</p>
             )}
             {!r.mine && (
               <div className="mt-4 flex flex-wrap gap-2">
                 <button type="button" className={secondaryButton} onClick={() => setEditing(r)}>
-                  Endre
+                  {t("edit")}
                 </button>
                 <button type="button" className={secondaryButton} onClick={() => setArchived(r, true)}>
-                  Arkiver
+                  {t("archive")}
                 </button>
               </div>
             )}
@@ -149,13 +165,13 @@ export default function RolesPage() {
         ))}
       </ul>
       {archived.length > 0 && (
-        <Card title="Arkiverte roller">
+        <Card title={t("archived")}>
           <ul className="divide-y divide-line">
             {archived.map((r) => (
               <li key={r.id} className="flex items-center justify-between gap-3 py-3">
                 <span>{r.name}</span>
                 <button type="button" className={secondaryButton} onClick={() => setArchived(r, false)}>
-                  Gjenopprett
+                  {t("restore")}
                 </button>
               </li>
             ))}
@@ -181,6 +197,8 @@ function RoleEditor({
   const [chosen, setChosen] = useState<Set<string>>(new Set(role?.permissions ?? []));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const t = useTranslations("org.roles");
+  const text = useCatalogText();
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -198,54 +216,56 @@ function RoleEditor({
   }
 
   return (
-    <Card title={role ? `Endre ${role.name}` : "Ny rolle"}>
+    <Card title={role ? t("editTitle", { name: role.name }) : t("new")}>
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <Field label="Navn">
+        <Field label={t("name")}>
           <input required maxLength={100} className={`${inputClass} sm:max-w-sm`} value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
         {groupPermissions(permissions.map((p) => p.key)).map((group) => (
-          <fieldset key={group.name}>
-            <legend className="text-sm font-semibold">{group.name}</legend>
+          <fieldset key={group.key}>
+            <legend className="text-sm font-semibold">{text.group(group.key)}</legend>
             <ul className="mt-2 grid gap-1 sm:grid-cols-2">
-              {permissions.filter((p) => group.permissions.includes(p.key)).map((p) => {
-                // A permission you do not hold can stay on a role, but you cannot add it.
-                const locked = !p.held && !chosen.has(p.key);
-                return (
-                  <li key={p.key}>
-                    <label className={`flex min-h-11 items-start gap-3 ${locked ? "opacity-60" : ""}`}>
-                      <input
-                        type="checkbox"
-                        className="mt-1 size-5 accent-brand"
-                        checked={chosen.has(p.key)}
-                        disabled={locked}
-                        onChange={(e) => {
-                          const next = new Set(chosen);
-                          if (e.target.checked) next.add(p.key);
-                          else next.delete(p.key);
-                          setChosen(next);
-                        }}
-                      />
-                      <span>
-                        {p.description}
-                        <span className="block text-sm text-muted">
-                          {p.requiresBankId && "Krever BankID eller passkey. "}
-                          {!p.held && "Du har ikke denne selv."}
+              {permissions
+                .filter((p) => group.permissions.includes(p.key))
+                .map((p) => {
+                  // A permission you do not hold can stay on a role, but you cannot add it.
+                  const locked = !p.held && !chosen.has(p.key);
+                  return (
+                    <li key={p.key}>
+                      <label className={`flex min-h-11 items-start gap-3 ${locked ? "opacity-60" : ""}`}>
+                        <input
+                          type="checkbox"
+                          className="mt-1 size-5 accent-brand"
+                          checked={chosen.has(p.key)}
+                          disabled={locked}
+                          onChange={(e) => {
+                            const next = new Set(chosen);
+                            if (e.target.checked) next.add(p.key);
+                            else next.delete(p.key);
+                            setChosen(next);
+                          }}
+                        />
+                        <span>
+                          {text.permission(p.key, p.description)}
+                          <span className="block text-sm text-muted">
+                            {p.requiresBankId && `${t("requiresStrongLogin")} `}
+                            {!p.held && t("notHeld")}
+                          </span>
                         </span>
-                      </span>
-                    </label>
-                  </li>
-                );
-              })}
+                      </label>
+                    </li>
+                  );
+                })}
             </ul>
           </fieldset>
         ))}
         <ErrorMessage message={error} />
         <div className="flex flex-wrap gap-3">
           <button type="submit" className={primaryButton} disabled={saving}>
-            {saving ? "Lagrer …" : role ? "Lagre" : "Opprett rolle"}
+            {saving ? t("saving") : role ? t("save") : t("create")}
           </button>
           <button type="button" className={secondaryButton} onClick={onCancel}>
-            Avbryt
+            {t("cancel")}
           </button>
         </div>
       </form>

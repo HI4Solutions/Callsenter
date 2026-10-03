@@ -1,0 +1,246 @@
+{
+  "page": {
+    "title": "Übersicht",
+    "notEnabled": "Dashboard und Coaching sind für das Callcenter nicht aktiviert.",
+    "intro": {
+      "me": "Ihre eigenen Zahlen.",
+      "team": "Team {name}.",
+      "quality": "Qualität und Compliance im gesamten Callcenter.",
+      "all": "Das gesamte Callcenter."
+    },
+    "countsOnly": "Die Zahlen zeigen Anzahlen, keine Inhalte.",
+    "teamField": "Team",
+    "feedbackToYou": "Feedback an Sie"
+  },
+  "tabs": {
+    "label": "Ebene",
+    "me": "Ich",
+    "team": "Das Team",
+    "teamNamed": "Team {name}",
+    "all": "Das Callcenter",
+    "quality": "Qualität"
+  },
+  "seller": {
+    "back": "← Übersicht",
+    "fallbackName": "Verkäufer"
+  },
+  "period": {
+    "label": "Zeitraum",
+    "from": "Von",
+    "to": "Bis"
+  },
+  "compare": {
+    "yesterday": "gestern",
+    "dayBefore": "Vortag",
+    "previous": "vorheriger Zeitraum"
+  },
+  "stats": {
+    "sales": "Verkäufe",
+    "confirmed": "Bestätigt",
+    "calls": "Gespräche",
+    "complaints": "Beschwerden",
+    "violations": "Verstöße",
+    "unreviewedFlags": "Unbearbeitete Markierungen",
+    "pending": "{count} warten auf Bestätigung",
+    "confirmedNote": "{confirmed} bestätigt, {rejected} abgelehnt, {withdrawn} widerrufen",
+    "monthlyValue": "Bestätigter Wert pro Monat",
+    "oneOff": "+ {amount} einmalig",
+    "hoursRecorded": "{hours} Stunden Aufnahme",
+    "complaintsNote": "{count} offen. {scope, select, all {Alle im Callcenter.} other {Zu Verkäufen in der Auswahl.}}"
+  },
+  "flagCard": {
+    "title": "KI-Prüfung",
+    "withoutDeviation": "{share} der geprüften sind ohne Abweichung.",
+    "unreviewed": "{count, plural, one {# Markierung ist nicht bearbeitet} other {# Markierungen sind nicht bearbeitet}}",
+    "allReviewed": "Alle Markierungen sind bearbeitet."
+  },
+  "trend": {
+    "title": "Entwicklung",
+    "salesPerDay": "Verkäufe pro Tag",
+    "salesPerWeek": "Verkäufe pro Woche",
+    "callsPerDay": "Gespräche pro Tag",
+    "callsPerWeek": "Gespräche pro Woche",
+    "unitSales": "Verkäufe",
+    "unitCalls": "Gespräche"
+  },
+  "findings": {
+    "title": "Häufigste Abweichungen",
+    "intro": "Die Punkte, die die KI-Prüfung am häufigsten markiert hat. Hier bringt Coaching am meisten.",
+    "violations": "Verstöße: {count}",
+    "deviations": "Abweichungen: {count}"
+  },
+  "sellers": {
+    "title": "Verkäufer",
+    "name": "Name",
+    "sales": "Verkäufe",
+    "confirmed": "Bestätigt",
+    "calls": "Gespräche",
+    "deviations": "Abweichungen",
+    "violations": "Verstöße",
+    "complaints": "Beschwerden"
+  },
+  "charts": {
+    "perHour": "KI-Prüfung pro Stunde",
+    "perDay": "KI-Prüfung pro Tag",
+    "perWeek": "KI-Prüfung pro Woche",
+    "hour": "{hour} Uhr",
+    "weekFrom": "Woche ab {day}",
+    "unchecked": "Nicht geprüft",
+    "noCalls": "Keine Gespräche im Zeitraum.",
+    "showTable": "Als Tabelle anzeigen",
+    "showChart": "Als Diagramm anzeigen",
+    "time": "Zeit",
+    "chartLabel": "{title}. Verwenden Sie „Als Tabelle anzeigen“ für die Zahlen.",
+    "part": "{label}: {count}"
+  },
+  "me": {
+    "avgLength": "Durchschnittliche Dauer",
+    "approvedByAi": "Von der KI genehmigt",
+    "teamAverage": "Teamdurchschnitt: {value}",
+    "teamShare": "Team: {share}",
+    "noTeam": "Sie gehören keinem Team an, daher gibt es keinen Durchschnitt zum Vergleich.",
+    "tooFew": "Der Durchschnitt im Team {team} wird angezeigt, sobald mindestens drei Personen im Zeitraum aktiv waren, damit niemand ausrechnen kann, was eine Kollegin oder ein Kollege getan hat.",
+    "benchmark": "Der Durchschnitt gilt pro Verkäufer im Team {team} ({count} aktiv im Zeitraum), ohne Namen.",
+    "findingsTitle": "Was Sie am häufigsten vergessen",
+    "findingsIntro": "Die Punkte, die die KI-Prüfung in Ihren Gesprächen am häufigsten markiert hat. Öffnen Sie die Gespräche unten, um zu sehen, was gesagt wurde."
+  },
+  "team": {
+    "perMonth": "{amount} pro Monat",
+    "redAndYellow": "{red} Verstöße und {yellow} Abweichungen",
+    "showThem": "Anzeigen",
+    "allReviewed": "Alle sind bearbeitet",
+    "sellersTitle": "Die Verkäufer",
+    "noSellers": "Keine Verkäufer im Zeitraum.",
+    "followUpTitle": "Braucht Nachbetreuung",
+    "activityPerDay": "Aktivität pro Tag",
+    "activityPerWeek": "Aktivität pro Woche",
+    "metrics": {
+      "sales": "Verkäufe",
+      "calls": "Gespräche",
+      "redShare": "Anteil Verstöße",
+      "unreviewed": "Unbearbeitete Markierungen",
+      "red": "Verstöße"
+    },
+    "compareBy": "Vergleichen nach",
+    "redShareHint": "Verstöße als Anteil der Gespräche des Verkäufers im Zeitraum.",
+    "redShareValue": "{share} ({red} von {calls})",
+    "show": "Anzeigen",
+    "heatmapCaption": "{metric} pro Verkäufer und {unit, select, day {Tag} other {Woche}}",
+    "seller": "Verkäufer",
+    "sum": "Summe",
+    "fewer": "Weniger",
+    "more": "Mehr",
+    "cell": "{name}, {title}: {value}",
+    "units": {
+      "calls": "{count, plural, one {# Gespräch} other {# Gespräche}}",
+      "sales": "{count, plural, one {# Verkauf} other {# Verkäufe}}",
+      "red": "{count, plural, one {# Verstoß} other {# Verstöße}}"
+    },
+    "reasons": {
+      "unreviewed": "{count, plural, one {# Markierung wartet auf Bearbeitung} other {# Markierungen warten auf Bearbeitung}}",
+      "breaches": "Verstöße in {share} der Gespräche ({red} von {calls})",
+      "noFeedbackYet": "Hat noch kein Feedback erhalten",
+      "noFeedback30": "Seit über 30 Tagen kein Feedback",
+      "inactive": "Keine Gespräche oder Verkäufe im Zeitraum"
+    },
+    "nobodyNeedsFollowUp": "Derzeit braucht niemand Nachbetreuung."
+  },
+  "quality": {
+    "openNow": "Unbearbeitete Markierungen jetzt",
+    "noneWaiting": "Keine wartet",
+    "oldestToday": "Die älteste ist von heute",
+    "oldestDays": "{count, plural, one {Die älteste wartet seit # Tag} other {Die älteste wartet seit # Tagen}}",
+    "reviewed": "Im Zeitraum bearbeitet",
+    "medianHours": "Median {hours} Stunden von der Prüfung bis zur Bearbeitung",
+    "flagged": "Im Zeitraum markiert",
+    "flaggedNote": "{red} Verstöße und {yellow} Abweichungen bei {checked} geprüften",
+    "complaintsReceived": "Eingegangene Beschwerden",
+    "openNowNote": "{count} jetzt offen",
+    "acceptance": "Kundenzustimmung",
+    "acceptedOf": "{accepted} von {sent}",
+    "mismatchNote": "{count}, bei denen die Identität nicht mit dem Kunden übereinstimmte",
+    "allMatchedNote": "Die Identität stimmte bei allen überein",
+    "queue": {
+      "title": "Die Warteschlange jetzt",
+      "intro": "Gelbe und rote Markierungen, die niemand bearbeitet hat, nach Wartezeit.",
+      "underDay": "Unter 1 Tag",
+      "days1to3": "1–3 Tage",
+      "days3to7": "3–7 Tage",
+      "overWeek": "Über 7 Tage",
+      "showPeriod": "Die {count} aus dem Zeitraum anzeigen"
+    },
+    "products": {
+      "title": "Abweichungen pro Produkt",
+      "none": "Keine geprüften Gespräche mit Produkt im Zeitraum."
+    },
+    "overTime": "KI-Prüfung im Zeitverlauf",
+    "sellers": {
+      "title": "Verkäufer mit dem höchsten Anteil an Verstößen",
+      "name": "Name",
+      "checked": "Geprüft",
+      "deviations": "Abweichungen",
+      "violations": "Verstöße",
+      "redShare": "Anteil Verstöße",
+      "none": "Keine Verkäufer mit Verstößen in mindestens drei geprüften Gesprächen."
+    },
+    "complaints": {
+      "title": "Beschwerden",
+      "received": "Im Zeitraum eingegangen, nach heutigem Status.",
+      "medianDays": "Im Zeitraum abgeschlossene Fälle dauerten im Median {days} Tage.",
+      "channels": "Kanal: {list}.",
+      "perWeek": "Eingegangene Beschwerden pro Woche",
+      "unit": "Beschwerden"
+    },
+    "acceptanceCard": {
+      "title": "Kundenzustimmung",
+      "bankid": "Mit BankID angenommen",
+      "vipps": "Mit Vipps angenommen",
+      "rejected": "Abgelehnt",
+      "pending": "Ausstehend",
+      "expired": "Abgelaufen",
+      "revoked": "Zurückgezogen",
+      "sent": "Im Zeitraum gesendete Links: {count}.",
+      "mismatch": "{count} wurden von einer Person angenommen, die nach Name oder Telefonnummer nicht mit dem Kunden übereinstimmte. Sie sollten überprüft werden.",
+      "allMatched": "Alle, die angenommen haben, stimmten mit dem Kunden überein."
+    },
+    "access": {
+      "title": "Zugriff auf Aufnahmen und Transkriptionen",
+      "views": "Geöffnet",
+      "plays": "Abgespielt",
+      "downloads": "Heruntergeladen",
+      "searches": "Suchen",
+      "caption": "Wer im Zeitraum am meisten geöffnet hat",
+      "name": "Name"
+    }
+  },
+  "calls": {
+    "title": "Gespräche im Zeitraum",
+    "filterLabel": "Gespräche anzeigen",
+    "all": "Alle",
+    "unreviewed": "Nicht bearbeitet",
+    "unchecked": "Nicht geprüft",
+    "reviewed": "Bearbeitet",
+    "unknownSeller": "Unbekannter Verkäufer",
+    "noCustomer": "Ohne Kunde",
+    "team": "Team {name}",
+    "empty": "Keine Gespräche hier im Zeitraum.",
+    "capped": "Die 200 neuesten werden angezeigt. Wählen Sie einen kürzeren Zeitraum, um alle zu sehen.",
+    "call": "Gespräch"
+  },
+  "coaching": {
+    "title": "Feedback",
+    "new": "Neu",
+    "noneOwn": "Noch kein Feedback.",
+    "noneGiven": "Noch kein Feedback gegeben.",
+    "callFallback": "Gespräch {date}",
+    "readAt": "gelesen {date}",
+    "unread": "nicht gelesen",
+    "markRead": "Als gelesen markieren",
+    "newTitle": "Neues Feedback",
+    "newTitleTo": "Neues Feedback an {name}",
+    "field": "Feedback",
+    "hint": "Seien Sie konkret: Was ist passiert, und was kann beim nächsten Mal anders gemacht werden? Kann nachträglich nicht geändert werden.",
+    "submit": "Feedback geben",
+    "sent": "Gesendet."
+  }
+}

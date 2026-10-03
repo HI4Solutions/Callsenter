@@ -1,0 +1,199 @@
+{
+  "shell": {
+    "title": "Administration",
+    "pageTitle": "Administration · VeriQall",
+    "eyebrow": "Administration · {organization}",
+    "noApi": "API-adressen är inte konfigurerad.",
+    "noOrganization": "Du är inte medlem i något callcenter.",
+    "noAccess": "Du har inte tillgång till administrationen i det här callcentret.",
+    "needsStrongLogin": "Administrationen kräver inloggning med BankID eller passkey. Logga ut och logga in igen.",
+    "tabs": {
+      "overview": "Översikt",
+      "users": "Användare",
+      "teams": "Team",
+      "roles": "Roller",
+      "messages": "Meddelanden",
+      "invoices": "Fakturor"
+    }
+  },
+  "overview": {
+    "title": "Översikt",
+    "intro": "{name}. {subscription}",
+    "subscription": {
+      "suspended": "Callcentret är stängt. Kontakta VeriQall.",
+      "accessUntil": "Tillgång till {date}.",
+      "trialUntil": "Provperiod till {date}.",
+      "active": "Aktivt."
+    },
+    "share": "{count} av {total}",
+    "activeUsers": "Aktiva användare",
+    "loggedIn7": "{count} inloggade de senaste 7 dagarna",
+    "awaitingFirstLogin": "Väntar på första inloggning",
+    "invitationsExpired": "{count} med utgången inbjudan",
+    "invitationsPending": "{count} giltiga inbjudningar",
+    "inactive30": "Inte inloggade på 30 dagar",
+    "disabled": "{count} inaktiverade",
+    "unpaid": "Obetalt",
+    "amount": "{amount} kr",
+    "overdueInvoices": "{count, plural, one {# faktura} other {# fakturor}} förfallna",
+    "nextDue": "Nästa förfallodag {date}",
+    "nothingOverdue": "Inget förfallet",
+    "transcribedIn": "Transkriberat i {month}",
+    "hours": "{hours} h",
+    "login": {
+      "title": "Inloggning",
+      "link": "Användare",
+      "passkey": "Passkey",
+      "note": "Av de aktiva användarna, efter vilka inloggningssätt de har kopplat. Administration och insyn i alla samtal kräver BankID eller passkey."
+    },
+    "teams": {
+      "title": "Team",
+      "link": "Team",
+      "note": "Medlemmar per team, även de som inte har loggat in ännu.",
+      "withoutTeam": "{count} är inte med i något team.",
+      "empty": "Inga team ännu. Team behövs för teamledare och siffrorna per team."
+    },
+    "activity": {
+      "title": "Aktivitet i {month}",
+      "team": "Team",
+      "calls": "Samtal",
+      "sales": "Försäljning",
+      "confirmed": "Bekräftade",
+      "noTeam": "Utan team",
+      "more": "Siffrorna per säljare och per dag finns under <link>Callcenter → Översikt</link>."
+    },
+    "usage": {
+      "title": "Förbrukning",
+      "thisMonth": "Denna månad",
+      "previousMonth": "Förra månaden",
+      "hours": "Timmar transkriberade",
+      "controls": "AI-kontroller",
+      "notes": "Anteckningar",
+      "note": "Räknat som på fakturan: varje samtal en gång."
+    },
+    "roles": {
+      "title": "Roller",
+      "link": "Roller"
+    },
+    "invoices": {
+      "title": "Fakturor",
+      "link": "Alla fakturor",
+      "unpaid": "Obetalda",
+      "overdue": "Förfallna",
+      "nextDue": "Nästa förfallodag",
+      "lastPaid": "Senaste betalning"
+    },
+    "modules": {
+      "title": "Moduler",
+      "empty": "Inga moduler är aktiverade.",
+      "note": "Moduler aktiveras och inaktiveras av VeriQall. Skicka ett meddelande under Meddelanden om ni behöver fler."
+    }
+  },
+  "users": {
+    "title": "Användare",
+    "intro": "Bjud in användare, ge dem roll och team, och inaktivera dem som slutar.",
+    "exportCsv": "Exportera CSV",
+    "csv": {
+      "name": "Namn",
+      "phone": "Mobil",
+      "email": "E-post",
+      "role": "Roll",
+      "team": "Team",
+      "status": "Status",
+      "lastLogin": "Senast inloggad"
+    },
+    "csvFile": "anvandare-{date}.csv",
+    "search": "Sök",
+    "searchPlaceholder": "Namn, mobil eller e-post",
+    "noMatch": "Inga användare matchar sökningen.",
+    "you": "(du)",
+    "noContact": "Inga kontaktuppgifter",
+    "lastLogin": "senast inloggad {when}",
+    "role": "Roll",
+    "team": "Team",
+    "noTeam": "Utan team",
+    "lacksPermissions": "(kräver behörigheter du inte har)",
+    "confirmDisable": "Inaktivera {name}? Användaren förlorar tillgången till callcentret.",
+    "disable": "Inaktivera",
+    "enable": "Aktivera igen",
+    "invite": {
+      "title": "Bjud in användare",
+      "name": "Namn",
+      "phone": "Mobilnummer",
+      "phoneHint": "Med Vipps kopplas användaren via mobilnumret.",
+      "email": "E-post",
+      "creating": "Skapar inbjudan …",
+      "create": "Skapa inbjudan",
+      "added": "Personen använder redan VeriQall och har lagts till. Av säkerhetsskäl skapas ingen länk: callcentret visas när hen loggar in med sitt eget BankID, Vipps eller passkey.",
+      "link": "Inbjudningslänk",
+      "emailed": "Skickad via e-post till {email}.",
+      "alsoSendYourself": "Du kan också skicka länken själv, till exempel via sms.",
+      "sendIt": "Skicka länken till personen.",
+      "validity": "Den kan användas en gång och gäller till {date}. Den visas bara nu.",
+      "copied": "Kopierad",
+      "copy": "Kopiera länk"
+    },
+    "invitations": {
+      "title": "Inbjudningar",
+      "created": "Skapad {date} · {state}",
+      "state": {
+        "used": "Använd",
+        "revoked": "Återkallad",
+        "expired": "Utgången",
+        "pending": "Väntar"
+      },
+      "revoke": "Återkalla"
+    }
+  },
+  "teams": {
+    "title": "Team",
+    "intro": "Team används för att ge ledare insyn i samtalen och försäljningen hos sina säljare.",
+    "new": "Nytt team",
+    "name": "Namn",
+    "create": "Skapa team",
+    "list": "Team ({count})",
+    "empty": "Inga team ännu",
+    "emptyHint": "Skapa det första ovan. Team behövs för teamledare, och för siffror per team på dashboarden.",
+    "archived": "Arkiverade team",
+    "restore": "Återställ",
+    "members": "{count, plural, one {# medlem} other {# medlemmar}}",
+    "saveName": "Spara namn",
+    "archive": "Arkivera",
+    "confirmArchive": "Arkivera {name}? Medlemmarna blir utan team."
+  },
+  "roles": {
+    "title": "Roller",
+    "intro": "En roll är en uppsättning behörigheter. Du kan bara ge behörigheter du själv har, och du kan inte ändra din egen roll.",
+    "new": "Ny roll",
+    "otherGroup": "Övrigt",
+    "confirmArchive": "Arkivera rollen {name}?",
+    "yours": "(din roll)",
+    "users": "{count, plural, one {# användare} other {# användare}}",
+    "defaultRole": "standardroll",
+    "noPermissions": "Inga behörigheter",
+    "edit": "Ändra",
+    "archive": "Arkivera",
+    "archived": "Arkiverade roller",
+    "restore": "Återställ",
+    "editTitle": "Ändra {name}",
+    "name": "Namn",
+    "requiresStrongLogin": "Kräver BankID eller passkey.",
+    "notHeld": "Du har inte denna själv.",
+    "saving": "Sparar …",
+    "save": "Spara",
+    "create": "Skapa roll",
+    "cancel": "Avbryt"
+  },
+  "invoices": {
+    "title": "Fakturor",
+    "intro": "Fakturor från VeriQall till callcentret.",
+    "empty": "Inga fakturor ännu.",
+    "due": ", förfaller {date}",
+    "all": "← Alla fakturor",
+    "downloadPdf": "Ladda ner PDF"
+  },
+  "messages": {
+    "title": "Meddelanden",
+    "intro": "Konversationer med VeriQall. Alla med tillgång till administrationen ser dem."
+  }
+}

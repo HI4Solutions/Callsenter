@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { useWorkMe } from "@/components/work/work-shell";
-import { COACHING_KIND, type CoachingList, type CoachingNote } from "@/lib/dashboard";
+import { COACHING_KINDS, type CoachingList, type CoachingNote } from "@/lib/dashboard";
 import { formatDateTime } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 
@@ -16,13 +17,16 @@ export function Coaching({
   sellerId,
   sellerName,
   callId,
-  title = "Tilbakemeldinger",
+  title,
 }: {
   sellerId: string;
   sellerName?: string | null;
   callId?: string;
   title?: string;
 }) {
+  const t = useTranslations("dashboard.coaching");
+  const tk = useTranslations("domain.coachingKind");
+  const tc = useTranslations("common");
   const me = useWorkMe();
   const own = me?.user.id === sellerId;
   const [notes, setNotes] = useState<CoachingNote[] | null>(null);
@@ -72,20 +76,20 @@ export function Coaching({
   if (!canGive && !notes?.length && (!own || callId)) return null;
 
   return (
-    <Card title={title}>
+    <Card title={title ?? t("title")}>
       {canGive && <NewNote sellerId={sellerId} sellerName={sellerName} callId={callId} onSaved={load} />}
       <ErrorMessage message={error} />
       {!notes ? (
-        !error && <p className="text-muted">Laster …</p>
+        !error && <p className="text-muted">{tc("loading")}</p>
       ) : notes.length === 0 ? (
-        <p className={`text-muted ${canGive ? "mt-6" : ""}`}>{own ? "Ingen tilbakemeldinger ennå." : "Ingen tilbakemeldinger gitt ennå."}</p>
+        <p className={`text-muted ${canGive ? "mt-6" : ""}`}>{own ? t("noneOwn") : t("noneGiven")}</p>
       ) : (
         <ol className={`flex flex-col gap-4 ${canGive ? "mt-6" : ""}`}>
           {notes.map((n) => (
             <li key={n.id} className="border-l-2 border-line pl-4">
               <p className="font-semibold">
-                {COACHING_KIND[n.kind]}
-                {own && !n.readAt && <span className="ml-2 rounded-full bg-brand px-2 py-0.5 text-xs text-on-brand">Ny</span>}
+                {tk(n.kind)}
+                {own && !n.readAt && <span className="ml-2 rounded-full bg-brand px-2 py-0.5 text-xs text-on-brand">{t("new")}</span>}
               </p>
               <p className="text-sm text-muted">
                 {formatDateTime(n.createdAt)} · {n.authorName}
@@ -93,16 +97,16 @@ export function Coaching({
                   <>
                     {" · "}
                     <Link href={`/samtaler/${n.callId}`} className="text-brand">
-                      {n.callTitle || `Samtale ${n.callStartedAt ? formatDateTime(n.callStartedAt) : ""}`}
+                      {n.callTitle || t("callFallback", { date: n.callStartedAt ? formatDateTime(n.callStartedAt) : "" })}
                     </Link>
                   </>
                 )}
-                {!own && (n.readAt ? ` · lest ${formatDateTime(n.readAt)}` : " · ikke lest")}
+                {!own && ` · ${n.readAt ? t("readAt", { date: formatDateTime(n.readAt) }) : t("unread")}`}
               </p>
               <p className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{n.body}</p>
               {own && !n.readAt && (
                 <button type="button" className={`${secondaryButton} mt-2`} onClick={() => markRead(n.id)}>
-                  Merk som lest
+                  {t("markRead")}
                 </button>
               )}
             </li>
@@ -124,6 +128,8 @@ function NewNote({
   callId?: string;
   onSaved: () => Promise<unknown>;
 }) {
+  const t = useTranslations("dashboard.coaching");
+  const tk = useTranslations("domain.coachingKind");
   const [kind, setKind] = useState<CoachingNote["kind"]>("improve");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
@@ -149,23 +155,23 @@ function NewNote({
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
       <fieldset className="flex flex-wrap gap-4">
-        <legend className="mb-2 text-sm font-semibold">Ny tilbakemelding{sellerName ? ` til ${sellerName}` : ""}</legend>
-        {(Object.keys(COACHING_KIND) as CoachingNote["kind"][]).map((k) => (
+        <legend className="mb-2 text-sm font-semibold">{sellerName ? t("newTitleTo", { name: sellerName }) : t("newTitle")}</legend>
+        {COACHING_KINDS.map((k) => (
           <label key={k} className="inline-flex min-h-11 items-center gap-2">
             <input type="radio" name="kind" checked={kind === k} onChange={() => setKind(k)} />
-            {COACHING_KIND[k]}
+            {tk(k)}
           </label>
         ))}
       </fieldset>
-      <Field label="Tilbakemelding" hint="Vær konkret: hva skjedde, og hva kan gjøres annerledes neste gang. Kan ikke endres etterpå.">
+      <Field label={t("field")} hint={t("hint")}>
         <textarea rows={3} maxLength={4000} className={`${inputClass} py-2`} value={body} onChange={(e) => setBody(e.target.value)} />
       </Field>
       <ErrorMessage message={error} />
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={busy || !body.trim()} className={primaryButton}>
-          Gi tilbakemelding
+          {t("submit")}
         </button>
-        {saved && <span role="status">Sendt.</span>}
+        {saved && <span role="status">{t("sent")}</span>}
       </div>
     </form>
   );

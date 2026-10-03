@@ -1,0 +1,202 @@
+{
+  "flag": {
+    "approved": "Approved",
+    "deviation": "Deviation",
+    "violation": "Breach"
+  },
+  "callStatus": {
+    "recording": "Recording",
+    "processing": "Transcribing",
+    "transcribed": "Transcribed",
+    "analyzed": "Done",
+    "failed": "Failed"
+  },
+  "callSource": {
+    "microphone": "Microphone",
+    "tab": "Tab audio and microphone",
+    "upload": "Uploaded file"
+  },
+  "findingKind": {
+    "required_point": "Mandatory point",
+    "forbidden_phrase": "Forbidden phrase",
+    "price_terms": "Price and terms",
+    "other": "Other"
+  },
+  "saleStatus": {
+    "registered": "Registered",
+    "awaiting_confirmation": "Awaiting confirmation",
+    "confirmed": "Confirmed",
+    "active": "Active",
+    "rejected": "Rejected",
+    "withdrawn": "Withdrawn",
+    "cancelled": "Cancelled"
+  },
+  "saleAction": {
+    "registered": "Registered",
+    "awaiting_confirmation": "Sent for confirmation",
+    "confirmed": "Mark as confirmed",
+    "active": "Mark as active",
+    "rejected": "Customer rejected",
+    "withdrawn": "Customer withdrew",
+    "cancelled": "Cancel"
+  },
+  "customerKind": {
+    "person": "Private person",
+    "business": "Business"
+  },
+  "versionStatus": {
+    "draft": "Draft",
+    "published": "Current",
+    "retired": "Replaced"
+  },
+  "complaintStatus": {
+    "open": "New",
+    "investigating": "In progress",
+    "resolved": "Resolved",
+    "rejected": "Rejected"
+  },
+  "channel": {
+    "phone": "Phone",
+    "email": "Email",
+    "letter": "Letter",
+    "web": "Web form",
+    "other": "Other"
+  },
+  "coachingKind": {
+    "praise": "Praise",
+    "improve": "Can improve"
+  },
+  "period": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "this-week": "This week",
+    "last-week": "Last week",
+    "this-month": "This month",
+    "last-month": "Last month",
+    "last-30": "Last 30 days",
+    "last-90": "Last 90 days",
+    "this-year": "Year to date",
+    "custom": "Choose dates"
+  },
+  "userStatus": {
+    "invited": "Invited",
+    "active": "Active",
+    "disabled": "Deactivated"
+  },
+  "loginResult": {
+    "success": "Successful",
+    "cancelled": "Cancelled",
+    "unknown_identity": "Unknown user",
+    "invalid": "Invalid",
+    "error": "Error"
+  },
+  "auditAction": {
+    "insert": "Created",
+    "update": "Changed",
+    "delete": "Deleted"
+  },
+  "auditTable": {
+    "organizations": "Call centre",
+    "organization_modules": "Module",
+    "users": "User",
+    "platform_admins": "Superadmin",
+    "teams": "Team",
+    "roles": "Role",
+    "role_permissions": "Permission in role",
+    "memberships": "Membership",
+    "invitations": "Invitation",
+    "identities": "Login method",
+    "sessions": "Sessions",
+    "blocked_ips": "IP block"
+  },
+  "invoiceStatus": {
+    "draft": "Draft",
+    "scheduled": "Scheduled",
+    "sent": "Sent",
+    "paid": "Paid",
+    "credited": "Credited",
+    "payment_missed": "Payment missed"
+  },
+  "paymentMethod": {
+    "bank": "Bank",
+    "stripe": "Stripe",
+    "other": "Other"
+  },
+  "interval": {
+    "1": "Every month",
+    "3": "Every quarter",
+    "6": "Every six months",
+    "12": "Every year"
+  },
+  "modules": {
+    "sales": {
+      "name": "Customers, products and sales",
+      "description": "Customers, sellers, products, sales and status with customer history."
+    },
+    "product_templates": {
+      "name": "Product templates",
+      "description": "Price, terms, approved phrases and rules per product."
+    },
+    "transcription": {
+      "name": "Transcription",
+      "description": "Speech to text with Soniox, search and linking between audio and text."
+    },
+    "reports": {
+      "name": "Reports",
+      "description": "A report after every call, with report templates."
+    },
+    "ai_control": {
+      "name": "AI control",
+      "description": "The call is checked against the product template and flagged green, yellow or red."
+    },
+    "sale_verification": {
+      "name": "Sale verification",
+      "description": "The customer accepts the purchase with BankID or Vipps. Add-on module with a cost per acceptance."
+    },
+    "documentation": {
+      "name": "Documentation",
+      "description": "Sale summary of what was said, offered and accepted."
+    },
+    "complaints": {
+      "name": "Complaint handling",
+      "description": "Collected documentation for complaint cases."
+    },
+    "dashboard": {
+      "name": "Dashboard and coaching",
+      "description": "Sales, quality, deviations and feedback to sellers."
+    }
+  },
+  "permissions": {
+    "calls_read_own": "Own calls",
+    "calls_read_team": "The team's calls",
+    "calls_read_all": "All calls in the call centre",
+    "calls_audio_play": "Playing recordings",
+    "calls_upload": "Uploading recordings",
+    "customers_read": "See customers and history",
+    "customers_manage": "Create and change customers",
+    "sales_manage": "Register and change sales",
+    "flags_review": "Review yellow and red flags",
+    "complaints_manage": "Complaint cases",
+    "coaching_give": "Feedback to sellers",
+    "dashboard_team": "Dashboard for the team",
+    "dashboard_all": "Dashboard for the whole call centre",
+    "products_manage": "Products and product templates",
+    "report_templates_manage": "Report templates",
+    "users_manage": "Users and teams",
+    "roles_manage": "Roles and permissions",
+    "audit_read": "Audit and access log",
+    "billing_read": "Invoices"
+  },
+  "permissionGroups": {
+    "calls": "Calls",
+    "sales": "Sales and customers",
+    "quality": "Quality and coaching",
+    "administration": "Administration"
+  },
+  "defaultRoles": {
+    "seller": "Seller",
+    "leader": "Manager",
+    "compliance": "Compliance",
+    "admin": "Admin"
+  }
+}

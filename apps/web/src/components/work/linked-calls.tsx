@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage } from "@/components/admin/field";
@@ -11,6 +12,8 @@ import { orgFetch } from "@/lib/org";
 // The calls linked to a customer or a sale, that the member may see.
 export function LinkedCalls({ query }: { query: string }) {
   const me = useWorkMe();
+  const t = useTranslations("work.linkedCalls");
+  const tc = useTranslations("common");
   const visible = me ? canSeeCalls(me) : false;
   const [calls, setCalls] = useState<CallSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,12 +31,12 @@ export function LinkedCalls({ query }: { query: string }) {
 
   if (!visible) return null;
   return (
-    <Card title="Samtaler">
+    <Card title={t("title")}>
       <ErrorMessage message={error} />
       {!calls ? (
-        !error && <p className="text-muted">Laster …</p>
+        !error && <p className="text-muted">{tc("loading")}</p>
       ) : calls.length === 0 ? (
-        <p className="text-muted">Ingen samtaler du har tilgang til.</p>
+        <p className="text-muted">{t("empty")}</p>
       ) : (
         <CallList calls={calls} showCustomer={false} />
       )}

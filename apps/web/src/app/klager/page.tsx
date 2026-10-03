@@ -1,23 +1,49 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import {
+  ErrorMessage,
+  Field,
+  inputClass,
+  primaryButton,
+  secondaryButton,
+} from "@/components/admin/field";
 import { ComplaintStatusBadge } from "@/components/work/complaint-status";
 import { CustomerPicker } from "@/components/work/customer-picker";
 import { NoAccess, useWorkMe } from "@/components/work/work-shell";
-import { type Channel, CHANNEL, COMPLAINT_STATUS, type ComplaintStatus, type ComplaintSummary } from "@/lib/complaints";
+import {
+  type Channel,
+  type ComplaintStatus,
+  type ComplaintSummary,
+} from "@/lib/complaints";
 import { formatDate } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 import type { Customer, SaleSummary } from "@/lib/work";
 
+const STATUSES: ComplaintStatus[] = [
+  "open",
+  "investigating",
+  "resolved",
+  "rejected",
+];
+const CHANNELS: Channel[] = ["phone", "email", "letter", "web", "other"];
+
 export default function ComplaintsPage() {
   const me = useWorkMe();
+  const t = useTranslations("complaints");
+  const td = useTranslations("domain");
+  const tc = useTranslations("common");
   const allowed = me?.permissions.includes("complaints.manage") ?? false;
   // From the customer page: /klager?kunde=<id> opens a new complaint for that customer.
-  const [preselected] = useState(() => (typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("kunde")));
+  const [preselected] = useState(() =>
+    typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("kunde"),
+  );
   const [creating, setCreating] = useState(Boolean(preselected));
   const [filter, setFilter] = useState("open");
   const [complaints, setComplaints] = useState<ComplaintSummary[] | null>(null);
@@ -26,7 +52,8 @@ export default function ComplaintsPage() {
   useEffect(() => {
     if (!allowed) return;
     let cancelled = false;
-    const params = filter === "open" ? "?open=1" : filter ? `?status=${filter}` : "";
+    const params =
+      filter === "open" ? "?open=1" : filter ? `?status=${filter}` : "";
     orgFetch<ComplaintSummary[]>(`/complaints${params}`)
       .then((rows) => {
         if (cancelled) return;
@@ -39,31 +66,47 @@ export default function ComplaintsPage() {
     };
   }, [filter, allowed]);
 
-  if (!allowed) return <NoAccess text="Du har ikke tilgang til klager i dette callsenteret." />;
+  if (!allowed) return <NoAccess text={t("noAccess")} />;
 
   return (
     <section className="flex flex-col gap-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Klager</h1>
-          <p className="mt-2 text-muted">Hver klage samler salget, kundens aksept og samtalene, så saken kan avgjøres på dokumentasjonen.</p>
+          <h1 className="text-3xl font-extrabold tracking-tight">
+            {t("title")}
+          </h1>
+          <p className="mt-2 text-muted">{t("intro")}</p>
         </div>
         {!creating && (
-          <button type="button" className={primaryButton} onClick={() => setCreating(true)}>
-            Ny klage
+          <button
+            type="button"
+            className={primaryButton}
+            onClick={() => setCreating(true)}
+          >
+            {t("new")}
           </button>
         )}
       </div>
 
-      {creating && <NewComplaint customerId={preselected} canPickCustomer={me?.permissions.includes("customers.read") ?? false} onCancel={() => setCreating(false)} />}
+      {creating && (
+        <NewComplaint
+          customerId={preselected}
+          canPickCustomer={me?.permissions.includes("customers.read") ?? false}
+          onCancel={() => setCreating(false)}
+        />
+      )}
 
-      <Field label="Vis">
-        <select className={`${inputClass} sm:w-64`} value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="open">Åpne saker</option>
-          <option value="">Alle</option>
-          {(Object.keys(COMPLAINT_STATUS) as ComplaintStatus[]).map((s) => (
+      <Field label={t("show")}>
+        <select
+          className={`${inputClass} sm:w-64`}
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        >
+          <option value="open">{t("openCases")}</option>
+          <option value="">{t("all")}</option>
+          {STATUSES.map((s) => (
             <option key={s} value={s}>
-              {COMPLAINT_STATUS[s]}
+              {td(`complaintStatus.${s}`)}
             </option>
           ))}
         </select>
@@ -71,19 +114,30 @@ export default function ComplaintsPage() {
 
       <ErrorMessage message={error} />
       {!complaints ? (
-        !error && <p className="text-muted">Laster …</p>
+        !error && <p className="text-muted">{tc("loading")}</p>
       ) : complaints.length === 0 ? (
-        <p className="text-muted">{filter === "open" ? "Ingen åpne klager." : "Ingen klager passer filteret."}</p>
+        <p className="text-muted">
+          {filter === "open" ? t("noneOpen") : t("noMatch")}
+        </p>
       ) : (
         <ul className="divide-y divide-line rounded-2xl border border-line bg-surface">
           {complaints.map((k) => (
             <li key={k.id}>
-              <Link href={`/klager/${k.id}`} className="flex flex-col gap-1 p-4 hover:bg-bg sm:flex-row sm:items-center sm:gap-4">
+              <Link
+                href={`/klager/${k.id}`}
+                className="flex flex-col gap-1 p-4 hover:bg-bg sm:flex-row sm:items-center sm:gap-4"
+              >
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold [overflow-wrap:anywhere]">{k.summary}</p>
+                  <p className="font-semibold [overflow-wrap:anywhere]">
+                    {k.summary}
+                  </p>
                   <p className="text-sm text-muted">
-                    {k.customerName ?? "Kunde"}
-                    {k.productName && ` · ${k.productName}`} · {CHANNEL[k.channel]}, mottatt {formatDate(k.receivedOn)}
+                    {k.customerName ?? t("customer")}
+                    {k.productName && ` · ${k.productName}`} ·{" "}
+                    {t("received", {
+                      channel: td(`channel.${k.channel}`),
+                      date: formatDate(k.receivedOn),
+                    })}
                     {k.assignedName && ` · ${k.assignedName}`}
                   </p>
                 </div>
@@ -93,7 +147,9 @@ export default function ComplaintsPage() {
           ))}
         </ul>
       )}
-      {complaints?.length === 200 && <p className="text-sm text-muted">Viser de 200 første. Bruk filteret for å finne flere.</p>}
+      {complaints?.length === 200 && (
+        <p className="text-sm text-muted">{t("limit")}</p>
+      )}
     </section>
   );
 }
@@ -103,9 +159,24 @@ function today() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function NewComplaint({ customerId, canPickCustomer, onCancel }: { customerId: string | null; canPickCustomer: boolean; onCancel: () => void }) {
+function NewComplaint({
+  customerId,
+  canPickCustomer,
+  onCancel,
+}: {
+  customerId: string | null;
+  canPickCustomer: boolean;
+  onCancel: () => void;
+}) {
   const router = useRouter();
-  const [customer, setCustomer] = useState<Pick<Customer, "id" | "name"> | null>(null);
+  const t = useTranslations("complaints");
+  const td = useTranslations("domain");
+  const tw = useTranslations("work");
+  const tc = useTranslations("common");
+  const [customer, setCustomer] = useState<Pick<
+    Customer,
+    "id" | "name"
+  > | null>(null);
   const [sales, setSales] = useState<SaleSummary[] | null>(null);
   const [saleId, setSaleId] = useState("");
   const [channel, setChannel] = useState<Channel>("phone");
@@ -151,7 +222,14 @@ function NewComplaint({ customerId, canPickCustomer, onCancel }: { customerId: s
     try {
       const { id } = await orgFetch<{ id: string }>("/complaints", {
         method: "POST",
-        body: { customerId: customer?.id, saleId: saleId || null, channel, receivedOn: received, summary: summary.trim(), description: description.trim() },
+        body: {
+          customerId: customer?.id,
+          saleId: saleId || null,
+          channel,
+          receivedOn: received,
+          summary: summary.trim(),
+          description: description.trim(),
+        },
       });
       router.push(`/klager/${id}`);
     } catch (e) {
@@ -161,51 +239,101 @@ function NewComplaint({ customerId, canPickCustomer, onCancel }: { customerId: s
   }
 
   return (
-    <Card title="Ny klage">
+    <Card title={t("new")}>
       {!canPickCustomer ? (
-        <p>Du trenger tilgang til kunder for å registrere klager.</p>
+        <p>{t("newComplaint.needCustomers")}</p>
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-4">
-          <CustomerPicker value={customer} onChange={pick} hint="Søk på navn, telefon, e-post eller org.nr. Finnes ikke kunden, opprett den under Kunder først." />
+          <CustomerPicker
+            value={customer}
+            onChange={pick}
+            hint={t("newComplaint.customerHint")}
+          />
           {customer && (
-            <Field label="Salg" hint="Salget klagen gjelder, hvis den gjelder et salg. Dokumentasjonen hentes inn i saken.">
-              <select className={`${inputClass} sm:max-w-md`} value={saleId} onChange={(e) => setSaleId(e.target.value)}>
-                <option value="">{sales === null ? "Laster …" : "Gjelder ikke et bestemt salg"}</option>
+            <Field
+              label={t("newComplaint.sale")}
+              hint={t("newComplaint.saleHint")}
+            >
+              <select
+                className={`${inputClass} sm:max-w-md`}
+                value={saleId}
+                onChange={(e) => setSaleId(e.target.value)}
+              >
+                <option value="">
+                  {sales === null ? tc("loading") : t("newComplaint.noSale")}
+                </option>
                 {sales?.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.productName}, {formatDate(s.soldAt)}
+                    {t("newComplaint.saleOption", {
+                      product: s.productName,
+                      date: formatDate(s.soldAt),
+                    })}
                   </option>
                 ))}
               </select>
             </Field>
           )}
           <div className="grid gap-4 sm:grid-cols-2 sm:max-w-md">
-            <Field label="Kanal">
-              <select className={inputClass} value={channel} onChange={(e) => setChannel(e.target.value as Channel)}>
-                {(Object.keys(CHANNEL) as Channel[]).map((c) => (
+            <Field label={t("newComplaint.channel")}>
+              <select
+                className={inputClass}
+                value={channel}
+                onChange={(e) => setChannel(e.target.value as Channel)}
+              >
+                {CHANNELS.map((c) => (
                   <option key={c} value={c}>
-                    {CHANNEL[c]}
+                    {td(`channel.${c}`)}
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="Mottatt">
-              <input type="date" required max={today()} className={inputClass} value={received} onChange={(e) => setReceived(e.target.value)} />
+            <Field label={t("newComplaint.received")}>
+              <input
+                type="date"
+                required
+                max={today()}
+                className={inputClass}
+                value={received}
+                onChange={(e) => setReceived(e.target.value)}
+              />
             </Field>
           </div>
-          <Field label="Kort beskrivelse">
-            <input required maxLength={200} className={`${inputClass} sm:max-w-xl`} value={summary} onChange={(e) => setSummary(e.target.value)} />
+          <Field label={t("newComplaint.summary")}>
+            <input
+              required
+              maxLength={200}
+              className={`${inputClass} sm:max-w-xl`}
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+            />
           </Field>
-          <Field label="Hva klager kunden på?" hint="Valgfritt. Gjengi kundens egne ord så godt du kan.">
-            <textarea rows={4} maxLength={10000} className={`${inputClass} py-2`} value={description} onChange={(e) => setDescription(e.target.value)} />
+          <Field
+            label={t("newComplaint.description")}
+            hint={t("newComplaint.descriptionHint")}
+          >
+            <textarea
+              rows={4}
+              maxLength={10000}
+              className={`${inputClass} py-2`}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </Field>
           <ErrorMessage message={error} />
           <div className="flex flex-wrap gap-2">
-            <button type="submit" disabled={busy || !customer || !summary.trim()} className={primaryButton}>
-              Registrer klage
+            <button
+              type="submit"
+              disabled={busy || !customer || !summary.trim()}
+              className={primaryButton}
+            >
+              {t("newComplaint.submit")}
             </button>
-            <button type="button" className={secondaryButton} onClick={onCancel}>
-              Avbryt
+            <button
+              type="button"
+              className={secondaryButton}
+              onClick={onCancel}
+            >
+              {tw("cancel")}
             </button>
           </div>
         </form>

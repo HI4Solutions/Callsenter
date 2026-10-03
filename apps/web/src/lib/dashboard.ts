@@ -1,5 +1,7 @@
 // Dashboard and coaching (apps/api/src/org/dashboard.ts).
 
+import { formatTagNow } from "@/lib/format";
+
 export type Scope = "me" | "seller" | "team" | "all";
 
 export interface Dashboard {
@@ -25,7 +27,16 @@ export interface Dashboard {
   daily: { day: string; sales: number; confirmed: number; calls: number; green: number; yellow: number; red: number }[];
   // Hour by hour when the period is a single day; empty otherwise.
   hourly: { hour: number; calls: number; green: number; yellow: number; red: number }[];
-  sellers: { userId: string; name: string; sales: number; confirmed: number; calls: number; yellow: number; red: number; complaints: number }[];
+  sellers: {
+    userId: string;
+    name: string;
+    sales: number;
+    confirmed: number;
+    calls: number;
+    yellow: number;
+    red: number;
+    complaints: number;
+  }[];
   findings: { label: string; yellow: number; red: number }[];
 }
 
@@ -49,6 +60,7 @@ export interface CoachingList {
   canCoach: boolean;
 }
 
+// Norwegian labels, kept for other pages; the dashboard uses domain.coachingKind.*.
 export const COACHING_KIND: Record<CoachingNote["kind"], string> = { praise: "Ros", improve: "Kan bli bedre" };
 
 export type PeriodKey =
@@ -63,6 +75,7 @@ export type PeriodKey =
   | "this-year"
   | "custom";
 
+// Norwegian labels, kept for other pages; the dashboard uses domain.period.*.
 export const PERIOD_LABELS: Record<PeriodKey, string> = {
   today: "I dag",
   yesterday: "I går",
@@ -75,6 +88,46 @@ export const PERIOD_LABELS: Record<PeriodKey, string> = {
   "this-year": "Hittil i år",
   custom: "Velg datoer",
 };
+
+export const COACHING_KINDS: CoachingNote["kind"][] = ["praise", "improve"];
+
+export const PERIOD_KEYS = Object.keys(PERIOD_LABELS) as PeriodKey[];
+
+// Numbers in the page's language. Formatters are kept per language and options.
+const numberFormats = new Map<string, Intl.NumberFormat>();
+
+export function formatNumber(value: number, options: Intl.NumberFormatOptions = {}): string {
+  const tag = formatTagNow();
+  const key = `${tag}|${JSON.stringify(options)}`;
+  let format = numberFormats.get(key);
+  if (!format) {
+    format = new Intl.NumberFormat(tag, options);
+    numberFormats.set(key, format);
+  }
+  return format.format(value);
+}
+
+// At most one decimal, e.g. 2,5 in Norwegian and 2.5 in English.
+export function formatDecimal(value: number): string {
+  return formatNumber(value, { maximumFractionDigits: 1 });
+}
+
+// Whole percent (40 → "40 %" in Norwegian, "40%" in English).
+export function formatPercent(percent: number): string {
+  return formatNumber(percent / 100, { style: "percent", maximumFractionDigits: 0 });
+}
+
+// Whole kroner, e.g. "1 234 kr".
+export function formatWholeKroner(value: number): string {
+  return formatNumber(value, { style: "currency", currency: "NOK", minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+// A day as day and month ("3.10." in Norwegian), from YYYY-MM-DD.
+export function shortDay(day: string): string {
+  return new Intl.DateTimeFormat(formatTagNow(), { day: "numeric", month: "numeric", timeZone: "UTC" }).format(
+    new Date(`${day}T00:00:00Z`),
+  );
+}
 
 // Today's date in Norway.
 export function osloToday(now = new Date()): string {
@@ -123,7 +176,7 @@ export function periodStart(days: number, now = new Date()): string {
 }
 
 export function share(part: number, whole: number): string {
-  return whole ? `${Math.round((part / whole) * 100)} %` : "–";
+  return whole ? formatPercent(Math.round((part / whole) * 100)) : "–";
 }
 
 export function canSeeDashboard(me: { modules?: string[] }): boolean {

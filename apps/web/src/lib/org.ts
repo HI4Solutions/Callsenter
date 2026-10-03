@@ -29,11 +29,12 @@ export async function switchOrganization(organizationId: string): Promise<void> 
   await apiFetch("/me/organization", { method: "POST", body: { organizationId } });
 }
 
-// Shown as status: inactive in this call centre wins over the user's own state.
+// Shown as status: inactive in this call centre wins over the user's own state. key is the
+// status in domain.userStatus; label is the Norwegian fallback.
 export function memberState(m: { status: string; userStatus: string }) {
-  if (m.status === "disabled" || m.userStatus === "disabled") return { label: "Deaktivert", tone: "danger" as const };
-  if (m.userStatus === "invited") return { label: "Invitert", tone: "warning" as const };
-  return { label: "Aktiv", tone: "ok" as const };
+  if (m.status === "disabled" || m.userStatus === "disabled") return { key: "disabled" as const, label: "Deaktivert", tone: "danger" as const };
+  if (m.userStatus === "invited") return { key: "invited" as const, label: "Invitert", tone: "warning" as const };
+  return { key: "active" as const, label: "Aktiv", tone: "ok" as const };
 }
 
 // The admin's overview (app.org_summary). Parts without the permission are null: activity needs

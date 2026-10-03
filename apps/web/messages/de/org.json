@@ -1,0 +1,199 @@
+{
+  "shell": {
+    "title": "Verwaltung",
+    "pageTitle": "Verwaltung · VeriQall",
+    "eyebrow": "Verwaltung · {organization}",
+    "noApi": "Die API-Adresse ist nicht eingerichtet.",
+    "noOrganization": "Sie sind kein Mitglied eines Callcenters.",
+    "noAccess": "Sie haben keinen Zugriff auf die Verwaltung dieses Callcenters.",
+    "needsStrongLogin": "Die Verwaltung erfordert eine Anmeldung mit BankID oder Passkey. Melden Sie sich ab und erneut an.",
+    "tabs": {
+      "overview": "Übersicht",
+      "users": "Benutzer",
+      "teams": "Teams",
+      "roles": "Rollen",
+      "messages": "Nachrichten",
+      "invoices": "Rechnungen"
+    }
+  },
+  "overview": {
+    "title": "Übersicht",
+    "intro": "{name}. {subscription}",
+    "subscription": {
+      "suspended": "Das Callcenter ist gesperrt. Bitte wenden Sie sich an VeriQall.",
+      "accessUntil": "Zugang bis {date}.",
+      "trialUntil": "Testphase bis {date}.",
+      "active": "Aktiv."
+    },
+    "share": "{count} von {total}",
+    "activeUsers": "Aktive Benutzer",
+    "loggedIn7": "{count} in den letzten 7 Tagen angemeldet",
+    "awaitingFirstLogin": "Warten auf erste Anmeldung",
+    "invitationsExpired": "{count} mit abgelaufener Einladung",
+    "invitationsPending": "{count} gültige Einladungen",
+    "inactive30": "Seit 30 Tagen nicht angemeldet",
+    "disabled": "{count} deaktiviert",
+    "unpaid": "Unbezahlt",
+    "amount": "{amount} NOK",
+    "overdueInvoices": "{count, plural, one {# Rechnung} other {# Rechnungen}} überfällig",
+    "nextDue": "Nächste Fälligkeit {date}",
+    "nothingOverdue": "Nichts überfällig",
+    "transcribedIn": "Transkribiert im {month}",
+    "hours": "{hours} Std.",
+    "login": {
+      "title": "Anmeldung",
+      "link": "Benutzer",
+      "passkey": "Passkey",
+      "note": "Von den aktiven Benutzern, nach den verknüpften Anmeldemethoden. Die Verwaltung und der Einblick in alle Gespräche erfordern BankID oder Passkey."
+    },
+    "teams": {
+      "title": "Teams",
+      "link": "Teams",
+      "note": "Mitglieder pro Team, auch diejenigen, die sich noch nicht angemeldet haben.",
+      "withoutTeam": "{count} gehören keinem Team an.",
+      "empty": "Noch keine Teams. Teams werden für Teamleiter und die Zahlen pro Team benötigt."
+    },
+    "activity": {
+      "title": "Aktivität im {month}",
+      "team": "Team",
+      "calls": "Gespräche",
+      "sales": "Verkäufe",
+      "confirmed": "Bestätigt",
+      "noTeam": "Ohne Team",
+      "more": "Die Zahlen pro Verkäufer und pro Tag finden Sie unter <link>Callcenter → Übersicht</link>."
+    },
+    "usage": {
+      "title": "Verbrauch",
+      "thisMonth": "Dieser Monat",
+      "previousMonth": "Letzter Monat",
+      "hours": "Transkribierte Stunden",
+      "controls": "KI-Prüfungen",
+      "notes": "Notizen",
+      "note": "Gezählt wie auf der Rechnung: jedes Gespräch einmal."
+    },
+    "roles": {
+      "title": "Rollen",
+      "link": "Rollen"
+    },
+    "invoices": {
+      "title": "Rechnungen",
+      "link": "Alle Rechnungen",
+      "unpaid": "Unbezahlt",
+      "overdue": "Überfällig",
+      "nextDue": "Nächste Fälligkeit",
+      "lastPaid": "Letzte Zahlung"
+    },
+    "modules": {
+      "title": "Module",
+      "empty": "Es sind keine Module aktiviert.",
+      "note": "Module werden von VeriQall aktiviert und deaktiviert. Senden Sie eine Nachricht unter Nachrichten, wenn Sie weitere benötigen."
+    }
+  },
+  "users": {
+    "title": "Benutzer",
+    "intro": "Laden Sie Benutzer ein, weisen Sie ihnen Rolle und Team zu und deaktivieren Sie diejenigen, die gehen.",
+    "exportCsv": "CSV exportieren",
+    "csv": {
+      "name": "Name",
+      "phone": "Mobil",
+      "email": "E-Mail",
+      "role": "Rolle",
+      "team": "Team",
+      "status": "Status",
+      "lastLogin": "Zuletzt angemeldet"
+    },
+    "csvFile": "benutzer-{date}.csv",
+    "search": "Suche",
+    "searchPlaceholder": "Name, Mobilnummer oder E-Mail",
+    "noMatch": "Keine Benutzer entsprechen der Suche.",
+    "you": "(Sie)",
+    "noContact": "Keine Kontaktdaten",
+    "lastLogin": "zuletzt angemeldet {when}",
+    "role": "Rolle",
+    "team": "Team",
+    "noTeam": "Ohne Team",
+    "lacksPermissions": "(erfordert Berechtigungen, die Sie nicht haben)",
+    "confirmDisable": "{name} deaktivieren? Der Benutzer verliert den Zugang zum Callcenter.",
+    "disable": "Deaktivieren",
+    "enable": "Wieder aktivieren",
+    "invite": {
+      "title": "Benutzer einladen",
+      "name": "Name",
+      "phone": "Mobilnummer",
+      "phoneHint": "Mit Vipps wird der Benutzer über die Mobilnummer verknüpft.",
+      "email": "E-Mail",
+      "creating": "Einladung wird erstellt …",
+      "create": "Einladung erstellen",
+      "added": "Die Person nutzt VeriQall bereits und wurde hinzugefügt. Aus Sicherheitsgründen wird kein Link erstellt: Das Callcenter erscheint, wenn sie sich mit ihrer eigenen BankID, Vipps oder Passkey anmeldet.",
+      "link": "Einladungslink",
+      "emailed": "Per E-Mail an {email} gesendet.",
+      "alsoSendYourself": "Sie können den Link auch selbst senden, zum Beispiel per SMS.",
+      "sendIt": "Senden Sie den Link an die Person.",
+      "validity": "Er kann einmal verwendet werden und gilt bis {date}. Er wird nur jetzt angezeigt.",
+      "copied": "Kopiert",
+      "copy": "Link kopieren"
+    },
+    "invitations": {
+      "title": "Einladungen",
+      "created": "Erstellt {date} · {state}",
+      "state": {
+        "used": "Verwendet",
+        "revoked": "Zurückgezogen",
+        "expired": "Abgelaufen",
+        "pending": "Ausstehend"
+      },
+      "revoke": "Zurückziehen"
+    }
+  },
+  "teams": {
+    "title": "Teams",
+    "intro": "Teams geben Leitern Einblick in die Gespräche und Verkäufe ihrer Verkäufer.",
+    "new": "Neues Team",
+    "name": "Name",
+    "create": "Team erstellen",
+    "list": "Teams ({count})",
+    "empty": "Noch keine Teams",
+    "emptyHint": "Erstellen Sie oben das erste. Teams werden für Teamleiter und für Zahlen pro Team im Dashboard benötigt.",
+    "archived": "Archivierte Teams",
+    "restore": "Wiederherstellen",
+    "members": "{count, plural, one {# Mitglied} other {# Mitglieder}}",
+    "saveName": "Namen speichern",
+    "archive": "Archivieren",
+    "confirmArchive": "{name} archivieren? Die Mitglieder sind dann ohne Team."
+  },
+  "roles": {
+    "title": "Rollen",
+    "intro": "Eine Rolle ist eine Gruppe von Berechtigungen. Sie können nur Berechtigungen vergeben, die Sie selbst haben, und Ihre eigene Rolle nicht ändern.",
+    "new": "Neue Rolle",
+    "otherGroup": "Sonstiges",
+    "confirmArchive": "Die Rolle {name} archivieren?",
+    "yours": "(Ihre Rolle)",
+    "users": "{count, plural, one {# Benutzer} other {# Benutzer}}",
+    "defaultRole": "Standardrolle",
+    "noPermissions": "Keine Berechtigungen",
+    "edit": "Bearbeiten",
+    "archive": "Archivieren",
+    "archived": "Archivierte Rollen",
+    "restore": "Wiederherstellen",
+    "editTitle": "{name} bearbeiten",
+    "name": "Name",
+    "requiresStrongLogin": "Erfordert BankID oder Passkey.",
+    "notHeld": "Sie haben diese Berechtigung selbst nicht.",
+    "saving": "Wird gespeichert …",
+    "save": "Speichern",
+    "create": "Rolle erstellen",
+    "cancel": "Abbrechen"
+  },
+  "invoices": {
+    "title": "Rechnungen",
+    "intro": "Rechnungen von VeriQall an das Callcenter.",
+    "empty": "Noch keine Rechnungen.",
+    "due": ", fällig {date}",
+    "all": "← Alle Rechnungen",
+    "downloadPdf": "PDF herunterladen"
+  },
+  "messages": {
+    "title": "Nachrichten",
+    "intro": "Unterhaltungen mit VeriQall. Alle mit Zugriff auf die Verwaltung können sie sehen."
+  }
+}

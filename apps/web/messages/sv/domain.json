@@ -1,0 +1,202 @@
+{
+  "flag": {
+    "approved": "Godkänd",
+    "deviation": "Avvikelse",
+    "violation": "Brott"
+  },
+  "callStatus": {
+    "recording": "Spelar in",
+    "processing": "Transkriberas",
+    "transcribed": "Transkriberat",
+    "analyzed": "Klart",
+    "failed": "Misslyckades"
+  },
+  "callSource": {
+    "microphone": "Mikrofon",
+    "tab": "Flikljud och mikrofon",
+    "upload": "Uppladdad fil"
+  },
+  "findingKind": {
+    "required_point": "Obligatorisk punkt",
+    "forbidden_phrase": "Förbjuden formulering",
+    "price_terms": "Pris och villkor",
+    "other": "Annat"
+  },
+  "saleStatus": {
+    "registered": "Registrerad",
+    "awaiting_confirmation": "Väntar på bekräftelse",
+    "confirmed": "Bekräftad",
+    "active": "Aktiv",
+    "rejected": "Avvisad",
+    "withdrawn": "Ångrad",
+    "cancelled": "Avbruten"
+  },
+  "saleAction": {
+    "registered": "Registrerad",
+    "awaiting_confirmation": "Skickad för bekräftelse",
+    "confirmed": "Markera som bekräftad",
+    "active": "Markera som aktiv",
+    "rejected": "Kunden avvisade",
+    "withdrawn": "Kunden ångrade",
+    "cancelled": "Avbryt"
+  },
+  "customerKind": {
+    "person": "Privatperson",
+    "business": "Företag"
+  },
+  "versionStatus": {
+    "draft": "Utkast",
+    "published": "Gällande",
+    "retired": "Ersatt"
+  },
+  "complaintStatus": {
+    "open": "Ny",
+    "investigating": "Under behandling",
+    "resolved": "Löst",
+    "rejected": "Avvisad"
+  },
+  "channel": {
+    "phone": "Telefon",
+    "email": "E-post",
+    "letter": "Brev",
+    "web": "Webbformulär",
+    "other": "Annat"
+  },
+  "coachingKind": {
+    "praise": "Beröm",
+    "improve": "Kan bli bättre"
+  },
+  "period": {
+    "today": "I dag",
+    "yesterday": "I går",
+    "this-week": "Den här veckan",
+    "last-week": "Förra veckan",
+    "this-month": "Den här månaden",
+    "last-month": "Förra månaden",
+    "last-30": "Senaste 30 dagarna",
+    "last-90": "Senaste 90 dagarna",
+    "this-year": "Hittills i år",
+    "custom": "Välj datum"
+  },
+  "userStatus": {
+    "invited": "Inbjuden",
+    "active": "Aktiv",
+    "disabled": "Inaktiverad"
+  },
+  "loginResult": {
+    "success": "Lyckad",
+    "cancelled": "Avbruten",
+    "unknown_identity": "Okänd användare",
+    "invalid": "Ogiltig",
+    "error": "Fel"
+  },
+  "auditAction": {
+    "insert": "Skapad",
+    "update": "Ändrad",
+    "delete": "Raderad"
+  },
+  "auditTable": {
+    "organizations": "Callcenter",
+    "organization_modules": "Modul",
+    "users": "Användare",
+    "platform_admins": "Superadmin",
+    "teams": "Team",
+    "roles": "Roll",
+    "role_permissions": "Behörighet i roll",
+    "memberships": "Medlemskap",
+    "invitations": "Inbjudan",
+    "identities": "Inloggningsmetod",
+    "sessions": "Sessioner",
+    "blocked_ips": "IP-spärr"
+  },
+  "invoiceStatus": {
+    "draft": "Utkast",
+    "scheduled": "Planerad",
+    "sent": "Skickad",
+    "paid": "Betald",
+    "credited": "Krediterad",
+    "payment_missed": "Betalning utebliven"
+  },
+  "paymentMethod": {
+    "bank": "Bank",
+    "stripe": "Stripe",
+    "other": "Annat"
+  },
+  "interval": {
+    "1": "Varje månad",
+    "3": "Varje kvartal",
+    "6": "Varje halvår",
+    "12": "Varje år"
+  },
+  "modules": {
+    "sales": {
+      "name": "Kunder, produkter och försäljning",
+      "description": "Kunder, säljare, produkter, försäljning och status med kundhistorik."
+    },
+    "product_templates": {
+      "name": "Produktmallar",
+      "description": "Pris, villkor, godkända formuleringar och regler per produkt."
+    },
+    "transcription": {
+      "name": "Transkribering",
+      "description": "Tal till text med Soniox, sökning och koppling mellan ljud och text."
+    },
+    "reports": {
+      "name": "Rapporter",
+      "description": "Rapport efter varje samtal, med rapportmallar."
+    },
+    "ai_control": {
+      "name": "AI-kontroll",
+      "description": "Samtalet kontrolleras mot produktmallen och flaggas grönt, gult eller rött."
+    },
+    "sale_verification": {
+      "name": "Försäljningsverifiering",
+      "description": "Kunden godkänner köpet med BankID eller Vipps. Tilläggsmodul med kostnad per godkännande."
+    },
+    "documentation": {
+      "name": "Dokumentation",
+      "description": "Försäljningssammanfattning av vad som sades, erbjöds och godkändes."
+    },
+    "complaints": {
+      "name": "Klagomålshantering",
+      "description": "Samlad dokumentation för klagomålsärenden."
+    },
+    "dashboard": {
+      "name": "Dashboard och coachning",
+      "description": "Försäljning, kvalitet, avvikelser och återkoppling till säljare."
+    }
+  },
+  "permissions": {
+    "calls_read_own": "Egna samtal",
+    "calls_read_team": "Teamets samtal",
+    "calls_read_all": "Alla samtal i callcentret",
+    "calls_audio_play": "Uppspelning av inspelningar",
+    "calls_upload": "Ladda upp inspelningar",
+    "customers_read": "Se kunder och historik",
+    "customers_manage": "Skapa och ändra kunder",
+    "sales_manage": "Registrera och ändra försäljning",
+    "flags_review": "Hantera gula och röda flaggor",
+    "complaints_manage": "Klagomålsärenden",
+    "coaching_give": "Återkoppling till säljare",
+    "dashboard_team": "Dashboard för teamet",
+    "dashboard_all": "Dashboard för hela callcentret",
+    "products_manage": "Produkter och produktmallar",
+    "report_templates_manage": "Rapportmallar",
+    "users_manage": "Användare och team",
+    "roles_manage": "Roller och behörigheter",
+    "audit_read": "Revisions- och åtkomstlogg",
+    "billing_read": "Fakturor"
+  },
+  "permissionGroups": {
+    "calls": "Samtal",
+    "sales": "Försäljning och kunder",
+    "quality": "Kvalitet och coachning",
+    "administration": "Administration"
+  },
+  "defaultRoles": {
+    "seller": "Säljare",
+    "leader": "Chef",
+    "compliance": "Compliance",
+    "admin": "Admin"
+  }
+}

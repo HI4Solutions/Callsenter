@@ -1,0 +1,246 @@
+{
+  "page": {
+    "title": "Overview",
+    "notEnabled": "Dashboard and coaching are not enabled for the call centre.",
+    "intro": {
+      "me": "Your own figures.",
+      "team": "Team {name}.",
+      "quality": "Quality and compliance across the whole call centre.",
+      "all": "The whole call centre."
+    },
+    "countsOnly": "The figures show counts, not content.",
+    "teamField": "Team",
+    "feedbackToYou": "Feedback for you"
+  },
+  "tabs": {
+    "label": "Level",
+    "me": "Me",
+    "team": "The team",
+    "teamNamed": "Team {name}",
+    "all": "The call centre",
+    "quality": "Quality"
+  },
+  "seller": {
+    "back": "← Overview",
+    "fallbackName": "Seller"
+  },
+  "period": {
+    "label": "Period",
+    "from": "From",
+    "to": "To"
+  },
+  "compare": {
+    "yesterday": "yesterday",
+    "dayBefore": "the day before",
+    "previous": "the previous period"
+  },
+  "stats": {
+    "sales": "Sales",
+    "confirmed": "Confirmed",
+    "calls": "Calls",
+    "complaints": "Complaints",
+    "violations": "Breaches",
+    "unreviewedFlags": "Unreviewed flags",
+    "pending": "{count} awaiting confirmation",
+    "confirmedNote": "{confirmed} confirmed, {rejected} rejected, {withdrawn} withdrawn",
+    "monthlyValue": "Confirmed value per month",
+    "oneOff": "+ {amount} one-off",
+    "hoursRecorded": "{hours} hours recorded",
+    "complaintsNote": "{count} open. {scope, select, all {Everyone in the call centre.} other {On sales in the selection.}}"
+  },
+  "flagCard": {
+    "title": "AI control",
+    "withoutDeviation": "{share} of those checked have no deviations.",
+    "unreviewed": "{count, plural, one {# flag has not been reviewed} other {# flags have not been reviewed}}",
+    "allReviewed": "All flags have been reviewed."
+  },
+  "trend": {
+    "title": "Trend",
+    "salesPerDay": "Sales per day",
+    "salesPerWeek": "Sales per week",
+    "callsPerDay": "Calls per day",
+    "callsPerWeek": "Calls per week",
+    "unitSales": "sales",
+    "unitCalls": "calls"
+  },
+  "findings": {
+    "title": "Most frequent deviations",
+    "intro": "The points the AI control flagged most often. This is where coaching helps most.",
+    "violations": "Breaches: {count}",
+    "deviations": "Deviations: {count}"
+  },
+  "sellers": {
+    "title": "Sellers",
+    "name": "Name",
+    "sales": "Sales",
+    "confirmed": "Confirmed",
+    "calls": "Calls",
+    "deviations": "Deviations",
+    "violations": "Breaches",
+    "complaints": "Complaints"
+  },
+  "charts": {
+    "perHour": "AI control per hour",
+    "perDay": "AI control per day",
+    "perWeek": "AI control per week",
+    "hour": "{hour}:00",
+    "weekFrom": "Week from {day}",
+    "unchecked": "Not checked",
+    "noCalls": "No calls in the period.",
+    "showTable": "Show as table",
+    "showChart": "Show as chart",
+    "time": "Time",
+    "chartLabel": "{title}. Use “Show as table” for the figures.",
+    "part": "{label}: {count}"
+  },
+  "me": {
+    "avgLength": "Average length",
+    "approvedByAi": "Approved by AI",
+    "teamAverage": "Team average: {value}",
+    "teamShare": "Team: {share}",
+    "noTeam": "You are not in a team, so there is no average to compare with.",
+    "tooFew": "The average for team {team} is shown once at least three people have been active in the period, so nobody can work out what a colleague has done.",
+    "benchmark": "The average is per seller in team {team} ({count} active in the period), without names.",
+    "findingsTitle": "What you most often forget",
+    "findingsIntro": "The points the AI control flagged most often in your calls. Open the calls below to see what was said."
+  },
+  "team": {
+    "perMonth": "{amount} per month",
+    "redAndYellow": "{red} breaches and {yellow} deviations",
+    "showThem": "Show them",
+    "allReviewed": "All have been reviewed",
+    "sellersTitle": "The sellers",
+    "noSellers": "No sellers in the period.",
+    "followUpTitle": "Needs follow-up",
+    "activityPerDay": "Activity per day",
+    "activityPerWeek": "Activity per week",
+    "metrics": {
+      "sales": "Sales",
+      "calls": "Calls",
+      "redShare": "Share of breaches",
+      "unreviewed": "Unreviewed flags",
+      "red": "Breaches"
+    },
+    "compareBy": "Compare by",
+    "redShareHint": "Breaches as a share of the seller's calls in the period.",
+    "redShareValue": "{share} ({red} of {calls})",
+    "show": "Show",
+    "heatmapCaption": "{metric} per seller and {unit, select, day {day} other {week}}",
+    "seller": "Seller",
+    "sum": "Total",
+    "fewer": "Fewer",
+    "more": "More",
+    "cell": "{name}, {title}: {value}",
+    "units": {
+      "calls": "{count, plural, one {# call} other {# calls}}",
+      "sales": "{count, plural, one {# sale} other {# sales}}",
+      "red": "{count, plural, one {# breach} other {# breaches}}"
+    },
+    "reasons": {
+      "unreviewed": "{count, plural, one {# flag awaiting review} other {# flags awaiting review}}",
+      "breaches": "Breaches in {share} of calls ({red} of {calls})",
+      "noFeedbackYet": "Has not received any feedback yet",
+      "noFeedback30": "No feedback for more than 30 days",
+      "inactive": "No calls or sales in the period"
+    },
+    "nobodyNeedsFollowUp": "Nobody needs follow-up right now."
+  },
+  "quality": {
+    "openNow": "Unreviewed flags now",
+    "noneWaiting": "None waiting",
+    "oldestToday": "The oldest is from today",
+    "oldestDays": "{count, plural, one {The oldest has waited # day} other {The oldest has waited # days}}",
+    "reviewed": "Reviewed in the period",
+    "medianHours": "Median {hours} hours from check to review",
+    "flagged": "Flagged in the period",
+    "flaggedNote": "{red} breaches and {yellow} deviations of {checked} checked",
+    "complaintsReceived": "Complaints received",
+    "openNowNote": "{count} open now",
+    "acceptance": "Customer acceptance",
+    "acceptedOf": "{accepted} of {sent}",
+    "mismatchNote": "{count} where the identity did not match the customer",
+    "allMatchedNote": "The identity matched in all",
+    "queue": {
+      "title": "The queue now",
+      "intro": "Yellow and red flags nobody has reviewed, by how long they have waited.",
+      "underDay": "Under 1 day",
+      "days1to3": "1–3 days",
+      "days3to7": "3–7 days",
+      "overWeek": "Over 7 days",
+      "showPeriod": "Show the {count} from the period"
+    },
+    "products": {
+      "title": "Deviations per product",
+      "none": "No checked calls with a product in the period."
+    },
+    "overTime": "AI control over time",
+    "sellers": {
+      "title": "Sellers with the highest share of breaches",
+      "name": "Name",
+      "checked": "Checked",
+      "deviations": "Deviations",
+      "violations": "Breaches",
+      "redShare": "Share of breaches",
+      "none": "No sellers with breaches in at least three checked calls."
+    },
+    "complaints": {
+      "title": "Complaints",
+      "received": "Received in the period, by status today.",
+      "medianDays": "Cases closed in the period took a median of {days} days.",
+      "channels": "Channel: {list}.",
+      "perWeek": "Complaints received per week",
+      "unit": "complaints"
+    },
+    "acceptanceCard": {
+      "title": "Customer acceptance",
+      "bankid": "Accepted with BankID",
+      "vipps": "Accepted with Vipps",
+      "rejected": "Rejected",
+      "pending": "Waiting",
+      "expired": "Expired",
+      "revoked": "Revoked",
+      "sent": "Links sent in the period: {count}.",
+      "mismatch": "{count} were accepted by a person who did not match the customer by name or phone number. They should be checked.",
+      "allMatched": "Everyone who accepted matched the customer."
+    },
+    "access": {
+      "title": "Access to recordings and transcriptions",
+      "views": "Opened",
+      "plays": "Played",
+      "downloads": "Downloaded",
+      "searches": "Searches",
+      "caption": "Who opened the most in the period",
+      "name": "Name"
+    }
+  },
+  "calls": {
+    "title": "Calls in the period",
+    "filterLabel": "Show calls",
+    "all": "All",
+    "unreviewed": "Not reviewed",
+    "unchecked": "Not checked",
+    "reviewed": "Reviewed",
+    "unknownSeller": "Unknown seller",
+    "noCustomer": "No customer",
+    "team": "Team {name}",
+    "empty": "No calls here in the period.",
+    "capped": "Showing the 200 most recent. Choose a shorter period to see all.",
+    "call": "Call"
+  },
+  "coaching": {
+    "title": "Feedback",
+    "new": "New",
+    "noneOwn": "No feedback yet.",
+    "noneGiven": "No feedback given yet.",
+    "callFallback": "Call {date}",
+    "readAt": "read {date}",
+    "unread": "not read",
+    "markRead": "Mark as read",
+    "newTitle": "New feedback",
+    "newTitleTo": "New feedback for {name}",
+    "field": "Feedback",
+    "hint": "Be specific: what happened, and what could be done differently next time. Cannot be changed afterwards.",
+    "submit": "Give feedback",
+    "sent": "Sent."
+  }
+}
