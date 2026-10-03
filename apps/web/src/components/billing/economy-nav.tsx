@@ -2,22 +2,27 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 const SECTIONS = [
-  { href: "/admin/okonomi/forbruk", label: "Forbruk" },
-  { href: "/admin/okonomi/stripe", label: "Stripe" },
-  { href: "/admin/okonomi/faktura", label: "Faktura" },
-  { href: "/admin/okonomi/regnskap", label: "Regnskap" },
-];
+  { href: "/admin/okonomi/forbruk", label: "usage" },
+  { href: "/admin/okonomi/stripe", label: "stripe" },
+  { href: "/admin/okonomi/faktura", label: "invoice" },
+  { href: "/admin/okonomi/regnskap", label: "accounting" },
+] as const;
 
 const INVOICING = [
-  { href: "/admin/okonomi/faktura", label: "Fakturaer" },
-  { href: "/admin/okonomi/faktura/kunder", label: "Kunder" },
-  { href: "/admin/okonomi/faktura/gjentakende", label: "Gjentakende" },
-  { href: "/admin/okonomi/faktura/pakker", label: "Pakker" },
-  { href: "/admin/okonomi/faktura/innstillinger", label: "Innstillinger" },
-];
+  { href: "/admin/okonomi/faktura", label: "invoices" },
+  { href: "/admin/okonomi/faktura/kunder", label: "customers" },
+  { href: "/admin/okonomi/faktura/gjentakende", label: "recurring" },
+  { href: "/admin/okonomi/faktura/pakker", label: "packages" },
+  { href: "/admin/okonomi/faktura/innstillinger", label: "settings" },
+] as const;
+
+type NavKey =
+  | (typeof SECTIONS)[number]["label"]
+  | (typeof INVOICING)[number]["label"];
 
 export const LAST_SECTION_KEY = "veriqall.okonomi";
 const INVOICE_PAGE = /^\/admin\/okonomi\/faktura\/[0-9a-f-]{36}$/;
@@ -30,15 +35,18 @@ function Links({
   exact,
   variant,
 }: {
-  links: { href: string; label: string }[];
+  links: readonly { href: string; label: NavKey }[];
   label: string;
   exact: (href: string) => boolean;
   variant: "segments" | "underline";
 }) {
+  const t = useTranslations("economy.nav");
   const pathname = usePathname();
   const isActive = (href: string) =>
     // An invoice's own page belongs under Fakturaer.
-    exact(href) ? pathname === href || INVOICE_PAGE.test(pathname) : pathname.startsWith(href);
+    exact(href)
+      ? pathname === href || INVOICE_PAGE.test(pathname)
+      : pathname.startsWith(href);
   if (variant === "segments") {
     return (
       <nav aria-label={label} className="print:hidden">
@@ -51,10 +59,12 @@ function Links({
                   href={l.href}
                   aria-current={active ? "page" : undefined}
                   className={`flex min-h-10 w-full items-center justify-center rounded-lg px-2 text-sm font-semibold sm:px-4 sm:text-base ${
-                    active ? "bg-surface text-fg shadow-sm ring-1 ring-line" : "text-muted hover:text-fg"
+                    active
+                      ? "bg-surface text-fg shadow-sm ring-1 ring-line"
+                      : "text-muted hover:text-fg"
                   }`}
                 >
-                  {l.label}
+                  {t(l.label)}
                 </Link>
               </li>
             );
@@ -74,10 +84,12 @@ function Links({
                 href={l.href}
                 aria-current={active ? "page" : undefined}
                 className={`-mb-px inline-flex min-h-11 items-center border-b-2 font-semibold ${
-                  active ? "border-brand text-brand" : "border-transparent text-muted hover:text-fg"
+                  active
+                    ? "border-brand text-brand"
+                    : "border-transparent text-muted hover:text-fg"
                 }`}
               >
-                {l.label}
+                {t(l.label)}
               </Link>
             </li>
           );
@@ -89,6 +101,7 @@ function Links({
 
 // The parts of Økonomi in the superadmin portal. The part last used is remembered.
 export function EconomyNav() {
+  const t = useTranslations("economy.nav");
   const pathname = usePathname();
   useEffect(() => {
     const section = SECTIONS.find((s) => pathname.startsWith(s.href));
@@ -101,9 +114,19 @@ export function EconomyNav() {
   }, [pathname]);
   return (
     <div className="flex flex-col gap-4">
-      <Links links={SECTIONS} label="Økonomi" exact={() => false} variant="segments" />
+      <Links
+        links={SECTIONS}
+        label={t("label")}
+        exact={() => false}
+        variant="segments"
+      />
       {pathname.startsWith("/admin/okonomi/faktura") && (
-        <Links links={INVOICING} label="Faktura" exact={(href) => href === "/admin/okonomi/faktura"} variant="underline" />
+        <Links
+          links={INVOICING}
+          label={t("invoice")}
+          exact={(href) => href === "/admin/okonomi/faktura"}
+          variant="underline"
+        />
       )}
     </div>
   );

@@ -1,16 +1,37 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import {
+  ErrorMessage,
+  Field,
+  inputClass,
+  primaryButton,
+  secondaryButton,
+} from "@/components/admin/field";
 import { EconomyNav } from "@/components/billing/economy-nav";
-import { type EditableLine, emptyLine, LinesEditor } from "@/components/billing/lines-editor";
-import { osloToday, useInvoiceForm } from "@/components/billing/use-invoice-form";
+import {
+  type EditableLine,
+  emptyLine,
+  LinesEditor,
+} from "@/components/billing/lines-editor";
+import {
+  osloToday,
+  useInvoiceForm,
+} from "@/components/billing/use-invoice-form";
 import { adminFetch, formatDate } from "@/lib/admin";
 import { INTERVAL, kr, type RecurringInvoice } from "@/lib/billing";
 
+const INTERVALS = Object.keys(
+  INTERVAL,
+) as `${RecurringInvoice["intervalMonths"]}`[];
+
 // Fixed agreements: sent automatically every morning a set number of days before they fall due.
 export default function RecurringPage() {
+  const t = useTranslations("economy");
+  const ti = useTranslations("domain.interval");
+  const tc = useTranslations("common");
   const [agreements, setAgreements] = useState<RecurringInvoice[] | null>(null);
   const [editing, setEditing] = useState<RecurringInvoice | "new" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -36,13 +57,18 @@ export default function RecurringPage() {
   }, []);
 
   async function runNow() {
-    if (!window.confirm("Kjøre morgenkjøringen nå? Planlagte fakturaer og faste avtaler som skal ut i dag, sendes på e-post.")) return;
+    if (!window.confirm(t("recurring.confirmRun"))) return;
     setError(null);
     setMessage(null);
     setBusy(true);
     try {
-      const { sent, emailed } = await adminFetch<{ sent: number; emailed: number }>("/billing/run", { method: "POST" });
-      setMessage(sent ? `${sent} fakturaer sendt, ${emailed} på e-post.` : "Ingenting skulle sendes i dag.");
+      const { sent, emailed } = await adminFetch<{
+        sent: number;
+        emailed: number;
+      }>("/billing/run", { method: "POST" });
+      setMessage(
+        sent ? t("recurring.ran", { sent, emailed }) : t("recurring.nothing"),
+      );
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -54,20 +80,27 @@ export default function RecurringPage() {
   return (
     <section className="flex flex-col gap-8">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight">Økonomi</h1>
-        <p className="mt-2 text-muted">
-          Faste avtaler sendes automatisk hver morgen, et fast antall dager før forfall. Planlagte fakturaer sendes samme morgen som fakturadatoen.
-        </p>
+        <h1 className="text-3xl font-extrabold tracking-tight">{t("title")}</h1>
+        <p className="mt-2 text-muted">{t("recurring.intro")}</p>
       </div>
       <EconomyNav />
       <div className="flex flex-wrap gap-2">
         {!editing && (
-          <button type="button" className={primaryButton} onClick={() => setEditing("new")}>
-            Ny gjentakende faktura
+          <button
+            type="button"
+            className={primaryButton}
+            onClick={() => setEditing("new")}
+          >
+            {t("recurring.new")}
           </button>
         )}
-        <button type="button" disabled={busy} className={secondaryButton} onClick={runNow}>
-          Kjør nå
+        <button
+          type="button"
+          disabled={busy}
+          className={secondaryButton}
+          onClick={runNow}
+        >
+          {t("recurring.runNow")}
         </button>
       </div>
       {message && <p role="status">{message}</p>}
@@ -83,20 +116,32 @@ export default function RecurringPage() {
         />
       )}
       {!agreements ? (
-        !error && <p className="text-muted">Laster …</p>
+        !error && <p className="text-muted">{tc("loading")}</p>
       ) : agreements.length === 0 ? (
-        <p className="text-muted">Ingen gjentakende fakturaer.</p>
+        <p className="text-muted">{t("recurring.empty")}</p>
       ) : (
         <div className="-mx-2 scroll-x">
           <table className="w-full min-w-[44rem] text-left">
             <thead className="text-sm text-muted">
               <tr>
-                <th className="px-2 py-2 font-semibold">Kunde</th>
-                <th className="px-2 py-2 font-semibold">Hvor ofte</th>
-                <th className="px-2 py-2 font-semibold">Neste sending</th>
-                <th className="px-2 py-2 font-semibold">Neste forfall</th>
-                <th className="px-2 py-2 text-right font-semibold">Beløp eks. mva</th>
-                <th className="px-2 py-2 font-semibold">Status</th>
+                <th className="px-2 py-2 font-semibold">
+                  {t("shared.customer")}
+                </th>
+                <th className="px-2 py-2 font-semibold">
+                  {t("recurring.howOften")}
+                </th>
+                <th className="px-2 py-2 font-semibold">
+                  {t("recurring.nextSend")}
+                </th>
+                <th className="px-2 py-2 font-semibold">
+                  {t("recurring.nextDue")}
+                </th>
+                <th className="px-2 py-2 text-right font-semibold">
+                  {t("recurring.amountExVat")}
+                </th>
+                <th className="px-2 py-2 font-semibold">
+                  {t("recurring.status")}
+                </th>
                 <th className="px-2 py-2" />
               </tr>
             </thead>
@@ -106,14 +151,34 @@ export default function RecurringPage() {
                   <td className="px-2 py-3">
                     <span className="font-semibold">{a.organizationName}</span>
                     <span className="block text-sm text-muted">
-                      {a.name}, kunde {a.customerNumber}
+                      {t("recurring.agreementLine", {
+                        name: a.name,
+                        number: a.customerNumber,
+                      })}
                     </span>
                   </td>
-                  <td className="px-2 py-3">{INTERVAL[a.intervalMonths]}</td>
-                  <td className="px-2 py-3">{a.sendDate <= today ? "I dag" : formatDate(a.sendDate)}</td>
+                  <td className="px-2 py-3">{ti(`${a.intervalMonths}`)}</td>
+                  <td className="px-2 py-3">
+                    {a.sendDate <= today
+                      ? t("recurring.today")
+                      : formatDate(a.sendDate)}
+                  </td>
                   <td className="px-2 py-3">{formatDate(a.nextDate)}</td>
-                  <td className="px-2 py-3 text-right">{kr(a.lines.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0))}</td>
-                  <td className="px-2 py-3">{!a.active ? "Stoppet" : a.paused ? "På pause (betaling uteblitt)" : "Aktiv"}</td>
+                  <td className="px-2 py-3 text-right">
+                    {kr(
+                      a.lines.reduce(
+                        (sum, l) => sum + l.quantity * l.unitPrice,
+                        0,
+                      ),
+                    )}
+                  </td>
+                  <td className="px-2 py-3">
+                    {!a.active
+                      ? t("recurring.stopped")
+                      : a.paused
+                        ? t("recurring.paused")
+                        : t("shared.active")}
+                  </td>
                   <td className="px-2 py-3 text-right">
                     <div className="flex flex-wrap justify-end gap-2">
                       {a.paused && (
@@ -121,20 +186,28 @@ export default function RecurringPage() {
                           type="button"
                           className={secondaryButton}
                           onClick={async () => {
-                            if (!window.confirm("Gjenoppta uten at betalingen er registrert? Neste faktura sendes som vanlig.")) return;
+                            if (!window.confirm(t("recurring.confirmResume")))
+                              return;
                             try {
-                              await adminFetch(`/recurring-invoices/${a.id}`, { method: "PATCH", body: { paused: false } });
+                              await adminFetch(`/recurring-invoices/${a.id}`, {
+                                method: "PATCH",
+                                body: { paused: false },
+                              });
                               await load();
                             } catch (e) {
                               setError((e as Error).message);
                             }
                           }}
                         >
-                          Gjenoppta
+                          {t("recurring.resume")}
                         </button>
                       )}
-                      <button type="button" className={secondaryButton} onClick={() => setEditing(a)}>
-                        Endre
+                      <button
+                        type="button"
+                        className={secondaryButton}
+                        onClick={() => setEditing(a)}
+                      >
+                        {t("shared.edit")}
                       </button>
                     </div>
                   </td>
@@ -148,14 +221,35 @@ export default function RecurringPage() {
   );
 }
 
-function AgreementForm({ agreement, onDone }: { agreement: RecurringInvoice | null; onDone: () => Promise<void> }) {
+function AgreementForm({
+  agreement,
+  onDone,
+}: {
+  agreement: RecurringInvoice | null;
+  onDone: () => Promise<void>;
+}) {
+  const t = useTranslations("economy");
+  const ti = useTranslations("domain.interval");
+  const tc = useTranslations("common");
   const { organizations, packages, settings } = useInvoiceForm();
-  const [organizationId, setOrganizationId] = useState(agreement?.organizationId ?? "");
-  const [name, setName] = useState(agreement?.name ?? "Abonnement VeriQall");
-  const [interval, setIntervalMonths] = useState<number>(agreement?.intervalMonths ?? 1);
+  const [organizationId, setOrganizationId] = useState(
+    agreement?.organizationId ?? "",
+  );
+  const [name, setName] = useState(
+    agreement?.name ?? t("recurring.defaultName"),
+  );
+  const [interval, setIntervalMonths] = useState<number>(
+    agreement?.intervalMonths ?? 1,
+  );
   const [nextDate, setNextDate] = useState(agreement?.nextDate ?? "");
-  const [daysBefore, setDaysBefore] = useState(agreement?.daysBefore === null || agreement?.daysBefore === undefined ? "" : String(agreement.daysBefore));
-  const [grantAccess, setGrantAccess] = useState(agreement?.grantAccess ?? true);
+  const [daysBefore, setDaysBefore] = useState(
+    agreement?.daysBefore === null || agreement?.daysBefore === undefined
+      ? ""
+      : String(agreement.daysBefore),
+  );
+  const [grantAccess, setGrantAccess] = useState(
+    agreement?.grantAccess ?? true,
+  );
   const [active, setActive] = useState(agreement?.active ?? true);
   const [lines, setLines] = useState<EditableLine[]>(
     agreement
@@ -194,23 +288,42 @@ function AgreementForm({ agreement, onDone }: { agreement: RecurringInvoice | nu
     active,
   };
   return (
-    <Card title={agreement ? `${agreement.organizationName}: ${agreement.name}` : "Ny gjentakende faktura"}>
+    <Card
+      title={
+        agreement
+          ? `${agreement.organizationName}: ${agreement.name}`
+          : t("recurring.new")
+      }
+    >
       <form
         onSubmit={(e) => {
           e.preventDefault();
           void run(() =>
             agreement
-              ? adminFetch(`/recurring-invoices/${agreement.id}`, { method: "PATCH", body })
-              : adminFetch("/recurring-invoices", { method: "POST", body: { ...body, organizationId, nextDate } }),
+              ? adminFetch(`/recurring-invoices/${agreement.id}`, {
+                  method: "PATCH",
+                  body,
+                })
+              : adminFetch("/recurring-invoices", {
+                  method: "POST",
+                  body: { ...body, organizationId, nextDate },
+                }),
           );
         }}
         className="flex flex-col gap-4"
       >
         <div className="grid gap-4 sm:grid-cols-2">
           {!agreement && (
-            <Field label="Kunde">
-              <select required className={inputClass} value={organizationId} onChange={(e) => setOrganizationId(e.target.value)}>
-                <option value="">{organizations ? "Velg callsenter" : "Laster …"}</option>
+            <Field label={t("shared.customer")}>
+              <select
+                required
+                className={inputClass}
+                value={organizationId}
+                onChange={(e) => setOrganizationId(e.target.value)}
+              >
+                <option value="">
+                  {organizations ? t("shared.chooseCentre") : tc("loading")}
+                </option>
                 {organizations?.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.name}
@@ -219,41 +332,93 @@ function AgreementForm({ agreement, onDone }: { agreement: RecurringInvoice | nu
               </select>
             </Field>
           )}
-          <Field label="Navn" hint="Står som merknad på fakturaen.">
-            <input required maxLength={200} className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
+          <Field label={t("shared.name")} hint={t("recurring.nameHint")}>
+            <input
+              required
+              maxLength={200}
+              className={inputClass}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
           </Field>
-          <Field label="Hvor ofte">
-            <select className={inputClass} value={interval} onChange={(e) => setIntervalMonths(Number(e.target.value))}>
-              {Object.entries(INTERVAL).map(([k, v]) => (
+          <Field label={t("recurring.howOften")}>
+            <select
+              className={inputClass}
+              value={interval}
+              onChange={(e) => setIntervalMonths(Number(e.target.value))}
+            >
+              {INTERVALS.map((k) => (
                 <option key={k} value={k}>
-                  {v}
+                  {ti(k)}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Neste forfall" hint="Forfallet gjentas samme dag hver periode. Endres datoen, telles periodene fra den nye.">
-            <input required type="date" className={inputClass} value={nextDate} onChange={(e) => setNextDate(e.target.value)} />
+          <Field
+            label={t("recurring.nextDue")}
+            hint={t("recurring.nextDueHint")}
+          >
+            <input
+              required
+              type="date"
+              className={inputClass}
+              value={nextDate}
+              onChange={(e) => setNextDate(e.target.value)}
+            />
           </Field>
-          <Field label="Dager før forfall" hint={`Når fakturaen sendes. Tomt: standard (${settings?.recurringDaysBefore ?? 14}).`}>
-            <input type="number" min={0} max={60} className={inputClass} value={daysBefore} onChange={(e) => setDaysBefore(e.target.value)} />
+          <Field
+            label={t("recurring.daysBefore")}
+            hint={t("recurring.daysBeforeHint", {
+              days: settings?.recurringDaysBefore ?? 14,
+            })}
+          >
+            <input
+              type="number"
+              min={0}
+              max={60}
+              className={inputClass}
+              value={daysBefore}
+              onChange={(e) => setDaysBefore(e.target.value)}
+            />
           </Field>
         </div>
-        <LinesEditor lines={lines} onChange={setLines} packages={packages} fee={settings?.invoiceFee} />
+        <LinesEditor
+          lines={lines}
+          onChange={setLines}
+          packages={packages}
+          fee={settings?.invoiceFee}
+        />
         <label className="inline-flex min-h-11 items-center gap-2">
-          <input type="checkbox" checked={grantAccess} onChange={(e) => setGrantAccess(e.target.checked)} />
-          Aktiver tilgang: hver faktura holder callsenteret åpent ut perioden og slår på pakkenes moduler
+          <input
+            type="checkbox"
+            checked={grantAccess}
+            onChange={(e) => setGrantAccess(e.target.checked)}
+          />
+          {t("recurring.grantAccess")}
         </label>
         <label className="inline-flex min-h-11 items-center gap-2">
-          <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-          Aktiv
+          <input
+            type="checkbox"
+            checked={active}
+            onChange={(e) => setActive(e.target.checked)}
+          />
+          {t("shared.active")}
         </label>
         <ErrorMessage message={error} />
         <div className="flex flex-wrap gap-2">
-          <button type="submit" disabled={busy || (!agreement && !organizationId)} className={primaryButton}>
-            Lagre
+          <button
+            type="submit"
+            disabled={busy || (!agreement && !organizationId)}
+            className={primaryButton}
+          >
+            {t("shared.save")}
           </button>
-          <button type="button" className={secondaryButton} onClick={() => void onDone()}>
-            Avbryt
+          <button
+            type="button"
+            className={secondaryButton}
+            onClick={() => void onDone()}
+          >
+            {t("shared.cancel")}
           </button>
           {agreement && (
             <button
@@ -261,12 +426,16 @@ function AgreementForm({ agreement, onDone }: { agreement: RecurringInvoice | nu
               disabled={busy}
               className={secondaryButton}
               onClick={() => {
-                if (window.confirm("Slette den gjentakende fakturaen? Fakturaer som er sendt, blir stående.")) {
-                  void run(() => adminFetch(`/recurring-invoices/${agreement.id}`, { method: "DELETE" }));
+                if (window.confirm(t("recurring.confirmDelete"))) {
+                  void run(() =>
+                    adminFetch(`/recurring-invoices/${agreement.id}`, {
+                      method: "DELETE",
+                    }),
+                  );
                 }
               }}
             >
-              Slett
+              {t("shared.delete")}
             </button>
           )}
         </div>
