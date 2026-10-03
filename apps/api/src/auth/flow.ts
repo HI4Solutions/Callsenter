@@ -119,6 +119,24 @@ interface StoredState {
   browser_hash: Buffer | null;
 }
 
+// The words of a name, without case, accents or punctuation.
+function nameWords(name: string): string[] {
+  return name
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .split(/[^\p{L}]+/u)
+    .filter(Boolean);
+}
+
+// Whether the name from BankID is the user's: its first and last name are both in the name the
+// call centre registered (which may leave out or add middle names).
+export function sameName(fromBankId: string | undefined, registered: string): boolean {
+  const words = nameWords(fromBankId ?? "");
+  const known = new Set(nameWords(registered));
+  return words.length > 0 && known.has(words[0]!) && known.has(words.at(-1)!);
+}
+
 // Finds or links the user for an identity, inside the login transaction.
 async function linkUser(db: pg.PoolClient, deps: AuthDeps, identity: Identity, state: StoredState): Promise<string> {
   const now = deps.now();
@@ -132,6 +150,14 @@ async function linkUser(db: pg.PoolClient, deps: AuthDeps, identity: Identity, s
   if (state.link_user_id) {
     if (known && known !== state.link_user_id) {
       throw new AuthFailure("allerede_koblet", "invalid", "identity belongs to another user");
+    }
+    if (!known && identity.provider === "bankid") {
+      // BankID gives administrative rights. Linked from a Vipps session, it must be the same
+      // person: otherwise anyone holding a Vipps session could add their own BankID.
+      const user = await db.query<{ full_name: string }>("select full_name from users where id = $1", [state.link_user_id]);
+      if (!sameName(identity.name, user.rows[0]?.full_name ?? "")) {
+        throw new AuthFailure("navn_ulikt", "invalid", "BankID name differs from the user's name");
+      }
     }
     if (!known) await insertIdentity(db, state.link_user_id, identity, now);
     return state.link_user_id;
