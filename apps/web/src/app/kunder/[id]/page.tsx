@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, primaryButton, secondaryButton } from "@/components/admin/field";
+import { ErrorMessage, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
 import { ComplaintStatusBadge } from "@/components/work/complaint-status";
 import { CustomerForm } from "@/components/work/customer-form";
 import { LinkedCalls } from "@/components/work/linked-calls";
@@ -44,7 +44,7 @@ export default function CustomerPage() {
   }, [id, canRead]);
 
   if (!canRead) return <NoAccess text="Du har ikke tilgang til kunder i dette callsenteret." />;
-  if (!customer) return error ? <ErrorMessage message={error} /> : <p className="text-muted">Laster …</p>;
+  if (!customer) return <LoadState error={error} />;
 
   async function setArchived(archived: boolean) {
     if (archived && !window.confirm(`Arkivere ${customer!.name}? Kunden skjules fra listen, men historikken beholdes.`)) return;
@@ -73,7 +73,7 @@ export default function CustomerPage() {
   return (
     <section className="flex flex-col gap-8">
       <div>
-        <Link href="/kunder" className="text-sm font-semibold text-brand">
+        <Link href="/kunder" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">
           ← Alle kunder
         </Link>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{customer.name}</h1>

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ErrorMessage, primaryButton, secondaryButton } from "@/components/admin/field";
+import { ErrorMessage, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
 import { API_URL } from "@/lib/auth";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { usePageTitle } from "@/lib/use-page-title";
@@ -68,7 +68,7 @@ export default function ConfirmPage() {
     }
   }
 
-  if (!view) return error ? <ErrorMessage message={error} /> : <p className="text-muted">Laster …</p>;
+  if (!view) return <LoadState error={error} />;
   if (view.status !== "pending" || !view.document) {
     return (
       <section className="mx-auto flex max-w-2xl flex-col gap-4">

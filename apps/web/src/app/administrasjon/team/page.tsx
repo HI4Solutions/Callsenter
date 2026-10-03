@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
 import { orgFetch, type OrgOverview } from "@/lib/org";
 
 export default function TeamsPage() {
@@ -47,7 +47,7 @@ export default function TeamsPage() {
     });
   }
 
-  if (!data) return error ? <ErrorMessage message={error} /> : <p className="text-muted">Laster …</p>;
+  if (!data) return <LoadState error={error} />;
   const active = data.teams.filter((t) => !t.archivedAt);
   const archived = data.teams.filter((t) => t.archivedAt);
 

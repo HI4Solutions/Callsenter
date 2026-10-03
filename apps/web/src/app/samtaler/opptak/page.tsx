@@ -346,7 +346,7 @@ export default function StudioPage() {
   return (
     <section className="flex flex-col gap-6">
       <div>
-        <Link href="/samtaler" className="text-sm font-semibold text-brand">
+        <Link href="/samtaler" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">
           ← Alle samtaler
         </Link>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Samtalestudio</h1>
@@ -389,38 +389,6 @@ export default function StudioPage() {
         {me.modules?.includes("reports") && (
           <NoteTemplatePicker templates={noteTemplates} chosen={chosenNotes} onChange={(ids) => void chooseNotes(ids)} />
         )}
-        <div className="flex flex-wrap items-center gap-3">
-          {recording ? (
-            <button type="button" className={primaryButton} disabled={state.step === "stopping"} onClick={stop}>
-              {state.step === "stopping" ? "Laster opp resten …" : "Stopp og send"}
-            </button>
-          ) : (
-            <button type="button" className={primaryButton} disabled={busy} onClick={start}>
-              {state.step === "starting" ? "Starter …" : "Start opptak"}
-            </button>
-          )}
-          {recording ? (
-            <span className="text-2xl font-bold tabular-nums" aria-live="off">
-              {formatDuration(elapsed)}
-            </span>
-          ) : (
-            <label className={`${secondaryButton} cursor-pointer`}>
-              {state.step === "uploading" ? "Laster opp …" : "Last opp lydfil"}
-              <input
-                type="file"
-                accept="audio/*"
-                className="sr-only"
-                disabled={busy}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (file) void upload(file);
-                }}
-              />
-            </label>
-          )}
-        </div>
-
         {!recording && (
           <fieldset className="flex min-w-0 flex-wrap gap-x-6 gap-y-2">
             <legend className="mb-1 text-sm font-semibold">Hvor går samtalen?</legend>
@@ -448,6 +416,43 @@ export default function StudioPage() {
             )}
           </ol>
         )}
+        <div
+          className={`flex flex-wrap items-center gap-3 ${
+            // While recording on a phone, Stopp stays in reach at the bottom of the screen.
+            recording ? "sticky bottom-0 z-10 -mx-4 border-t border-line bg-surface px-4 py-3 sm:static sm:mx-0 sm:border-0 sm:p-0" : ""
+          }`}
+        >
+          {recording ? (
+            <button type="button" className={primaryButton} disabled={state.step === "stopping"} onClick={stop}>
+              {state.step === "stopping" ? "Laster opp resten …" : "Stopp og send"}
+            </button>
+          ) : (
+            <button type="button" className={primaryButton} disabled={busy} onClick={start}>
+              {state.step === "starting" ? "Starter …" : "Start opptak"}
+            </button>
+          )}
+          {recording ? (
+            <span className="text-2xl font-bold" aria-live="off">
+              {formatDuration(elapsed)}
+            </span>
+          ) : (
+            <label className={`${secondaryButton} cursor-pointer`}>
+              {state.step === "uploading" ? "Laster opp …" : "Last opp lydfil"}
+              <input
+                type="file"
+                accept="audio/*"
+                className="sr-only"
+                disabled={busy}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) void upload(file);
+                }}
+              />
+            </label>
+          )}
+        </div>
+
         {recording && (
           <p className="text-sm text-muted" role="status">
             {capture === "tab" ? (tabShared ? "Deler fane og mikrofon. " : "Bare mikrofon. ") : "Mikrofon. "}

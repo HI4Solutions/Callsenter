@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
 import { EconomyNav } from "@/components/billing/economy-nav";
 import { osloToday } from "@/components/billing/use-invoice-form";
 import { adminFetch, formatDate } from "@/lib/admin";
@@ -136,7 +136,7 @@ export default function UsagePage() {
       <ErrorMessage message={error} />
       {summary && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0">
             <Tile
               label="KI-generering"
               value={nok(summary.ai.usd)}
@@ -159,7 +159,7 @@ export default function UsagePage() {
             />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
             <Card title="Per modul">
               <Table
                 head={["Modul", "Antall", "Tokens inn", "Tokens ut", "Kostnad"]}
@@ -212,7 +212,7 @@ function Tile({ label, value, note }: { label: string; value: string; note: stri
   return (
     <div className="rounded-xl border border-line bg-surface p-4">
       <p className="text-sm text-muted">{label}</p>
-      <p className="text-2xl font-semibold tabular-nums">{value}</p>
+      <p className="text-2xl font-semibold">{value}</p>
       <p className="text-sm text-muted">{note}</p>
     </div>
   );
@@ -232,7 +232,7 @@ function Table({ head, rows }: { head: string[]; rows: (string | number)[][] }) 
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-line tabular-nums">
+        <tbody className="divide-y divide-line">
           {rows.map((r, i) => (
             <tr key={i}>
               {r.map((c, j) => (
@@ -297,7 +297,7 @@ function OrganizationTable({ rows, query }: { rows: OrgRow[] | null; query: stri
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-line tabular-nums">
+            <tbody className="divide-y divide-line">
               {sorted.map((r) => (
                 <Fragment key={r.id}>
                   <tr>
@@ -343,10 +343,10 @@ function OrganizationDetail({ id, query }: { id: string; query: string }) {
       cancelled = true;
     };
   }, [id, query]);
-  if (!detail) return error ? <ErrorMessage message={error} /> : <p className="text-muted">Laster …</p>;
+  if (!detail) return <LoadState error={error} />;
   const nok = (value: number) => (detail.rate ? kr(value * detail.rate.usdNok) : usd(value));
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
+    <div className="grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
       <div>
         <p className="font-semibold">Per modul</p>
         <ul>
@@ -456,7 +456,7 @@ function PriceTable() {
   return (
     <Card title="Pristabell">
       {!draft || !prices ? (
-        error ? <ErrorMessage message={error} /> : <p className="text-muted">Laster …</p>
+        <LoadState error={error} />
       ) : (
         <form onSubmit={save} className="flex flex-col gap-6">
           <div className="-mx-2 overflow-x-auto">

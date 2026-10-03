@@ -5,7 +5,6 @@ import "./globals.css";
 import { AccountMenu } from "@/components/account-menu";
 import { Announcements } from "@/components/announcements";
 import { Logo } from "@/components/logo";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { THEME_COLORS, themeInitScript } from "@/lib/theme";
 
 export const metadata: Metadata = {
@@ -27,14 +26,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-dvh antialiased">
         <header className="border-b border-line bg-surface print:hidden">
-          <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
+          <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
             <Link href="/" aria-label="VeriQall, til forsiden" className="flex items-center">
               <Logo height={32} />
             </Link>
-            <div className="flex flex-wrap items-center gap-2">
-              <AccountMenu />
-              <ThemeToggle />
-            </div>
+            <AccountMenu />
           </div>
         </header>
         <Announcements />

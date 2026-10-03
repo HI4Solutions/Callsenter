@@ -66,7 +66,7 @@ export default function CustomersPage() {
             <tbody className="divide-y divide-line">
               {customers.map((c) => (
                 <tr key={c.id}>
-                  <td className="px-2 py-3 tabular-nums">{c.customerNumber}</td>
+                  <td className="px-2 py-3">{c.customerNumber}</td>
                   <td className="px-2 py-3">
                     <Link href={`/admin/callsentre/${c.id}`} className="font-semibold text-brand">
                       {c.name}
@@ -84,8 +84,8 @@ export default function CustomersPage() {
                     )}
                     {c.agreements > 0 && <span className="block text-sm text-muted">{c.agreements} gjentakende</span>}
                   </td>
-                  <td className="px-2 py-3 text-right tabular-nums">{kr(c.outstanding)}</td>
-                  <td className="px-2 py-3 text-right tabular-nums">
+                  <td className="px-2 py-3 text-right">{kr(c.outstanding)}</td>
+                  <td className="px-2 py-3 text-right">
                     <Link href={`/admin/okonomi/faktura?kunde=${c.id}`} className="text-brand">
                       {c.invoices}
                     </Link>
