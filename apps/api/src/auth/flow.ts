@@ -138,11 +138,13 @@ async function linkUser(db: pg.PoolClient, deps: AuthDeps, identity: Identity, s
   }
   if (known) return known;
 
-  // First login with an invitation link.
+  // First login with an invitation link. Only for a user who has never logged in and belongs
+  // to no other call centre (app.invitation_redeemable), so a link can't hand over an account.
   if (state.invitation_id) {
     const { rows } = await db.query<{ user_id: string }>(
       `update invitations set used_at = $2
        where id = $1 and used_at is null and revoked_at is null and expires_at > $2
+         and app.invitation_redeemable(id)
        returning user_id`,
       [state.invitation_id, now],
     );
