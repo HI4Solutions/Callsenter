@@ -5,7 +5,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { api, auth, createOrg, member, owner } from "../../../packages/db/test/helpers.ts";
 import { createHandler } from "../src/api.ts";
 import { sha256 } from "../src/auth/crypto.ts";
-import { handleCallback, safeReturnPath, startLogin } from "../src/auth/flow.ts";
+import { handleCallback, safeReturnPath, sameName, startLogin } from "../src/auth/flow.ts";
 import { clearOidcCaches } from "../src/auth/oidc.ts";
 import { resolveSession, revokeSession } from "../src/auth/session.ts";
 import type { AuthDeps, Provider } from "../src/auth/types.ts";
@@ -224,8 +224,19 @@ describe("adding a second login method", () => {
     const { userId } = await invite({ phone });
     await login("vipps", { sub: randomSub(), phone });
     const bankidSub = randomSub();
-    const { result } = await login("bankid", { sub: bankidSub }, { linkUserId: userId });
+    const { result } = await login("bankid", { sub: bankidSub, name: "KARI JOHANNE SELGER" }, { linkUserId: userId });
     expect((await resolveSession(deps, result.sessionToken))?.userId).toBe(userId);
+  });
+
+  it("refuses a BankID with another person's name, so a Vipps session can't add someone else's", async () => {
+    const phone = randomPhone();
+    const { userId } = await invite({ phone });
+    await login("vipps", { sub: randomSub(), phone });
+    const { result } = await login("bankid", { sub: randomSub(), name: "Ola Nordmann" }, { linkUserId: userId });
+    expect(errorOf(result.location)).toBe("navn_ulikt");
+    expect(result.sessionToken).toBeUndefined();
+    const linked = await owner.query("select provider from identities where user_id = $1", [userId]);
+    expect(linked.rows.map((r) => r.provider)).toEqual(["vipps"]);
   });
 
   it("refuses to link an identity that belongs to someone else", async () => {
@@ -335,5 +346,15 @@ describe("HTTP", () => {
     });
     const res = await noBankid(event("GET", "/auth/bankid/start"));
     expect(errorOf(String(res.headers?.location))).toBe("ikke_satt_opp");
+  });
+});
+
+describe("comparing names from BankID", () => {
+  it("needs the first and last name, and ignores case, accents and middle names", () => {
+    expect(sameName("Kari Johanne Selger", "Kari Selger")).toBe(true);
+    expect(sameName("KARI SELGER", "Kari Johanne Selger")).toBe(true);
+    expect(sameName("Åse Ødegård", "Ase Ødegard")).toBe(true);
+    expect(sameName("Kari Hansen", "Kari Selger")).toBe(false);
+    expect(sameName(undefined, "Kari Selger")).toBe(false);
   });
 });
