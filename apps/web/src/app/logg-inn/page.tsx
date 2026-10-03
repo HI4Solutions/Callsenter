@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { LanguagePicker } from "@/components/language-picker";
 import { PasskeyLogin } from "@/components/passkey-login";
 import { BankIdButton, VippsButton } from "@/components/provider-buttons";
 import { SignedInRedirect } from "@/components/signed-in-redirect";
-import { loginErrorMessage, loginStartUrl, safeNext } from "@/lib/auth";
+import { loginErrorCode, loginStartUrl, safeNext } from "@/lib/auth";
 
-export const metadata: Metadata = { title: "Logg inn" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTranslations("login"))("title") };
+}
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -13,8 +17,9 @@ function first(value: string | string[] | undefined): string | undefined {
 }
 
 export default async function LoginPage({ searchParams }: { searchParams: SearchParams }) {
+  const t = await getTranslations("login");
   const params = await searchParams;
-  const error = loginErrorMessage(first(params.feil));
+  const error = loginErrorCode(first(params.feil));
   const invite = first(params.invitasjon);
   // Only a path inside the app survives; anything else is dropped here (and again in the API).
   const next = safeNext(first(params.neste));
@@ -22,25 +27,22 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   return (
     <section className="mx-auto max-w-md">
       <SignedInRedirect next={next} skip={Boolean(error || invite)} />
-      <h1 className="text-3xl font-extrabold tracking-tight">Logg inn</h1>
-      <p className="mt-3 text-muted">
-        {invite
-          ? "Du er invitert til VeriQall. Logg inn for å ta imot invitasjonen."
-          : "Logg inn med Vipps, BankID eller passkey."}
-      </p>
+      <h1 className="text-3xl font-extrabold tracking-tight">{t("title")}</h1>
+      <p className="mt-3 text-muted">{invite ? t("invited") : t("intro")}</p>
 
       {error && (
         <p role="alert" className="mt-6 rounded-lg border border-line bg-surface p-4">
-          {error}
+          {t(`errors.${error}`)}
         </p>
       )}
 
       <div className="mt-8 flex flex-col gap-3">
         {/* TODO before production: Vipps' official symbol (own designs are not allowed). */}
-        <VippsButton href={loginStartUrl("vipps", { invite, next })}>Logg inn med Vipps</VippsButton>
-        <BankIdButton href={loginStartUrl("bankid", { invite, next })}>Logg inn med BankID</BankIdButton>
+        <VippsButton href={loginStartUrl("vipps", { invite, next })}>{t("vipps")}</VippsButton>
+        <BankIdButton href={loginStartUrl("bankid", { invite, next })}>{t("bankid")}</BankIdButton>
         {!invite && <PasskeyLogin next={next} />}
       </div>
+      <LanguagePicker signedIn={false} className="mt-8 justify-center" />
     </section>
   );
 }

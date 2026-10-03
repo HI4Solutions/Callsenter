@@ -1,5 +1,9 @@
 import path from "node:path";
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
+
+// The pages' texts in every language (src/i18n/request.ts, docs/plan.md, section 19).
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 // Monorepo: let Next (bundler and output file tracing) see the whole repo, so hoisted
 // workspace dependencies resolve and are included in the server bundle (needed on Amplify).
@@ -41,4 +45,4 @@ const config: NextConfig = {
   turbopack: { root: repoRoot },
 };
 
-export default config;
+export default withNextIntl(config);

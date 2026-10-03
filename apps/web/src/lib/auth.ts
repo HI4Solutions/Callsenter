@@ -1,30 +1,31 @@
 // Login against the API (apps/api). The API runs the OIDC flows with Vipps and Idura (BankID)
 // and sets the session cookie on its own host; see docs/auth.md.
 
-import { safeAppPath } from "@veriqall/shared";
+import { type Locale, safeAppPath } from "@veriqall/shared";
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
 export type LoginProvider = "vipps" | "bankid";
 
-// Error codes the API sends back as /logg-inn?feil=<code>.
-export const LOGIN_ERRORS: Record<string, string> = {
-  avbrutt: "Innloggingen ble avbrutt. Prøv igjen når du er klar.",
-  utlopt: "Innloggingen tok for lang tid eller økten er utløpt. Prøv igjen.",
-  ukjent:
-    "Vi fant ingen bruker knyttet til denne innloggingen. Be lederen din om en invitasjon, eller logg inn med BankID hvis kontoen din er satt opp med det.",
-  invitasjon: "Invitasjonen er ugyldig, brukt eller utløpt. Be om en ny invitasjon.",
-  deaktivert: "Brukeren din er deaktivert. Ta kontakt med lederen din.",
-  allerede_koblet: "Denne innloggingen er allerede koblet til en annen bruker.",
-  navn_ulikt:
-    "Navnet i BankID stemmer ikke med navnet på brukeren din, så BankID ble ikke koblet til. Be en administrator rette navnet ditt, og prøv igjen.",
-  ikke_satt_opp: "Denne innloggingsmetoden er ikke satt opp ennå.",
-  feil: "Noe gikk galt under innloggingen. Prøv igjen om litt.",
-};
+// Error codes the API sends back as /logg-inn?feil=<code>; their texts are login.errors.<code>.
+export const LOGIN_ERROR_CODES = [
+  "avbrutt",
+  "utlopt",
+  "ukjent",
+  "invitasjon",
+  "deaktivert",
+  "allerede_koblet",
+  "navn_ulikt",
+  "ikke_satt_opp",
+  "feil",
+] as const;
 
-export function loginErrorMessage(code: string | undefined): string | undefined {
+export type LoginErrorCode = (typeof LOGIN_ERROR_CODES)[number];
+
+// A known error code, "feil" for anything else, or undefined without one.
+export function loginErrorCode(code: string | undefined): LoginErrorCode | undefined {
   if (!code) return undefined;
-  return LOGIN_ERRORS[code] ?? LOGIN_ERRORS.feil;
+  return (LOGIN_ERROR_CODES as readonly string[]).includes(code) ? (code as LoginErrorCode) : "feil";
 }
 
 // Only paths inside the app, never another site (the API checks this again).
@@ -51,6 +52,12 @@ export interface Me {
   permissions: string[];
   // Modules switched on for the active call centre.
   modules?: string[];
+  // The user's own language for the pages (null follows the call centre), the call centre's, and
+  // the language its notes are written in.
+  locale?: Locale | null;
+  organizationLocale?: Locale | null;
+  contentLocale?: Locale | null;
+  transcriptionLanguages?: string[];
 }
 
 // Where a signed-in user lands when they open the login page: their starting point (superadmin

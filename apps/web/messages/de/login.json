@@ -1,0 +1,26 @@
+{
+  "title": "Anmelden",
+  "intro": "Melden Sie sich mit Vipps, BankID oder einem Passkey an.",
+  "invited": "Sie wurden zu VeriQall eingeladen. Melden Sie sich an, um die Einladung anzunehmen.",
+  "vipps": "Mit Vipps anmelden",
+  "bankid": "Mit BankID anmelden",
+  "passkey": "Mit Passkey anmelden",
+  "passkeyWaiting": "Warte auf den Passkey …",
+  "errors": {
+    "avbrutt": "Die Anmeldung wurde abgebrochen. Versuchen Sie es erneut, wenn Sie bereit sind.",
+    "utlopt": "Die Anmeldung hat zu lange gedauert oder die Sitzung ist abgelaufen. Bitte versuchen Sie es erneut.",
+    "ukjent": "Wir haben keinen Benutzer zu dieser Anmeldung gefunden. Bitten Sie Ihre Führungskraft um eine Einladung, oder melden Sie sich mit BankID an, wenn Ihr Konto damit eingerichtet ist.",
+    "invitasjon": "Die Einladung ist ungültig, bereits verwendet oder abgelaufen. Bitten Sie um eine neue Einladung.",
+    "deaktivert": "Ihr Benutzer ist deaktiviert. Wenden Sie sich an Ihre Führungskraft.",
+    "allerede_koblet": "Diese Anmeldung ist bereits mit einem anderen Benutzer verknüpft.",
+    "navn_ulikt": "Der Name in BankID stimmt nicht mit dem Namen Ihres Benutzers überein, daher wurde BankID nicht verknüpft. Bitten Sie einen Administrator, Ihren Namen zu korrigieren, und versuchen Sie es erneut.",
+    "ikke_satt_opp": "Diese Anmeldemethode ist noch nicht eingerichtet.",
+    "feil": "Bei der Anmeldung ist etwas schiefgelaufen. Bitte versuchen Sie es gleich noch einmal."
+  },
+  "passkeyErrors": {
+    "cancelled": "Die Anmeldung mit Passkey wurde abgebrochen.",
+    "exists": "Dieses Gerät hat bereits einen Passkey für Ihr Konto.",
+    "insecure": "Passkeys funktionieren unter dieser Adresse nicht.",
+    "failed": "Mit dem Passkey ist etwas schiefgelaufen."
+  }
+}

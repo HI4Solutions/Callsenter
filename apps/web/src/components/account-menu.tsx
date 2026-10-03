@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+import { LanguagePicker } from "@/components/language-picker";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { API_URL, type Me } from "@/lib/auth";
 import { switchOrganization } from "@/lib/org";
 import { canSeeCalls } from "@/lib/calls";
 import { canSeeSales } from "@/lib/work";
+import { syncLocale } from "@/i18n/sync";
 
 type State = { status: "loading" } | { status: "signed-out" } | { status: "signed-in"; me: Me };
 
@@ -15,6 +18,8 @@ type State = { status: "loading" } | { status: "signed-out" } | { status: "signe
 // credentials; the API only allows this app's origin (CORS).
 export function AccountMenu() {
   const router = useRouter();
+  const t = useTranslations("shell");
+  const locale = useLocale();
   // Customers confirming a sale are not users: no login or account links on their pages.
   const customerPage = usePathname().startsWith("/bekreft");
   const [state, setState] = useState<State>(API_URL ? { status: "loading" } : { status: "signed-out" });
@@ -26,12 +31,14 @@ export function AccountMenu() {
       .then(async (res) => (res.ok ? ((await res.json()) as Me) : null))
       .catch(() => null)
       .then((me) => {
-        if (!cancelled) setState(me ? { status: "signed-in", me } : { status: "signed-out" });
+        if (cancelled) return;
+        setState(me ? { status: "signed-in", me } : { status: "signed-out" });
+        if (me) syncLocale(me, locale);
       });
     return () => {
       cancelled = true;
     };
-  }, [customerPage]);
+  }, [customerPage, locale]);
 
   async function logout() {
     await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => undefined);
@@ -44,7 +51,7 @@ export function AccountMenu() {
     return (
       <div className="flex items-center gap-2">
         <Link href="/logg-inn" className="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold">
-          Logg inn
+          {t("login")}
         </Link>
         <ThemeToggle />
       </div>
@@ -72,19 +79,19 @@ export function AccountMenu() {
   const linkClass = "inline-flex min-h-11 items-center rounded-lg px-3 font-semibold hover:bg-bg";
   // The portals the member can use: the call centre's work, its administration, and superadmin.
   const portals = [
-    me.activeOrganizationId && { href: work, label: "Callsenter" },
-    me.permissions.includes("users.manage") && { href: "/administrasjon", label: "Administrasjon" },
-    me.platformAdmin && { href: "/admin", label: "Superadmin" },
+    me.activeOrganizationId && { href: work, label: t("callCentre") },
+    me.permissions.includes("users.manage") && { href: "/administrasjon", label: t("administration") },
+    me.platformAdmin && { href: "/admin", label: t("superadmin") },
   ].filter((p): p is { href: string; label: string } => Boolean(p));
   const orgPicker = me.organizations.length > 1 && (
     <label className="flex items-center gap-2 text-sm">
-      <span className="sr-only">Callsenter</span>
+      <span className="sr-only">{t("callCentre")}</span>
       <select
         className="min-h-11 w-full rounded-lg border border-line bg-surface px-2"
         value={me.activeOrganizationId ?? ""}
         onChange={(e) => changeOrganization(e.target.value)}
       >
-        {!me.activeOrganizationId && <option value="">Velg callsenter</option>}
+        {!me.activeOrganizationId && <option value="">{t("chooseCallCentre")}</option>}
         {me.organizations.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name}
@@ -107,11 +114,12 @@ export function AccountMenu() {
           ))}
         <Link href="/konto" className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm hover:bg-bg">
           {me.user.name}
-          <span className="sr-only">, min konto</span>
+          <span className="sr-only">{t("myAccountSuffix")}</span>
         </Link>
         <button type="button" onClick={logout} className={`${linkClass} whitespace-nowrap`}>
-          Logg ut
+          {t("logout")}
         </button>
+        <LanguagePicker signedIn />
         <ThemeToggle />
       </div>
       {/* Smaller screens: one button that opens the same choices. */}
@@ -124,13 +132,14 @@ export function AccountMenu() {
             </Link>
           ))}
         <Link href="/konto" className={linkClass}>
-          Min konto
+          {t("myAccount")}
         </Link>
-        <div className="px-3 py-2">
+        <div className="flex flex-col gap-2 px-3 py-2">
+          <LanguagePicker signedIn />
           <ThemeToggle />
         </div>
         <button type="button" onClick={logout} className={`${linkClass} text-left`}>
-          Logg ut
+          {t("logout")}
         </button>
       </MobileMenu>
     </>
@@ -138,6 +147,7 @@ export function AccountMenu() {
 }
 
 function MobileMenu({ name, children }: { name: string; children: React.ReactNode }) {
+  const t = useTranslations("shell");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -177,7 +187,7 @@ function MobileMenu({ name, children }: { name: string; children: React.ReactNod
         <span className="inline-flex size-9 items-center justify-center rounded-full bg-brand text-sm text-on-brand" aria-hidden="true">
           {initials || "?"}
         </span>
-        Meny
+        {t("menu")}
       </button>
       {open && (
         <div className="absolute right-0 z-50 mt-2 flex max-h-[calc(100dvh-5rem)] w-64 flex-col gap-1 overflow-y-auto rounded-xl border border-line bg-surface p-2 shadow-lg">

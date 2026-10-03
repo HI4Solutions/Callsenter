@@ -1,0 +1,23 @@
+{
+  "title": "Min konto",
+  "signedInWith": "{name} · logget ind med {method}",
+  "languageTitle": "Sprog",
+  "languageIntro": "Det sprog, siderne vises på. Vælger du »Som callcentret«, følger du callcentrets sprog.",
+  "followOrganization": "Som callcentret ({language})",
+  "followBrowser": "Som browseren",
+  "languageSaved": "Sproget er gemt.",
+  "passkeys": "Passkeys",
+  "passkeysIntro": "Med en passkey logger du ind med Face ID, Touch ID, Windows Hello eller en sikkerhedsnøgle. Den giver samme adgang som BankID, uden omkostning pr. login.",
+  "passkeyAdded": "Tilføjet {added} · sidst brugt {used}",
+  "removeConfirm": "Fjern passkeyen »{name}«?",
+  "notSupported": "Denne browser understøtter ikke passkeys.",
+  "nameLabel": "Navn på passkeyen",
+  "nameHint": "For eksempel den enhed, den ligger på.",
+  "waitingForDevice": "Venter på enheden …",
+  "add": "Tilføj passkey",
+  "added": "Passkeyen er tilføjet. Næste gang kan du logge ind med den.",
+  "needBankId": "For at tilføje en passkey skal du være logget ind med BankID. Log ud og log ind igen med BankID, så kan du tilføje den her.",
+  "mustLogIn": "Du skal logge ind.",
+  "listFailed": "Kunne ikke hente passkeys.",
+  "removeFailed": "Kunne ikke fjerne passkeyen."
+}

@@ -1,5 +1,7 @@
 "use client";
 
+import { type Locale, LOCALE_CODES, LOCALES } from "@veriqall/shared";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
@@ -32,6 +34,10 @@ export function NotesPanel({
     call.segments.length > 0;
   const templates = useNoteTemplates(canRequest && !chosen);
   const [picked, setPicked] = useState<string[]>([]);
+  const tl = useTranslations("languages");
+  // New notes are written in the call's language unless another is chosen here.
+  const callLocale = call.outputLocale ?? call.defaultOutputLocale;
+  const [locale, setLocale] = useState<Locale>(callLocale);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -41,7 +47,10 @@ export function NotesPanel({
     setError(null);
     setBusy(true);
     try {
-      await orgFetch(`/calls/${call.id}/notes`, { method: "POST", body: { templateIds: chosen ?? picked } });
+      await orgFetch(`/calls/${call.id}/notes`, {
+        method: "POST",
+        body: { templateIds: chosen ?? picked, locale: locale === callLocale ? null : locale },
+      });
       await onChanged();
     } catch (e) {
       setError((e as Error).message);
@@ -67,6 +76,16 @@ export function NotesPanel({
             ) : (
               <NoteTemplatePicker templates={templates} chosen={picked} onChange={setPicked} />
             )}
+            <label className="flex flex-col gap-1 sm:max-w-xs">
+              <span className="text-sm font-semibold">{tl("regenerateIn")}</span>
+              <select className={inputClass} value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>
+                {LOCALE_CODES.map((code) => (
+                  <option key={code} value={code} lang={LOCALES[code].tag}>
+                    {LOCALES[code].name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <ErrorMessage message={error} />
             <div>
               <button type="button" className={secondaryButton} disabled={busy || pending} onClick={regenerate}>
@@ -91,7 +110,10 @@ function NoteCard({ note, call, onChanged }: { note: Note; call: CallDetail; onC
   if (note.status === "pending") {
     return (
       <article className="rounded-lg border border-line p-3" aria-busy="true">
-        <h3 className="font-bold">{note.templateName}</h3>
+        <h3 className="font-bold">
+        {note.templateName}
+        {note.locale && <span className="ml-2 text-sm font-normal text-muted">{LOCALES[note.locale].name}</span>}
+      </h3>
         <p className="mt-1 text-muted" role="status">
           Notatet skrives …
         </p>
@@ -101,7 +123,10 @@ function NoteCard({ note, call, onChanged }: { note: Note; call: CallDetail; onC
   if (note.status === "failed") {
     return (
       <article className="rounded-lg border border-line p-3">
-        <h3 className="font-bold">{note.templateName}</h3>
+        <h3 className="font-bold">
+        {note.templateName}
+        {note.locale && <span className="ml-2 text-sm font-normal text-muted">{LOCALES[note.locale].name}</span>}
+      </h3>
         <p className="mt-1">{note.error ?? "Notatet kunne ikke lages."}</p>
       </article>
     );
@@ -137,7 +162,10 @@ function NoteCard({ note, call, onChanged }: { note: Note; call: CallDetail; onC
   const edited = note.edits > 0;
   return (
     <article className="rounded-lg border border-line p-3">
-      <h3 className="font-bold">{note.templateName}</h3>
+      <h3 className="font-bold">
+        {note.templateName}
+        {note.locale && <span className="ml-2 text-sm font-normal text-muted">{LOCALES[note.locale].name}</span>}
+      </h3>
       <p className="mt-1 text-sm text-muted">
         {edited
           ? `Justert av ${note.editedByName ?? "selgeren"} ${note.editedAt ? formatDateTime(note.editedAt) : ""}. Laget av AI ${formatDateTime(note.createdAt)}.`

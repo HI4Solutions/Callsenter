@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LOGIN_ERRORS, loginErrorMessage, loginPathFor, loginStartUrl, safeNext, signedInDestination } from "./auth";
+import { loginErrorCode, loginPathFor, loginStartUrl, safeNext, signedInDestination } from "./auth";
 
 describe("login helpers", () => {
   it("builds start URLs with invitation and return path", () => {
@@ -16,12 +16,12 @@ describe("login helpers", () => {
     expect(safeNext("/innstillinger")).toBe("/innstillinger");
   });
 
-  it("has a Norwegian message for every error code, and a fallback", () => {
+  it("knows the API's error codes, with a fallback (texts in messages/<locale>/login.json)", () => {
     for (const code of ["avbrutt", "utlopt", "ukjent", "invitasjon", "deaktivert", "allerede_koblet", "navn_ulikt", "ikke_satt_opp", "feil"]) {
-      expect(LOGIN_ERRORS[code]).toBeTruthy();
+      expect(loginErrorCode(code)).toBe(code);
     }
-    expect(loginErrorMessage("noe_annet")).toBe(LOGIN_ERRORS.feil);
-    expect(loginErrorMessage(undefined)).toBeUndefined();
+    expect(loginErrorCode("noe_annet")).toBe("feil");
+    expect(loginErrorCode(undefined)).toBeUndefined();
   });
 });
 

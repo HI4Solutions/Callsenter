@@ -1,0 +1,23 @@
+{
+  "title": "Mein Konto",
+  "signedInWith": "{name} · angemeldet mit {method}",
+  "languageTitle": "Sprache",
+  "languageIntro": "Die Sprache, in der die Seiten angezeigt werden. Wenn Sie „Wie das Callcenter“ wählen, folgen Sie der Sprache des Callcenters.",
+  "followOrganization": "Wie das Callcenter ({language})",
+  "followBrowser": "Wie der Browser",
+  "languageSaved": "Die Sprache wurde gespeichert.",
+  "passkeys": "Passkeys",
+  "passkeysIntro": "Mit einem Passkey melden Sie sich mit Face ID, Touch ID, Windows Hello oder einem Sicherheitsschlüssel an. Er gewährt denselben Zugriff wie BankID, ohne Kosten pro Anmeldung.",
+  "passkeyAdded": "Hinzugefügt {added} · zuletzt verwendet {used}",
+  "removeConfirm": "Den Passkey „{name}“ entfernen?",
+  "notSupported": "Dieser Browser unterstützt keine Passkeys.",
+  "nameLabel": "Name des Passkeys",
+  "nameHint": "Zum Beispiel das Gerät, auf dem er liegt.",
+  "waitingForDevice": "Warte auf das Gerät …",
+  "add": "Passkey hinzufügen",
+  "added": "Der Passkey wurde hinzugefügt. Beim nächsten Mal können Sie sich damit anmelden.",
+  "needBankId": "Um einen Passkey hinzuzufügen, müssen Sie mit BankID angemeldet sein. Melden Sie sich ab und erneut mit BankID an, dann können Sie ihn hier hinzufügen.",
+  "mustLogIn": "Sie müssen sich anmelden.",
+  "listFailed": "Passkeys konnten nicht abgerufen werden.",
+  "removeFailed": "Der Passkey konnte nicht entfernt werden."
+}

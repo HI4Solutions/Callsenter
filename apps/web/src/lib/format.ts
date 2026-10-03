@@ -8,14 +8,30 @@ export function invitationState(inv: { usedAt: string | null; revokedAt: string 
   return "Venter";
 }
 
+// The page's language for dates and numbers (BCP 47, nb-NO by default). Set by <FormatLocale/> in
+// the layout as the page renders in the browser, so helpers called anywhere follow the language.
+let formatTag = "nb-NO";
+let neverText = "Aldri";
+
+export function setFormatLocale(tag: string, never: string) {
+  formatTag = tag;
+  neverText = never;
+}
+
+export function formatTagNow(): string {
+  return formatTag;
+}
+
 export function formatDate(value: string | null): string {
   if (!value) return "–";
-  return new Intl.DateTimeFormat("nb-NO", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value));
+  return new Intl.DateTimeFormat(formatTag, { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Oslo" }).format(
+    new Date(value),
+  );
 }
 
 export function formatDateTime(value: string | null): string {
-  if (!value) return "Aldri";
-  return new Intl.DateTimeFormat("nb-NO", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+  if (!value) return neverText;
+  return new Intl.DateTimeFormat(formatTag, { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Oslo" }).format(new Date(value));
 }
 
 // CSV for Excel with Norwegian settings: semicolon separated, with a byte order mark so

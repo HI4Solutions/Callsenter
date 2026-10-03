@@ -1,0 +1,20 @@
+{
+  "outputLanguage": "Språk for notater",
+  "outputLanguageHint": "Notatene og AI-kontrollen skrives på dette språket.",
+  "spokenLanguages": "Språk i samtalen",
+  "spokenLanguagesHint": "Hjelper transkripsjonen. Soniox kjenner igjen over 60 språk, også når flere brukes i samme samtale.",
+  "followOrganization": "Som callsenteret ({language})",
+  "noteIn": "Notat på {language}",
+  "addLanguage": "Legg til språk",
+  "removeLanguage": "Fjern {language}",
+  "title": "Språk",
+  "regenerateIn": "Språk for nye notater",
+  "orgIntro": "Språkene for callsenteret. Brukerne kan velge sitt eget språk for sidene, og selgerne kan velge språk per samtale.",
+  "pageLanguage": "Språk for sidene",
+  "pageLanguageHint": "Brukes for brukere som ikke har valgt eget språk.",
+  "contentLanguage": "Språk for notater og AI-kontroll",
+  "transcriptionLanguages": "Språk i samtalene",
+  "save": "Lagre språk",
+  "saving": "Lagrer …",
+  "saved": "Lagret."
+}

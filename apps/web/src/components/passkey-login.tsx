@@ -1,15 +1,18 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import {
   LOGIN_BUTTON,
   LoginButtonContent,
 } from "@/components/provider-buttons";
-import { loginWithPasskey, passkeyErrorMessage } from "@/lib/passkey";
+import { loginWithPasskey, passkeyError } from "@/lib/passkey";
 
 // "Logg inn med passkey" on the login page. Not offered with an invitation link: a first login
 // goes through BankID or Vipps so the account is linked.
 export function PasskeyLogin({ next }: { next?: string }) {
+  const t = useTranslations("login");
+  const tc = useTranslations("common");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -21,7 +24,8 @@ export function PasskeyLogin({ next }: { next?: string }) {
       // A full page load, so the header picks up the new session.
       window.location.href = location;
     } catch (e) {
-      setError(passkeyErrorMessage(e));
+      const problem = passkeyError(e);
+      setError("message" in problem ? problem.message : problem.key === "noServer" ? tc("noServer") : t(`passkeyErrors.${problem.key}`));
       setBusy(false);
     }
   }
@@ -35,7 +39,7 @@ export function PasskeyLogin({ next }: { next?: string }) {
         className={`${LOGIN_BUTTON} bg-brand text-on-brand disabled:opacity-60`}
       >
         <LoginButtonContent icon={<FingerprintIcon />}>
-          {busy ? "Venter på passkey …" : "Logg inn med passkey"}
+          {busy ? t("passkeyWaiting") : t("passkey")}
         </LoginButtonContent>
       </button>
       {error && (

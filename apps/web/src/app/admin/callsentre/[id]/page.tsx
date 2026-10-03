@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { isModuleKey, MODULES } from "@veriqall/shared";
+import { isModuleKey, type Locale, LOCALE_CODES, LOCALES, MODULES } from "@veriqall/shared";
+import { useTranslations } from "next-intl";
+import { SpokenLanguages } from "@/components/calls/call-languages";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, LoadState, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
@@ -64,6 +66,7 @@ export default function CallCentrePage() {
       </div>
 
       <Details org={org} onSaved={load} />
+      <Languages org={org} onSaved={load} />
       <Modules org={org} onSaved={load} />
       <Members org={org} />
       <Invite org={org} onInvited={load} />
@@ -198,6 +201,74 @@ function Details({ org, onSaved }: { org: OrganizationDetail; onSaved: () => Pro
         <div>
           <button type="submit" className={primaryButton} disabled={saving}>
             {saving ? "Lagrer …" : "Lagre"}
+          </button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+// The call centre's languages (docs/plan.md, section 19): the pages for users without their own
+// choice, the notes and the AI control, and the languages spoken in its calls (for Soniox).
+function Languages({ org, onSaved }: { org: OrganizationDetail; onSaved: () => Promise<void> }) {
+  const t = useTranslations("languages");
+  const [form, setForm] = useState({
+    defaultLocale: org.defaultLocale ?? "nb",
+    contentLocale: org.contentLocale ?? "nb",
+    transcriptionLanguages: org.transcriptionLanguages?.length ? org.transcriptionLanguages : ["no"],
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await adminFetch(`/organizations/${org.id}`, { method: "PATCH", body: form });
+      await onSaved();
+      setMessage(t("saved"));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const choose = (key: "defaultLocale" | "contentLocale") => (
+    <select className={inputClass} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value as Locale })}>
+      {LOCALE_CODES.map((code) => (
+        <option key={code} value={code} lang={LOCALES[code].tag}>
+          {LOCALES[code].name}
+        </option>
+      ))}
+    </select>
+  );
+
+  return (
+    <Card title={t("title")}>
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        <p className="text-muted">{t("orgIntro")}</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t("pageLanguage")} hint={t("pageLanguageHint")}>
+            {choose("defaultLocale")}
+          </Field>
+          <Field label={t("contentLanguage")} hint={t("outputLanguageHint")}>
+            {choose("contentLocale")}
+          </Field>
+        </div>
+        <SpokenLanguages
+          label={t("transcriptionLanguages")}
+          value={form.transcriptionLanguages}
+          onChange={(next) => setForm({ ...form, transcriptionLanguages: next })}
+        />
+        <ErrorMessage message={error} />
+        {message && <p role="status">{message}</p>}
+        <div>
+          <button type="submit" className={primaryButton} disabled={saving}>
+            {saving ? t("saving") : t("save")}
           </button>
         </div>
       </form>

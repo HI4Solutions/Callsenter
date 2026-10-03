@@ -38,7 +38,8 @@ class FakeSoniox extends Soniox {
     sonioxLog.push(`upload:${new TextDecoder().decode(bytes)}`);
     return "file-1";
   }
-  override async createTranscription() {
+  override async createTranscription(_file: string, _context: unknown, _ref: string, languages: string[] = []) {
+    sonioxLog.push(`languages:${languages.join(",")}`);
     return "tr-1";
   }
   override async status() {
@@ -66,10 +67,12 @@ class FakeSoniox extends Soniox {
 const soniox = new FakeSoniox();
 
 const prompts: string[] = [];
+const systems: string[] = [];
 const models: string[] = [];
 const ai: Ai = {
-  async structured<T>(model: string, _system: string, prompt: string) {
+  async structured<T>(model: string, system: string, prompt: string) {
     models.push(model);
+    systems.push(system);
     prompts.push(prompt);
     const pointId = /\[([a-z0-9]+)\] Opplys om angreretten/.exec(prompt)?.[1] ?? "";
     return {
@@ -85,8 +88,9 @@ const ai: Ai = {
       outputTokens: 200,
     };
   },
-  async text(model, _system, prompt) {
+  async text(model, system, prompt) {
     models.push(model);
+    systems.push(system);
     prompts.push(prompt);
     return { data: "Sammendrag: Kari ringte om fastpris.", model: "test-model", inputTokens: 900, outputTokens: 100 };
   },
@@ -172,6 +176,51 @@ beforeEach(async () => {
   await owner.query(`update platform_settings set value = '"realtime"' where key = 'transcription_mode'`);
 });
 
+describe("calls: languages", () => {
+  it("transcribes, checks and writes notes in the languages chosen for the call", async () => {
+    const s = await setup();
+    const sellerId = await member(s.org, "seller");
+    const seller = await sessionFor(sellerId, s.org, "vipps");
+    // A Swedish call centre: the call centre's languages, and the seller picks English for one note.
+    await owner.query("update organizations set content_locale = 'sv', transcription_languages = '{sv,en}' where id = $1", [s.org]);
+    const { id, created } = await record(seller, { productId: s.productId });
+    expect(created.realtime.languageHints).toEqual(["sv", "en"]);
+    await processCall(workerDeps, id);
+    expect(sonioxLog).toContain("languages:sv,en");
+    expect(systems.at(-1)).toContain("Write in Swedish.");
+    const detail = (await call(seller, "GET", `/org/calls/${id}`)).body;
+    expect(detail).toMatchObject({ outputLocale: null, defaultOutputLocale: "sv", transcriptLanguage: "sv", defaultSpokenLanguages: ["sv", "en"] });
+    expect(detail.reports[0]).toMatchObject({ templateName: "Standardanteckning", locale: "sv" });
+    expect(detail.analyses[0].locale).toBe("sv");
+
+    const asked = await call(seller, "POST", `/org/calls/${id}/notes`, { locale: "en" });
+    expect(asked.status).toBe(201);
+    await processReport(workerDeps, asked.body.ids[0]);
+    expect(systems.at(-1)).toContain("Write in English.");
+    const notes = (await call(seller, "GET", `/org/calls/${id}`)).body.reports;
+    expect(notes[0]).toMatchObject({ templateName: "Standard note", locale: "en", status: "done" });
+    expect((await call(seller, "POST", `/org/calls/${id}/notes`, { locale: "fr" })).body.error).toBe("Ukjent språk.");
+
+    // The call's own choice wins over the call centre's.
+    const { id: german } = await record(seller, { productId: s.productId, outputLocale: "de", spokenLanguages: ["de"] });
+    await processCall(workerDeps, german);
+    expect(sonioxLog).toContain("languages:de");
+    expect(systems.at(-1)).toContain("Write in German.");
+    expect((await call(seller, "PATCH", `/org/calls/${german}`, { spokenLanguages: ["xx-1"] })).status).toBe(400);
+  });
+
+  it("lets a user choose the language of the pages", async () => {
+    const s = await setup();
+    const sellerId = await member(s.org, "seller");
+    const seller = await sessionFor(sellerId, s.org, "vipps");
+    expect((await call(seller, "GET", "/me")).body).toMatchObject({ locale: null, organizationLocale: "nb", contentLocale: "nb" });
+    expect((await call(seller, "POST", "/me/locale", { locale: "de" })).status).toBe(200);
+    expect((await call(seller, "GET", "/me")).body.locale).toBe("de");
+    expect((await call(seller, "POST", "/me/locale", { locale: "xx" })).status).toBe(400);
+    expect((await call(seller, "POST", "/me/locale", { locale: null })).body).toEqual({ locale: null });
+  });
+});
+
 describe("calls: recording to report", () => {
   it("records in realtime mode, transcribes, checks against the template and writes a report", async () => {
     const s = await setup();
@@ -187,7 +236,10 @@ describe("calls: recording to report", () => {
     expect(sonioxLog).toEqual(expect.arrayContaining(["delete-transcription:tr-1", "delete-file:file-1"]));
     expect([...objects.keys()].filter((k) => k.includes(id))).toEqual([`${s.org}/${id}/audio`]);
     // The model sees the template and the transcript with timestamps.
-    expect(prompts.at(-2)).toContain("Forbudte formuleringer:\n- gratis");
+    expect(prompts.at(-2)).toContain("Forbidden phrases:\n- gratis");
+    // Norwegian by default: Soniox expects it, and the AI writes in it.
+    expect(sonioxLog).toContain("languages:no");
+    expect(systems.at(-1)).toContain("Write in Norwegian bokmål.");
     expect(prompts.at(-2)).toContain("[00:40] Taler 1: Det er helt gratis.");
 
     const detail = await call(seller, "GET", `/org/calls/${id}`);
@@ -499,6 +551,18 @@ describe("calls: settings, retention and housekeeping", () => {
     expect((await call(cookie, "PATCH", "/admin/system", { aiModel: "gpt-5" })).body.error).toBe("Ukjent AI-modell.");
     expect((await call(cookie, "PATCH", `/admin/organizations/${s.org}`, { recordingRetentionMonths: 5 })).status).toBe(400);
     expect((await call(cookie, "PATCH", `/admin/organizations/${s.org}`, { recordingRetentionMonths: 6 })).status).toBe(200);
+    // The call centre's languages (docs/plan.md, section 19).
+    expect(
+      (await call(cookie, "PATCH", `/admin/organizations/${s.org}`, { defaultLocale: "sv", contentLocale: "en", transcriptionLanguages: ["sv", "en"] }))
+        .status,
+    ).toBe(200);
+    expect((await call(cookie, "GET", `/admin/organizations/${s.org}`)).body).toMatchObject({
+      defaultLocale: "sv",
+      contentLocale: "en",
+      transcriptionLanguages: ["sv", "en"],
+    });
+    expect((await call(cookie, "PATCH", `/admin/organizations/${s.org}`, { defaultLocale: "fr" })).status).toBe(400);
+    expect((await call(cookie, "PATCH", `/admin/organizations/${s.org}`, { transcriptionLanguages: [] })).status).toBe(400);
 
     const seller = await sessionFor(await member(s.org, "seller"), s.org);
     const created = await call(seller, "POST", "/org/calls", { source: "tab", mime: "audio/webm" });

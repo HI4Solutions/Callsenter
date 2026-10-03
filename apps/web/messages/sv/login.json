@@ -1,0 +1,26 @@
+{
+  "title": "Logga in",
+  "intro": "Logga in med Vipps, BankID eller passkey.",
+  "invited": "Du har bjudits in till VeriQall. Logga in för att ta emot inbjudan.",
+  "vipps": "Logga in med Vipps",
+  "bankid": "Logga in med BankID",
+  "passkey": "Logga in med passkey",
+  "passkeyWaiting": "Väntar på passkey …",
+  "errors": {
+    "avbrutt": "Inloggningen avbröts. Försök igen när du är redo.",
+    "utlopt": "Inloggningen tog för lång tid eller sessionen har gått ut. Försök igen.",
+    "ukjent": "Vi hittade ingen användare kopplad till den här inloggningen. Be din chef om en inbjudan, eller logga in med BankID om ditt konto är upplagt med det.",
+    "invitasjon": "Inbjudan är ogiltig, använd eller har gått ut. Be om en ny inbjudan.",
+    "deaktivert": "Din användare är inaktiverad. Kontakta din chef.",
+    "allerede_koblet": "Den här inloggningen är redan kopplad till en annan användare.",
+    "navn_ulikt": "Namnet i BankID stämmer inte med namnet på din användare, så BankID kopplades inte. Be en administratör rätta ditt namn och försök igen.",
+    "ikke_satt_opp": "Den här inloggningsmetoden är inte uppsatt ännu.",
+    "feil": "Något gick fel vid inloggningen. Försök igen om en stund."
+  },
+  "passkeyErrors": {
+    "cancelled": "Inloggningen med passkey avbröts.",
+    "exists": "Den här enheten har redan en passkey för ditt konto.",
+    "insecure": "Passkey fungerar inte på den här adressen.",
+    "failed": "Något gick fel med passkeyn."
+  }
+}

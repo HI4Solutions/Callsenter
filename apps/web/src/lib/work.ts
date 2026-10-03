@@ -1,6 +1,7 @@
 // The call centre's daily work: sales, customers and products (apps/api/src/org/sales.ts,
 // customers.ts and products.ts). Shared types and formatting for /salg, /kunder and /produkter.
 import type { SaleStatus } from "@veriqall/shared";
+import { formatTagNow } from "./format";
 
 export interface Customer {
   id: string;
@@ -74,10 +75,12 @@ export const CUSTOMER_KIND = { person: "Privatperson", business: "Bedrift" } as 
 export const VERSION_STATUS = { draft: "Utkast", published: "Gjeldende", retired: "Erstattet" } as const;
 
 // "399.50" from the API as "399,50 kr"; whole kroner without decimals.
+// In the page's language: "399 kr" in Norwegian, "NOK 399" in English.
 export function formatKroner(value: string | null): string {
   if (value === null) return "–";
   const n = Number(value);
-  return `${new Intl.NumberFormat("nb-NO", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 }).format(n)} kr`;
+  const digits = Number.isInteger(n) ? 0 : 2;
+  return new Intl.NumberFormat(formatTagNow(), { style: "currency", currency: "NOK", minimumFractionDigits: digits, maximumFractionDigits: 2 }).format(n);
 }
 
 // The price line for a version: "399 kr/mnd + 499 kr", or "–" without a price.

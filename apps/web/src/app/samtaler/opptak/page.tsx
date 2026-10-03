@@ -1,11 +1,13 @@
 "use client";
 
-import { MAX_CHUNK_BYTES } from "@veriqall/shared";
+import { isLocale, MAX_CHUNK_BYTES } from "@veriqall/shared";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
 import { AdditionalInfo } from "@/components/calls/additional-info";
+import { type CallLanguageChoice, CallLanguages } from "@/components/calls/call-languages";
 import { CallReference } from "@/components/calls/call-reference";
 import { NoteTemplatePicker, useNoteTemplates } from "@/components/calls/note-templates";
 import { NotesPanel } from "@/components/calls/notes-panel";
@@ -46,6 +48,31 @@ function writeTabProduct(id: string) {
   }
 }
 
+// The languages chosen in this browser (notes and spoken), kept until changed: a seller usually
+// calls in the same languages all day.
+const STUDIO_LANGUAGES = "veriqall.studio.languages";
+
+function readLanguages(): CallLanguageChoice {
+  try {
+    const value = JSON.parse(localStorage.getItem(STUDIO_LANGUAGES) ?? "null") as Partial<CallLanguageChoice> | null;
+    return {
+      outputLocale: isLocale(value?.outputLocale) ? value.outputLocale : null,
+      spokenLanguages:
+        Array.isArray(value?.spokenLanguages) && value.spokenLanguages.every((v) => typeof v === "string") ? value.spokenLanguages : null,
+    };
+  } catch {
+    return { outputLocale: null, spokenLanguages: null };
+  }
+}
+
+function writeLanguages(choice: CallLanguageChoice) {
+  try {
+    localStorage.setItem(STUDIO_LANGUAGES, JSON.stringify(choice));
+  } catch {
+    // Not remembered; the choice still applies on this page.
+  }
+}
+
 // The note templates switched on in this tab, kept the same way.
 const TAB_NOTES = "veriqall.studio.notes";
 
@@ -71,6 +98,7 @@ function writeTabNotes(ids: string[]) {
 // transcript is made from the recording and cannot be changed; the seller may adjust the note.
 export default function StudioPage() {
   const me = useWorkMe();
+  const tl = useTranslations("languages");
   const [products, setProducts] = useState<ProductSummary[] | null>(null);
   const [productId, setProductId] = useState("");
   const [starred, setStarred] = useState<string | null>(null);
@@ -79,6 +107,9 @@ export default function StudioPage() {
   const [sales, setSales] = useState<SaleSummary[]>([]);
   const [saleId, setSaleId] = useState("");
   const [title, setTitle] = useState("");
+  const [languages, setLanguages] = useState<CallLanguageChoice>(() =>
+    typeof window === "undefined" ? { outputLocale: null, spokenLanguages: null } : readLanguages(),
+  );
   const [extraInfo, setExtraInfo] = useState("");
   const [capture, setCapture] = useState<Capture>("microphone");
   const [state, setState] = useState<State>({ step: "idle" });
@@ -187,6 +218,8 @@ export default function StudioPage() {
     saleId: saleId || null,
     productId: saleId ? null : productId || null,
     noteTemplateIds: chosenNotes,
+    outputLocale: languages.outputLocale,
+    spokenLanguages: languages.spokenLanguages,
   });
 
   // Saves what was typed before the call existed.
@@ -221,6 +254,16 @@ export default function StudioPage() {
     // Until the notes after the call are written, they follow the choice.
     if (activeId && !call?.reports.length) {
       await orgFetch(`/calls/${activeId}`, { method: "PATCH", body: { noteTemplateIds: ids } }).catch((e: Error) => setError(e.message));
+    }
+  }
+
+  async function chooseLanguages(next: CallLanguageChoice) {
+    setError(null);
+    setLanguages(next);
+    writeLanguages(next);
+    // Until the notes are written, a call already started follows the choice too.
+    if (activeId && !call?.reports.length) {
+      await orgFetch(`/calls/${activeId}`, { method: "PATCH", body: next }).catch((e: Error) => setError(e.message));
     }
   }
 
@@ -500,6 +543,18 @@ export default function StudioPage() {
               <Field label="Tittel" hint="Valgfritt.">
                 <input maxLength={200} className={`${inputClass} sm:max-w-md`} value={title} onChange={(e) => setTitle(e.target.value)} />
               </Field>
+            </div>
+          </details>
+        )}
+        {(!activeId || (call && !call.reports.length)) && (
+          <details className="rounded-lg border border-line p-3">
+            <summary className="min-h-11 cursor-pointer content-center font-semibold">{tl("title")}</summary>
+            <div className="mt-3">
+              <CallLanguages
+                value={languages}
+                defaults={{ outputLocale: me.contentLocale ?? "nb", spokenLanguages: me.transcriptionLanguages?.length ? me.transcriptionLanguages : ["no"] }}
+                onChange={chooseLanguages}
+              />
             </div>
           </details>
         )}

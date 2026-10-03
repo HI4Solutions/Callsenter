@@ -1,0 +1,20 @@
+{
+  "outputLanguage": "Sprache für Notizen",
+  "outputLanguageHint": "Die Notizen und die KI-Prüfung werden in dieser Sprache geschrieben.",
+  "spokenLanguages": "Sprachen im Gespräch",
+  "spokenLanguagesHint": "Hilft der Transkription. Soniox erkennt über 60 Sprachen, auch wenn mehrere im selben Gespräch verwendet werden.",
+  "followOrganization": "Wie das Callcenter ({language})",
+  "noteIn": "Notiz auf {language}",
+  "addLanguage": "Sprache hinzufügen",
+  "removeLanguage": "{language} entfernen",
+  "title": "Sprachen",
+  "regenerateIn": "Sprache für neue Notizen",
+  "orgIntro": "Die Sprachen des Callcenters. Benutzer können ihre eigene Sprache für die Seiten wählen, und Verkäufer können die Sprachen pro Gespräch wählen.",
+  "pageLanguage": "Sprache der Seiten",
+  "pageLanguageHint": "Gilt für Benutzer, die keine eigene Sprache gewählt haben.",
+  "contentLanguage": "Sprache für Notizen und die KI-Prüfung",
+  "transcriptionLanguages": "Sprachen in den Gesprächen",
+  "save": "Sprachen speichern",
+  "saving": "Wird gespeichert …",
+  "saved": "Gespeichert."
+}

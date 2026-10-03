@@ -1,0 +1,26 @@
+{
+  "title": "Log in",
+  "intro": "Log in with Vipps, BankID or a passkey.",
+  "invited": "You have been invited to VeriQall. Log in to accept the invitation.",
+  "vipps": "Log in with Vipps",
+  "bankid": "Log in with BankID",
+  "passkey": "Log in with a passkey",
+  "passkeyWaiting": "Waiting for the passkey …",
+  "errors": {
+    "avbrutt": "The login was cancelled. Try again when you're ready.",
+    "utlopt": "The login took too long or the session has expired. Please try again.",
+    "ukjent": "We found no user linked to this login. Ask your manager for an invitation, or log in with BankID if your account is set up with it.",
+    "invitasjon": "The invitation is invalid, used or expired. Ask for a new invitation.",
+    "deaktivert": "Your user has been deactivated. Contact your manager.",
+    "allerede_koblet": "This login is already linked to another user.",
+    "navn_ulikt": "The name in BankID doesn't match the name on your user, so BankID was not linked. Ask an administrator to correct your name, and try again.",
+    "ikke_satt_opp": "This login method is not set up yet.",
+    "feil": "Something went wrong while logging in. Please try again shortly."
+  },
+  "passkeyErrors": {
+    "cancelled": "The passkey login was cancelled.",
+    "exists": "This device already has a passkey for your account.",
+    "insecure": "Passkeys don't work on this address.",
+    "failed": "Something went wrong with the passkey."
+  }
+}

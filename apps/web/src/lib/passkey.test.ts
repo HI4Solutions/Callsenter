@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { passkeyErrorMessage, suggestedPasskeyName } from "./passkey";
+import { passkeyError, PasskeyNetworkError, suggestedPasskeyName } from "./passkey";
 
 describe("passkey helpers", () => {
-  it("explains browser errors in Norwegian", () => {
-    expect(passkeyErrorMessage({ name: "NotAllowedError" })).toBe("Innloggingen med passkey ble avbrutt.");
-    expect(passkeyErrorMessage(new Error("Forespørselen er utløpt. Prøv igjen."))).toBe("Forespørselen er utløpt. Prøv igjen.");
+  it("turns browser errors into text keys, and keeps the API's own messages", () => {
+    expect(passkeyError({ name: "NotAllowedError" })).toEqual({ key: "cancelled" });
+    expect(passkeyError(new PasskeyNetworkError())).toEqual({ key: "noServer" });
+    expect(passkeyError(new Error("Forespørselen er utløpt. Prøv igjen."))).toEqual({ message: "Forespørselen er utløpt. Prøv igjen." });
+    expect(passkeyError(new Error(""))).toEqual({ key: "failed" });
   });
 
   it("suggests a device name", () => {
