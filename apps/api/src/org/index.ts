@@ -6,7 +6,7 @@ import { type ModuleKey, MODULES, type Permission, STRONG_AUTH_PERMISSIONS } fro
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import type pg from "pg";
 import { invoiceDetail, invoicePdfFor } from "../admin/billing.ts";
-import { inviteMember, NotFound, revokeInvitation } from "../admin/organizations.ts";
+import { holdsMoreThanMe, inviteMember, NotFound, revokeInvitation } from "../admin/organizations.ts";
 import { BadRequest, type Body, isUuid, optionalText, parseBody, requiredText } from "../admin/validate.ts";
 import type { Session } from "../auth/session.ts";
 import type { AuthDeps } from "../auth/types.ts";
@@ -177,6 +177,7 @@ export async function updateMember(db: pg.Pool, session: Session, userId: string
       [userId],
     );
     if (!current.rows[0]) throw new NotFound();
+    if (await holdsMoreThanMe(c, userId)) throw new BadRequest("Du kan ikke endre en bruker som har rettigheter du ikke har selv.");
     const sets: string[] = [];
     const values: unknown[] = [userId];
     const add = (column: string, value: unknown) => {

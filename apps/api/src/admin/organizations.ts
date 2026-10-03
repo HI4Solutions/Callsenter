@@ -183,6 +183,19 @@ export async function getOrganization(db: pg.Pool, session: Session, orgId: stri
 // Invites a person to a call centre with a role (the call centre's admin by default). Reuses a
 // user with the same mobile number or e-mail address. Returns the link once; only its hash is
 // stored.
+// True when the member holds a permission in this call centre that the current user lacks.
+// Nobody changes, disables or re-invites someone with more rights than they have themselves.
+export async function holdsMoreThanMe(c: pg.PoolClient, userId: string): Promise<boolean> {
+  const { rows } = await c.query<{ more: boolean }>(
+    `select exists (
+       select 1 from memberships m join role_permissions rp on rp.role_id = m.role_id
+       where m.organization_id = app.current_org_id() and m.user_id = $1 and not app.has_permission(rp.permission)
+     ) as more`,
+    [userId],
+  );
+  return rows[0]!.more;
+}
+
 export async function inviteMember(db: pg.Pool, session: Session, orgId: string, appOrigin: string, body: Body) {
   const fullName = requiredText(body, "fullName", "Navn");
   const phone = optionalPhone(body, "phone", "Mobilnummer") ?? null;
@@ -208,6 +221,8 @@ export async function inviteMember(db: pg.Pool, session: Session, orgId: string,
     if (userId) {
       const status = await c.query<{ status: string }>("select status from users where id = $1", [userId]);
       if (status.rows[0]?.status === "disabled") throw new BadRequest("Brukeren er deaktivert.");
+      // Inviting again changes the role of an existing member.
+      if (await holdsMoreThanMe(c, userId)) throw new BadRequest("Brukeren har rettigheter du ikke har selv.");
     }
     if (!userId) {
       // The new user is not visible until the membership exists, so the id is made here.
