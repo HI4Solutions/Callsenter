@@ -625,14 +625,16 @@ export async function addUsageLines(db: pg.Pool, session: Session, id: string, b
       "select price_audio_hour::text as audio, price_ai_control::text as ai from billing_settings",
     )).rows[0]!;
     if (prices.audio === null && prices.ai === null) throw new BadRequest("Sett priser for forbruk under Innstillinger først.");
-    // Each call is billed once, even if it was transcribed or checked again after a failure.
+    // Each call is billed once, even if it was transcribed or checked again after a failure:
+    // the whole recording when it was transcribed as one, otherwise its pieces added together.
     const used = (await c.query<{ seconds: number; controls: number }>(
       `with u as (
-         select id, call_id, kind, audio_seconds from usage_events
+         select id, call_id, kind, audio_seconds, piece from usage_events
          where organization_id = $1 and created_at >= ($2 || '-01')::date::timestamp at time zone 'Europe/Oslo'
            and created_at < (($2 || '-01')::date + interval '1 month')::timestamp at time zone 'Europe/Oslo'
        ), audio as (
-         select max(audio_seconds) as s from u where kind = 'transcription_async' group by coalesce(call_id::text, id::text)
+         select coalesce(max(audio_seconds) filter (where piece is null), sum(audio_seconds)) as s
+         from u where kind = 'transcription_async' group by coalesce(call_id::text, id::text)
        )
        select (select coalesce(sum(s), 0) from audio)::int as seconds,
               (select count(distinct coalesce(call_id::text, id::text)) from u where kind = 'ai_control')::int as controls`,
