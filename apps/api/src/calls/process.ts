@@ -288,7 +288,8 @@ async function pieceSegments(deps: WorkerDeps, call: CallRow): Promise<Segment[]
 // is deleted once it has its text (the stored recording is the continuous one).
 export async function processPiece(deps: WorkerDeps, callId: string, seq: number): Promise<void> {
   const claimed = await deps.db.query<{ organization_id: string; start_ms: number; attempts: number; audio_mime: string | null }>(
-    `update call_pieces p set lease_until = now() + interval '2 minutes', attempts = p.attempts + 1
+    // Longer than the 90 seconds waiting for Soniox plus the upload, so two runs don't overlap.
+    `update call_pieces p set lease_until = now() + interval '5 minutes', attempts = p.attempts + 1
      from calls c
      where p.call_id = $1 and p.seq = $2 and c.id = p.call_id and p.status = 'pending'
        and (p.lease_until is null or p.lease_until < now())
@@ -331,14 +332,19 @@ export async function processPiece(deps: WorkerDeps, callId: string, seq: number
       startMs: s.startMs + piece.start_ms,
       endMs: s.endMs + piece.start_ms,
     }));
-    await deps.db.query(
-      "update call_pieces set status = 'done', segments = $3, audio_ms = $4, lease_until = null where call_id = $1 and seq = $2",
+    const done = await deps.db.query(
+      `update call_pieces set status = 'done', segments = $3, audio_ms = $4, lease_until = null
+       where call_id = $1 and seq = $2 and status = 'pending'`,
       [callId, seq, JSON.stringify(segments), audioMs ?? null],
     );
-    await deps.db.query(
-      "insert into usage_events (organization_id, call_id, kind, audio_seconds) values ($1, $2, 'transcription_async', $3)",
-      [piece.organization_id, callId, Math.round((audioMs ?? 15_000) / 1000)],
-    );
+    // Counted once per piece, even if another run transcribed it too.
+    if (done.rowCount) {
+      await deps.db.query(
+        `insert into usage_events (organization_id, call_id, kind, audio_seconds, piece) values ($1, $2, 'transcription_async', $3, $4)
+         on conflict (call_id, piece) where piece is not null do nothing`,
+        [piece.organization_id, callId, Math.round((audioMs ?? 15_000) / 1000), seq],
+      );
+    }
     await deps.store.delete([key]);
   } catch (error) {
     console.error("worker: piece failed", callId, seq, error);

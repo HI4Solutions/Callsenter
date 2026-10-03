@@ -56,8 +56,9 @@ export async function usage(db: pg.Pool, session: Session, monthsParam: string |
     const { rows } = await c.query(
       `select o.id as "organizationId", o.name as "organizationName",
               to_char(date_trunc('month', u.created_at), 'YYYY-MM') as month,
-              -- One transcription per call; counted by rows, since the call itself is deleted after retention.
-              count(*) filter (where u.kind = 'transcription_async')::int as calls,
+              -- Calls transcribed; pieces of one call count once. A call deleted after retention has
+              -- no id left, so each of its events counts.
+              count(distinct coalesce(u.call_id::text, u.id::text)) filter (where u.kind = 'transcription_async')::int as calls,
               coalesce(sum(u.audio_seconds) filter (where u.kind = 'transcription_async'), 0)::int as "audioSeconds",
               coalesce(sum(u.audio_seconds) filter (where u.kind = 'transcription_realtime'), 0)::int as "realtimeSeconds",
               coalesce(sum(u.input_tokens), 0)::bigint::text as "inputTokens",
