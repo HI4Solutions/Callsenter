@@ -160,11 +160,12 @@ export const VAT_RATES = [0.25, 0.15, 0.12, 0] as const;
 
 const nok = new Intl.NumberFormat("nb-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export function kr(value: string | number | null): string {
-  return value === null ? "–" : `${nok.format(Number(value))} kr`;
+  // A no-break space, so an amount never breaks before "kr".
+  return value === null ? "–" : `${nok.format(Number(value))}\u00a0kr`;
 }
 
 export function percent(rate: number): string {
-  return `${Math.round(rate * 100)} %`;
+  return `${Math.round(rate * 100)}\u00a0%`;
 }
 
 // 12345678903 as "1234 56 78903".

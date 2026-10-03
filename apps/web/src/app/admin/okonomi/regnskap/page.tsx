@@ -173,7 +173,7 @@ function Tile({ label, value, note }: { label: string; value: string; note: stri
   return (
     <div className="rounded-xl border border-line bg-surface p-4">
       <p className="text-sm text-muted">{label}</p>
-      <p className="text-2xl font-semibold tabular-nums">{value}</p>
+      <p className="text-2xl font-semibold">{value}</p>
       <p className="text-sm text-muted">{note}</p>
     </div>
   );
@@ -181,7 +181,7 @@ function Tile({ label, value, note }: { label: string; value: string; note: stri
 
 function Rows({ rows, total }: { rows: [string, string][]; total: [string, string] }) {
   return (
-    <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 tabular-nums">
+    <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2">
       {rows.map(([k, v]) => (
         <div key={k} className="contents">
           <dt className="text-muted">{k}</dt>
@@ -211,7 +211,7 @@ function MonthChart({ months }: { months: Month[] }) {
                 <th className="px-2 py-2 text-right font-semibold">Resultat</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line tabular-nums">
+            <tbody className="divide-y divide-line">
               {[...months].reverse().map((m) => (
                 <tr key={m.month}>
                   <td className="px-2 py-2 capitalize">{monthName(m.month)}</td>
@@ -300,7 +300,7 @@ function RevenueReport({ today }: { today: string }) {
                 <th className="px-2 py-2 text-right font-semibold">Totalt</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line tabular-nums">
+            <tbody className="divide-y divide-line">
               {rows.map((r, i) => (
                 <tr key={i}>
                   {byMonth && <td className="px-2 py-2 capitalize">{r.month ? monthName(r.month) : ""}</td>}
@@ -320,7 +320,7 @@ function RevenueReport({ today }: { today: string }) {
               )}
             </tbody>
             {rows.length > 0 && (
-              <tfoot className="font-semibold tabular-nums">
+              <tfoot className="font-semibold">
                 <tr>
                   <td className="px-2 py-2" colSpan={byMonth ? 3 : 2}>
                     Sum
@@ -445,7 +445,7 @@ function Entries({ today, onChanged }: { today: string; onChanged: () => void })
                   {formatDate(e.occurredOn)} · {e.kind === "income" ? `innbetaling, ${percent(e.vatRate)} mva` : "kostnad"}
                 </span>
               </span>
-              <span className="tabular-nums">{e.currency === "USD" ? `${e.amount} USD` : kr(e.amount)}</span>
+              <span className="whitespace-nowrap">{e.currency === "USD" ? `${e.amount} USD` : kr(e.amount)}</span>
               <button
                 type="button"
                 className={secondaryButton}
@@ -553,7 +553,7 @@ function FixedRow({
           {cost.endsMonth ? ` til ${monthName(cost.endsMonth.slice(0, 7))}` : ""}
         </span>
       </span>
-      <span className="tabular-nums">{cost.currency === "USD" ? `${cost.amount} USD` : kr(cost.amount)}/mnd</span>
+      <span className="whitespace-nowrap">{cost.currency === "USD" ? `${cost.amount} USD` : kr(cost.amount)}/mnd</span>
       <button type="button" className={secondaryButton} onClick={() => setEditing(true)}>
         Endre
       </button>

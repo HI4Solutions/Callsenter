@@ -48,7 +48,7 @@ export default function OrgInvoicesPage() {
                     {i.kind === "invoice" && `, forfall ${formatDate(i.dueDate)}`}
                   </p>
                 </div>
-                <span className="font-semibold tabular-nums">{kr(i.total)}</span>
+                <span className="font-semibold">{kr(i.total)}</span>
                 <InvoiceStatusBadge invoice={i} />
               </Link>
             </li>

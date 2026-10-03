@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton } from "@/components/admin/field";
+import { ErrorMessage, Field, inputClass, primaryButton, LoadState } from "@/components/admin/field";
 import { adminFetch } from "@/lib/admin";
 import { lines } from "@/lib/work";
 
@@ -49,7 +49,7 @@ export default function SystemPage() {
     }
   }
 
-  if (!settings) return error ? <ErrorMessage message={error} /> : <p className="text-muted">Laster …</p>;
+  if (!settings) return <LoadState error={error} />;
   return (
     <section className="flex flex-col gap-8">
       <div>
@@ -65,7 +65,7 @@ export default function SystemPage() {
               <span>
                 <span className="font-semibold">Bitvis (standard)</span>
                 <span className="block text-sm text-muted">
-                  Som i MedSide: hvert 15. sekund sendes en bit til Soniox (stt-async-v5, EU), og teksten kommer fortløpende. Bitene blir
+                  Hvert 15. sekund sendes en bit av opptaket til transkribering i EU, og teksten kommer fortløpende. Bitene blir
                   samtalens transkripsjon, så den er klar når opptaket stoppes. Mangler en bit, transkriberes hele opptaket i stedet.
                 </span>
               </span>

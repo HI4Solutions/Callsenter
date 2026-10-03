@@ -47,7 +47,7 @@ export default function SellerPage() {
     <section className="flex flex-col gap-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Link href="/oversikt" className="text-sm font-semibold text-brand">
+          <Link href="/oversikt" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">
             ← Oversikt
           </Link>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{data?.targetName ?? "Selger"}</h1>

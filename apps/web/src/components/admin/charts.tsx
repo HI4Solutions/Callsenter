@@ -132,7 +132,7 @@ function Frame({
             {points.map((p) => (
               <tr key={p.label} className="border-b border-line">
                 <td className="py-1">{p.label}</td>
-                <td className="py-1 text-right tabular-nums">{fmt.format(p.value)}</td>
+                <td className="py-1 text-right">{fmt.format(p.value)}</td>
               </tr>
             ))}
           </tbody>

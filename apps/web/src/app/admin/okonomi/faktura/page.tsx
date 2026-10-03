@@ -89,7 +89,7 @@ export default function InvoicesPage() {
                     {i.grantAccess && i.periodEnd && ` · tilgang til ${formatDate(i.periodEnd)}`}
                   </p>
                 </div>
-                <span className="font-semibold tabular-nums">{kr(i.total)}</span>
+                <span className="font-semibold">{kr(i.total)}</span>
                 <InvoiceStatusBadge invoice={i} />
               </Link>
             </li>
