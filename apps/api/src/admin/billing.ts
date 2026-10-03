@@ -607,7 +607,16 @@ export async function creditInvoice(db: pg.Pool, session: Session, id: string, b
   const reason = optionalText(body, "reason", "Begrunnelse", 2000) ?? null;
   const credit = await withSession(db, session, async (c) => {
     try {
-      const { rows } = await c.query<{ id: string }>("select app.credit_invoice($1, $2) as id", [id, reason]);
+      // Without a reason, the credit note says which invoice it credits in the call centre's language.
+      const original = (
+        await c.query<{ number: number | null; locale: string }>(
+          "select i.number, o.default_locale as locale from invoices i join organizations o on o.id = i.organization_id where i.id = $1",
+          [id],
+        )
+      ).rows[0];
+      const text =
+        reason ?? (original?.number != null ? DOCUMENT_TEXTS[localeOr(original.locale)].invoice.creditReason(String(original.number)) : null);
+      const { rows } = await c.query<{ id: string }>("select app.credit_invoice($1, $2) as id", [id, text]);
       return rows[0]!.id;
     } catch (error) {
       translate(error);

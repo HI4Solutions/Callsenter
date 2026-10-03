@@ -55,7 +55,9 @@ interface Month {
 
 interface ReportRow {
   month: string | null;
-  product: string;
+  // A package's name; the other rows have a productKey instead.
+  product: string | null;
+  productKey: "invoiceFee" | "otherLines" | "manualPayments" | null;
   quantity: number;
   net: number;
   vat: number;
@@ -349,6 +351,8 @@ function RevenueReport({ today }: { today: string }) {
   const [to, setTo] = useState(() => shift(`${today.slice(0, 7)}-01`, -1));
   const [byMonth, setByMonth] = useState(false);
   const [rows, setRows] = useState<ReportRow[] | null>(null);
+  const productName = (r: ReportRow) =>
+    r.productKey ? t(`products.${r.productKey}`) : (r.product ?? "");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -381,7 +385,7 @@ function RevenueReport({ today }: { today: string }) {
       ],
       rows.map((r) => [
         r.month ?? `${from}–${to}`,
-        r.product,
+        productName(r),
         r.quantity,
         r.net.toFixed(2),
         r.vat.toFixed(2),
@@ -468,7 +472,7 @@ function RevenueReport({ today }: { today: string }) {
                       {r.month ? monthName(r.month) : ""}
                     </td>
                   )}
-                  <td className="px-2 py-2">{r.product}</td>
+                  <td className="px-2 py-2">{productName(r)}</td>
                   <td className="px-2 py-2 text-right">
                     {r.quantity.toLocaleString(formatTagNow())}
                   </td>

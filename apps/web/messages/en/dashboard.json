@@ -67,7 +67,13 @@
     "title": "Most frequent deviations",
     "intro": "The points the AI control flagged most often. This is where coaching helps most.",
     "violations": "Breaches: {count}",
-    "deviations": "Deviations: {count}"
+    "deviations": "Deviations: {count}",
+    "category": {
+      "requiredPoint": "Required point",
+      "forbiddenPhrases": "Forbidden phrases",
+      "priceTerms": "Price and terms that don't match",
+      "other": "Other issues"
+    }
   },
   "sellers": {
     "title": "Sellers",

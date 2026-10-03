@@ -93,9 +93,9 @@ describe("accounting", () => {
 
     const report = await get("/admin/accounting/revenue", { from, to });
     expect(report.body.rows).toEqual([
-      { month: null, product: "Regnskapspakke", quantity: 1, net: 900, vat: 225, total: 1125 },
-      { month: null, product: "Manuelle innbetalinger", quantity: 1, net: 400, vat: 100, total: 500 },
-      { month: null, product: "Fakturagebyr", quantity: 1, net: 100, vat: 25, total: 125 },
+      { month: null, product: "Regnskapspakke", productKey: null, quantity: 1, net: 900, vat: 225, total: 1125 },
+      { month: null, product: null, productKey: "manualPayments", quantity: 1, net: 400, vat: 100, total: 500 },
+      { month: null, product: null, productKey: "invoiceFee", quantity: 1, net: 100, vat: 25, total: 125 },
     ]);
     const monthly = await get("/admin/accounting/revenue", { from, to, byMonth: "1" });
     expect(monthly.body.rows.every((r: { month: string }) => r.month === "2001-03")).toBe(true);

@@ -158,7 +158,9 @@ export async function accountingMonths(db: pg.Pool, session: Session, monthsPara
 }
 
 // Revenue per product: invoice payments spread over the invoice's lines (packages, invoice fee,
-// other lines), and manual income. No customer data. Optionally per month.
+// other lines), and manual income. No customer data. Optionally per month. Packages carry their
+// name; the other rows a productKey the page shows in its language (invoiceFee, otherLines,
+// manualPayments).
 export async function revenueReport(db: pg.Pool, session: Session, query: Record<string, string | undefined>) {
   const byMonth = query.byMonth === "1";
   return withSession(db, session, async (c) => {
@@ -172,22 +174,23 @@ export async function revenueReport(db: pg.Pool, session: Session, query: Record
        ),
        lines as (
          select paid.paid_on, paid.amount / paid.total as share, l.quantity,
-                case l.kind when 'package' then coalesce(bp.name, l.description) when 'fee' then 'Fakturagebyr' else 'Andre linjer' end as product,
+                case when l.kind = 'package' then coalesce(bp.name, l.description) end as product,
+                case l.kind when 'package' then null when 'fee' then 'invoiceFee' else 'otherLines' end as product_key,
                 round(l.quantity * l.unit_price, 2) as net,
                 round(round(l.quantity * l.unit_price, 2) * case when paid.vat_on then l.vat_rate else 0 end, 2) as vat
          from paid join invoice_lines l on l.invoice_id = paid.invoice_id left join billing_packages bp on bp.id = l.package_id
        ),
        all_rows as (
-         select paid_on, product, quantity * share as quantity, net * share as net, vat * share as vat from lines
+         select paid_on, product, product_key, quantity * share as quantity, net * share as net, vat * share as vat from lines
          union all
-         select occurred_on, 'Manuelle innbetalinger', 1, amount / (1 + vat_rate), amount * vat_rate / (1 + vat_rate)
+         select occurred_on, null, 'manualPayments', 1, amount / (1 + vat_rate), amount * vat_rate / (1 + vat_rate)
          from accounting_entries where kind = 'income' and occurred_on between $1 and $2
        )
-       select case when $3 then to_char(paid_on, 'YYYY-MM') end as month, product,
+       select case when $3 then to_char(paid_on, 'YYYY-MM') end as month, product, product_key as "productKey",
               round(sum(quantity), 2)::float as quantity, round(sum(net), 2)::float as net, round(sum(vat), 2)::float as vat,
               round(sum(net + vat), 2)::float as total
        from all_rows
-       group by 1, 2
+       group by 1, 2, 3
        order by 1 nulls first, total desc`,
       [from, to, byMonth],
     );

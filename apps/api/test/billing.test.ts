@@ -288,6 +288,11 @@ describe("e-mail in the call centre's language", () => {
     } as unknown as APIGatewayProxyEventV2);
     expect(pdf.statusCode).toBe(200);
     expect(String(pdf.headers?.["content-disposition"] ?? "")).toContain(`invoice-${number}.pdf`);
+
+    // A credit note without a reason says what it credits in the call centre's language.
+    const credit = await call(admin.cookie, "POST", `/admin/invoices/${id}/credit`, {});
+    expect(credit.status).toBe(201);
+    expect((await call(admin.cookie, "GET", `/admin/invoices/${credit.body.id}`)).body.note).toBe(`Credit note for invoice ${number}`);
   });
 });
 

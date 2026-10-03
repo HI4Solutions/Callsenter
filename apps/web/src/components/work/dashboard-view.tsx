@@ -146,7 +146,7 @@ export function FindingsCard({ data, title, intro }: { data: Dashboard; title?: 
       <ul className="divide-y divide-line">
         {data.findings.map((f) => (
           <li key={f.label} className="flex flex-wrap items-center gap-3 py-3">
-            <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{f.label}</span>
+            <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{f.key ? t(`category.${f.key}`) : f.label}</span>
             {f.red > 0 && <Flag level="violation">{t("violations", { count: formatNumber(f.red) })}</Flag>}
             {f.yellow > 0 && <Flag level="deviation">{t("deviations", { count: formatNumber(f.yellow) })}</Flag>}
           </li>

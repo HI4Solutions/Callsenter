@@ -67,7 +67,13 @@
     "title": "Vanligaste avvikelser",
     "intro": "Punkterna som AI-kontrollen oftast flaggade. Det är här coachning gör mest nytta.",
     "violations": "Brott: {count}",
-    "deviations": "Avvikelser: {count}"
+    "deviations": "Avvikelser: {count}",
+    "category": {
+      "requiredPoint": "Obligatorisk punkt",
+      "forbiddenPhrases": "Förbjudna formuleringar",
+      "priceTerms": "Pris och villkor som inte stämmer",
+      "other": "Övriga förhållanden"
+    }
   },
   "sellers": {
     "title": "Säljare",

@@ -52,6 +52,8 @@ interface DocumentTexts {
       number: string,
     ) => string;
     credit: (number: string) => string;
+    // The credit note's text when superadmin gives no reason (stored on the credit note).
+    creditReason: (number: string) => string;
     markDraft: string;
     mark: (number: string, due: string) => string;
     // File names of the PDF, without .pdf.
@@ -108,6 +110,7 @@ export const DOCUMENT_TEXTS: Record<Locale, DocumentTexts> = {
         `Betal ${amount} til konto ${account} innen ${due}, og merk betalingen med fakturanummer ${number}.`,
       credit: (number) =>
         `Kreditnota for faktura ${number}. Beløpet trekkes fra det dere skylder, eller betales tilbake.`,
+      creditReason: (number) => `Kreditnota for faktura ${number}`,
       markDraft: "Merk betalingen med fakturanummeret (tildeles ved sending).",
       mark: (number, due) =>
         `Merk betalingen med fakturanummer ${number}. Forfall ${due}.`,
@@ -161,6 +164,7 @@ export const DOCUMENT_TEXTS: Record<Locale, DocumentTexts> = {
         `Pay ${amount} to account ${account} by ${due}, and mark the payment with invoice number ${number}.`,
       credit: (number) =>
         `Credit note for invoice ${number}. The amount is deducted from what you owe, or paid back.`,
+      creditReason: (number) => `Credit note for invoice ${number}`,
       markDraft:
         "Mark the payment with the invoice number (assigned on sending).",
       mark: (number, due) =>
@@ -215,6 +219,7 @@ export const DOCUMENT_TEXTS: Record<Locale, DocumentTexts> = {
         `Betala ${amount} till konto ${account} senast ${due} och märk betalningen med fakturanummer ${number}.`,
       credit: (number) =>
         `Kreditnota för faktura ${number}. Beloppet dras av från det ni är skyldiga eller betalas tillbaka.`,
+      creditReason: (number) => `Kreditnota för faktura ${number}`,
       markDraft: "Märk betalningen med fakturanumret (tilldelas vid utskick).",
       mark: (number, due) =>
         `Märk betalningen med fakturanummer ${number}. Förfallodag ${due}.`,
@@ -268,6 +273,7 @@ export const DOCUMENT_TEXTS: Record<Locale, DocumentTexts> = {
         `Betal ${amount} til konto ${account} senest ${due}, og mærk betalingen med fakturanummer ${number}.`,
       credit: (number) =>
         `Kreditnota for faktura ${number}. Beløbet trækkes fra det, I skylder, eller betales tilbage.`,
+      creditReason: (number) => `Kreditnota for faktura ${number}`,
       markDraft:
         "Mærk betalingen med fakturanummeret (tildeles ved afsendelse).",
       mark: (number, due) =>
@@ -323,6 +329,7 @@ export const DOCUMENT_TEXTS: Record<Locale, DocumentTexts> = {
         `Bitte zahlen Sie ${amount} bis ${due} auf das Konto ${account} und geben Sie die Rechnungsnummer ${number} als Verwendungszweck an.`,
       credit: (number) =>
         `Gutschrift zu Rechnung ${number}. Der Betrag wird mit Ihren offenen Beträgen verrechnet oder zurückgezahlt.`,
+      creditReason: (number) => `Gutschrift zu Rechnung ${number}`,
       markDraft:
         "Geben Sie die Rechnungsnummer als Verwendungszweck an (wird beim Versand vergeben).",
       mark: (number, due) =>

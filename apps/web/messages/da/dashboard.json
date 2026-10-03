@@ -67,7 +67,13 @@
     "title": "Hyppigste afvigelser",
     "intro": "De punkter, AI-kontrollen oftest flagede. Det er her, coaching gør størst gavn.",
     "violations": "Brud: {count}",
-    "deviations": "Afvigelser: {count}"
+    "deviations": "Afvigelser: {count}",
+    "category": {
+      "requiredPoint": "Obligatorisk punkt",
+      "forbiddenPhrases": "Forbudte formuleringer",
+      "priceTerms": "Pris og vilkår, der ikke stemmer",
+      "other": "Andre forhold"
+    }
   },
   "sellers": {
     "title": "Sælgere",

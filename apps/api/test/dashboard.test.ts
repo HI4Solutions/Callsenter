@@ -126,17 +126,28 @@ describe("dashboard: AI flags and calls to follow up", () => {
         [s.org, product],
       )
     ).rows[0].id;
-    for (const [i, flag] of [[0, "green"], [1, "red"]] as const) {
+    const redFindings = JSON.stringify([
+      { kind: "forbidden_phrase", level: "red", comment: "x" },
+      { kind: "required_point", pointId: "gone", level: "yellow", comment: "x" },
+    ]);
+    for (const [i, flag, findings] of [[0, "green", "[]"], [1, "red", redFindings]] as const) {
       await owner.query(
         `insert into call_analyses (organization_id, call_id, template_version_id, model, flag, summary, findings)
-         values ($1, $2, $3, 'm', $4, 'x', '[]')`,
-        [s.org, ids[i], version, flag],
+         values ($1, $2, $3, 'm', $4, 'x', $5)`,
+        [s.org, ids[i], version, flag, findings],
       );
     }
     const day = await call(admin, "GET", "/org/dashboard", undefined, { scope: "all", from: "2026-09-01", to: "2026-09-01" });
     expect(day.status).toBe(200);
     expect(day.body.daily).toEqual([{ day: "2026-09-01", sales: 0, confirmed: 0, calls: 3, green: 1, yellow: 0, red: 1 }]);
     expect(day.body.hourly).toHaveLength(24);
+    // The fixed categories get a key, so the pages can show them in the user's language.
+    expect(day.body.findings).toEqual(
+      expect.arrayContaining([
+        { label: "Forbudte formuleringer", key: "forbiddenPhrases", yellow: 0, red: 1 },
+        { label: "Obligatorisk punkt", key: "requiredPoint", yellow: 1, red: 0 },
+      ]),
+    );
     expect(day.body.hourly[9]).toEqual({ hour: 9, calls: 2, green: 0, yellow: 0, red: 1 });
     const week = await call(admin, "GET", "/org/dashboard", undefined, { scope: "all", from: "2026-09-01", to: "2026-09-07" });
     expect(week.body.hourly).toEqual([]);
