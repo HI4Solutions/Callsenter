@@ -6,7 +6,7 @@ import type pg from "pg";
 import { randomToken, sha256 } from "../auth/crypto.ts";
 import type { Session } from "../auth/session.ts";
 import { sendInvitation } from "../email.ts";
-import { spokenLanguages } from "../i18n/worker.ts";
+import { localeOr, spokenLanguages } from "../i18n/worker.ts";
 import { withSession } from "../me.ts";
 import {
   BadRequest,
@@ -220,7 +220,7 @@ export async function inviteMember(db: pg.Pool, session: Session, orgId: string,
   if (teamId && !isUuid(teamId)) throw new BadRequest("Ukjent team.");
 
   const invited = await inOrganization(db, session, orgId, async (c) => {
-    const exists = await c.query<{ name: string }>("select name from organizations where id = $1", [orgId]);
+    const exists = await c.query<{ name: string; locale: string }>("select name, default_locale as locale from organizations where id = $1", [orgId]);
     if (!exists.rowCount) throw new NotFound();
     const role = await c.query<{ id: string }>(
       "select id from roles where organization_id = $1 and key = $2 and archived_at is null",
@@ -267,7 +267,7 @@ export async function inviteMember(db: pg.Pool, session: Session, orgId: string,
     // the next time they log in with their own BankID, Vipps or passkey.
     const claimable = await c.query<{ ok: boolean }>("select app.invitation_claimable($1) as ok", [userId]);
     if (!claimable.rows[0]?.ok) {
-      return { id: null, userId, link: null, expiresAt: null, organizationName: exists.rows[0]!.name };
+      return { id: null, userId, link: null, expiresAt: null, organizationName: exists.rows[0]!.name, locale: exists.rows[0]!.locale };
     }
     const token = randomToken();
     const invitation = await c.query<{ id: string; expires_at: Date }>(
@@ -283,11 +283,13 @@ export async function inviteMember(db: pg.Pool, session: Session, orgId: string,
       link: link.toString(),
       expiresAt: invitation.rows[0]!.expires_at,
       organizationName: exists.rows[0]!.name,
+      locale: exists.rows[0]!.locale,
     };
   });
   // Sent after the invitation is committed; the link is shown either way.
-  const { organizationName, ...result } = invited;
-  const emailed = email && result.link ? await sendInvitation(email, fullName, organizationName, result.link) : false;
+  // In the call centre's language, as the invited person will see it first.
+  const { organizationName, locale, ...result } = invited;
+  const emailed = email && result.link ? await sendInvitation(email, fullName, organizationName, result.link, localeOr(locale)) : false;
   return { ...result, emailed };
 }
 

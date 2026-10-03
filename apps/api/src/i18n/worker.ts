@@ -81,7 +81,8 @@ export function spokenLanguages(body: Body, key: string): string[] | null | unde
     value.length > MAX_TRANSCRIPTION_LANGUAGES ||
     !value.every((v) => typeof v === "string" && SONIOX_LANGUAGE.test(v))
   ) {
-    throw new BadRequest(`Velg mellom ett og ${MAX_TRANSCRIPTION_LANGUAGES} språk.`);
+    const max = MAX_TRANSCRIPTION_LANGUAGES;
+    throw new BadRequest(`Velg mellom ett og ${max} språk.`);
   }
   return [...new Set(value as string[])];
 }

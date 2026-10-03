@@ -23,4 +23,24 @@ describe("the API's texts in other languages", () => {
     expect(body.error).toBe("Not found.");
     expect(body.rows[0]!.note).toBe("Kunden ringer tilbake.");
   });
+
+  it("translates messages with field names, lists and module names in them", () => {
+    expect(translateMessage("Kontaktperson må fylles ut.", "en")).toBe("Contact person is required.");
+    expect(translateMessage("Ukjent kunde.", "de")).toBe("Kunde nicht gefunden.");
+    expect(translateMessage("Ugyldig dato: fakturadato.", "sv")).toBe("Ogiltigt datum: fakturadatum.");
+    expect(translateMessage("Bindingstid må være et helt tall mellom 0 og 120.", "da")).toBe("Bindingsperiode skal være et helt tal mellem 0 og 120.");
+    expect(translateMessage("Fyll ut før publisering: pris (engangs eller per måned), vilkår.", "en")).toBe(
+      "Fill in before publishing: price (one-off or monthly), terms.",
+    );
+    expect(translateMessage("AI-kontroll er ikke slått på for callsenteret.", "de")).toBe("KI-Prüfung ist für das Callcenter nicht aktiviert.");
+  });
+
+  it("translates the notes the system writes in a sale's history", () => {
+    const body = translateBody({ events: [{ note: "Godtatt skriftlig av kunden med BankID" }], statusNote: "Sendt til kunden for bekreftelse" }, "en") as {
+      events: { note: string }[];
+      statusNote: string;
+    };
+    expect(body.events[0]!.note).toBe("Accepted in writing by the customer with BankID");
+    expect(body.statusNote).toBe("Sent to the customer for confirmation");
+  });
 });

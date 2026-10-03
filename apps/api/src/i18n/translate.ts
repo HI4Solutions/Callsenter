@@ -63,7 +63,12 @@ for (const template of Object.keys(MESSAGES.en)) {
 patterns.sort((a, b) => b.template.replace(PLACEHOLDER, "").length - a.template.replace(PLACEHOLDER, "").length);
 
 function label(value: string, locale: Exclude<Locale, "nb">): string {
-  return LABELS[locale][value] ?? LABELS[locale][value.toLowerCase()]?.toLowerCase() ?? value;
+  const labels = LABELS[locale];
+  const known = labels[value] ?? labels[value.toLowerCase()]?.toLowerCase();
+  if (known !== undefined) return known;
+  // A list ("pris (engangs eller per måned), vilkår"): each known part translated.
+  if (value.includes(", ")) return value.split(", ").map((part) => labels[part] ?? part).join(", ");
+  return value;
 }
 
 // A Norwegian message from the code in another language; unknown text is left as it is.

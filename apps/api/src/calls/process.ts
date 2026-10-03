@@ -46,7 +46,7 @@ interface CallRow {
 }
 
 // Shown to users; the details go to the log.
-const FAILED = {
+export const FAILED = {
   noAudio: "Ingen lyd ble lastet opp.",
   tooLarge: "Opptaket er for stort til å behandles (høyst 300 MB).",
   transcription: "Transkriberingen feilet. Prøv igjen.",
@@ -693,7 +693,7 @@ async function analyse(deps: WorkerDeps, call: CallRow, enabled: Set<string>) {
 
 // --- Notes made on request (Samtalestudio) -----------------------------------------------------
 
-const NOTE_FAILED = {
+export const NOTE_FAILED = {
   disabled: "Rapporter er ikke slått på for callsenteret.",
   notConfigured: "AI er ikke satt opp ennå.",
   failed: "Notatet kunne ikke lages. Prøv igjen.",
