@@ -1,5 +1,6 @@
 // Calls to the superadmin API (apps/api/src/admin). The session cookie lives on the API host,
 // so every call carries credentials; the API only answers this app's origin.
+import type { Locale } from "@veriqall/shared";
 import { apiFetch } from "./api";
 import { formatDate } from "./format";
 
@@ -33,6 +34,11 @@ export interface OrganizationDetail {
   // Set when invoices control access (docs/plan.md, section 16).
   accessUntil?: string | null;
   recordingRetentionMonths: 3 | 6 | 9 | 12;
+  // The call centre's languages (docs/plan.md, section 19).
+  defaultLocale?: Locale;
+  contentLocale?: Locale;
+  contentLocaleLocked?: boolean;
+  transcriptionLanguages?: string[];
   contactName: string | null;
   contactEmail: string | null;
   contactPhone: string | null;

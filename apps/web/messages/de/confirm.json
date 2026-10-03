@@ -1,0 +1,78 @@
+{
+  "pageTitle": "Vertrag bestätigen",
+  "offer": "Angebot",
+  "invalidLink": "Der Link ist ungültig. Prüfen Sie, ob Sie den vollständigen Link verwendet haben.",
+  "closed": {
+    "accepted": "Sie haben dieses Angebot angenommen.",
+    "rejected": "Sie haben dieses Angebot abgelehnt.",
+    "revoked": "Dieser Link wurde ersetzt oder zurückgezogen. Wenden Sie sich an den Verkäufer, wenn Sie auf ein Angebot warten.",
+    "expired": "Die Frist zur Antwort auf das Angebot ist abgelaufen. Wenden Sie sich an den Verkäufer, wenn Sie den Vertrag weiterhin wünschen."
+  },
+  "declineConfirm": "Das Angebot ablehnen? Der Vertrag wird dann nicht geschlossen.",
+  "product": "Produkt",
+  "price": "Preis",
+  "bindingPeriod": "Vertragslaufzeit",
+  "noticePeriod": "Kündigungsfrist",
+  "withdrawalPeriod": "Widerrufsfrist",
+  "seller": "Verkäufer",
+  "customer": "Kunde",
+  "call": "Gespräch",
+  "title": "Vertrag bestätigen",
+  "intro": "Sie haben mit {salesperson} von {company} telefoniert. Der Vertrag kommt erst zustande, wenn Sie das Angebot hier schriftlich annehmen.",
+  "aSeller": "einem Verkäufer",
+  "theOffer": "Das Angebot",
+  "withdrawal": "Sie haben ein Widerrufsrecht von {count, plural, one {# Tag} other {# Tagen}}. Sie können innerhalb der Frist ohne Angabe von Gründen vom Vertrag zurücktreten.",
+  "terms": "Bedingungen",
+  "answerBy": "Antworten Sie bis {date}.",
+  "readAndAccept": "Ich habe das Angebot und die Bedingungen gelesen und möchte den Vertrag schließen.",
+  "buyerOnly": "Das Angebot muss vom Käufer selbst angenommen werden. Sie nehmen an, indem Sie sich identifizieren, und wir verwenden nur Ihren Namen (und bei Vipps Ihre Mobilnummer) als Nachweis.",
+  "acceptBankId": "Mit BankID annehmen",
+  "acceptVipps": "Mit Vipps annehmen",
+  "decline": "Ablehnen",
+  "results": {
+    "godtatt": {
+      "title": "Danke! Der Vertrag ist bestätigt",
+      "text": "Sie haben das Angebot angenommen. Sie können diese Seite schließen."
+    },
+    "avslatt": {
+      "title": "Das Angebot wurde abgelehnt",
+      "text": "Der Vertrag wird nicht geschlossen. Sie können diese Seite schließen."
+    },
+    "avbrutt": {
+      "title": "Die Identifizierung wurde abgebrochen",
+      "text": "Es wurde nichts angenommen. Öffnen Sie den Link erneut, wenn Sie das Angebot annehmen möchten."
+    },
+    "feil_person": {
+      "title": "Das Angebot muss vom Käufer angenommen werden",
+      "text": "Ihr Name oder Ihre Mobilnummer stimmt nicht mit dem Käufer überein, daher wurde nichts angenommen. Das Angebot muss vom Käufer selbst mit BankID oder Vipps angenommen werden. Wenden Sie sich an den Verkäufer, wenn Ihre Angaben falsch sind."
+    },
+    "utlopt": {
+      "title": "Die Frist ist abgelaufen",
+      "text": "Wenden Sie sich an den Verkäufer, wenn Sie den Vertrag weiterhin wünschen."
+    },
+    "avgjort": {
+      "title": "Das Angebot wurde bereits beantwortet",
+      "text": "Dasselbe Angebot kann nicht zweimal beantwortet werden."
+    },
+    "trukket": {
+      "title": "Das Angebot gilt nicht mehr",
+      "text": "Der Verkäufer hat das Angebot zurückgezogen oder geändert. Wenden Sie sich bei Fragen an den Verkäufer."
+    },
+    "annen_nettleser": {
+      "title": "Öffnen Sie den Link erneut",
+      "text": "Die Identifizierung muss im selben Browser erfolgen, in dem Sie das Angebot geöffnet haben. Öffnen Sie den Link vom Verkäufer erneut, lesen Sie das Angebot und nehmen Sie es von dort an."
+    },
+    "ikke_satt_opp": {
+      "title": "Diese Methode ist nicht verfügbar",
+      "text": "Versuchen Sie eine andere Art der Identifizierung."
+    },
+    "ukjent": {
+      "title": "Der Link ist ungültig",
+      "text": "Prüfen Sie, ob Sie den vollständigen Link vom Verkäufer verwendet haben."
+    },
+    "feil": {
+      "title": "Etwas ist schiefgelaufen",
+      "text": "Es wurde nichts angenommen. Öffnen Sie den Link erneut und versuchen Sie es gleich noch einmal."
+    }
+  }
+}

@@ -36,8 +36,8 @@ import { CONFIRM_COOKIE, rejectConfirmation, resultPage, startConfirmation, TOKE
 import { isBlocked } from "./blocklist.ts";
 import { iamPool } from "./db.ts";
 import { clearCookie, corsHeaders, json, readCookie, redirect, requestMeta, sessionCookie, type Result } from "./http.ts";
-import { loadMe } from "./me.ts";
-import { SESSION_MAX_HOURS } from "@veriqall/shared";
+import { loadMe, setMyLocale } from "./me.ts";
+import { isLocale, SESSION_MAX_HOURS } from "@veriqall/shared";
 
 // True when the database answers as a member of app_user (the role under RLS).
 export type DatabaseCheck = () => Promise<boolean>;
@@ -182,6 +182,20 @@ export function createHandler(deps: HandlerDeps) {
       const session = await resolveSession(auth, readCookie(event, SESSION_COOKIE));
       if (!session) return json(401, { error: "Ikke innlogget" }, cors);
       return json(200, await myAnnouncements(auth.appDb, session), cors);
+    }
+
+    if (method === "POST" && path === "/me/locale") {
+      const session = await resolveSession(auth, readCookie(event, SESSION_COOKIE));
+      if (!session) return json(401, { error: "Ikke innlogget" }, cors);
+      if (event.headers?.origin !== auth.config.appOrigin) return json(403, { error: "Ikke tillatt." }, cors);
+      let locale: unknown;
+      try {
+        locale = parseBody(event.body, event.isBase64Encoded).locale;
+      } catch {
+        return json(400, { error: "Ugyldig forespørsel." }, cors);
+      }
+      if (locale !== null && !isLocale(locale)) return json(400, { error: "Ukjent språk." }, cors);
+      return json(200, await setMyLocale(auth.appDb, session, locale), cors);
     }
 
     if (method === "POST" && path === "/me/organization") {

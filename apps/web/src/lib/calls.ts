@@ -1,4 +1,5 @@
 // Calls (apps/api/src/org/calls.ts): types and formatting for /samtaler.
+import type { Locale } from "@veriqall/shared";
 import type { FlagLevel } from "@/components/flag";
 
 export type CallStatus = "recording" | "processing" | "transcribed" | "analyzed" | "failed";
@@ -52,6 +53,15 @@ export interface CallDetail extends CallSummary {
   isOwn: boolean;
   // The note templates chosen in the studio (one note each after the call).
   noteTemplateIds: string[];
+  // The languages chosen for the call (null follows the call centre's, given beside them), and
+  // the language heard in the transcript (docs/plan.md, section 19).
+  outputLocale: Locale | null;
+  spokenLanguages: string[] | null;
+  defaultOutputLocale: Locale;
+  // The call centre has locked the language of notes to defaultOutputLocale.
+  outputLocaleLocked: boolean;
+  defaultSpokenLanguages: string[];
+  transcriptLanguage: Locale | null;
   segments: { seq: number; speaker: string | null; startMs: number; endMs: number; text: string }[];
   analyses: {
     id: string;
@@ -59,6 +69,8 @@ export interface CallDetail extends CallSummary {
     summary: string;
     findings: Finding[];
     model: string;
+    // The language the AI control was written in (null before languages came).
+    locale: Locale | null;
     createdAt: string;
     reviewedAt: string | null;
     reviewedByName: string | null;
@@ -77,6 +89,8 @@ export interface Note {
   id: string;
   templateName: string;
   status: "pending" | "done" | "failed";
+  // The language the note is written in (null before languages came, or while pending for the call's).
+  locale: Locale | null;
   error: string | null;
   // The seller's latest version, or the AI text.
   content: string | null;

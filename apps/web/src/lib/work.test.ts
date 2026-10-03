@@ -9,9 +9,9 @@ describe("work formatting", () => {
   });
 
   it("describes prices", () => {
-    expect(formatPrice({ priceOnce: null, priceMonthly: "399.00" })).toBe("399 kr/mnd");
-    expect(formatPrice({ priceOnce: "499.00", priceMonthly: "399.00" })).toBe("399 kr/mnd + 499 kr engangs");
-    expect(formatPrice({ priceOnce: "499.00", priceMonthly: null })).toBe("499 kr");
+    expect(formatPrice({ priceOnce: null, priceMonthly: "399.00" }).replace(/\s/g, " ")).toBe("399 kr/mnd");
+    expect(formatPrice({ priceOnce: "499.00", priceMonthly: "399.00" }).replace(/\s/g, " ")).toBe("399 kr/mnd + 499 kr engangs");
+    expect(formatPrice({ priceOnce: "499.00", priceMonthly: null }).replace(/\s/g, " ")).toBe("499 kr");
     expect(formatPrice({ priceOnce: null, priceMonthly: null })).toBe("–");
   });
 

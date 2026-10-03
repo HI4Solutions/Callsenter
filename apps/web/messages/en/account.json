@@ -1,0 +1,23 @@
+{
+  "title": "My account",
+  "signedInWith": "{name} · logged in with {method}",
+  "languageTitle": "Language",
+  "languageIntro": "The language the pages are shown in. If you choose “Same as the call centre”, you follow the call centre's language.",
+  "followOrganization": "Same as the call centre ({language})",
+  "followBrowser": "Same as the browser",
+  "languageSaved": "The language has been saved.",
+  "passkeys": "Passkeys",
+  "passkeysIntro": "With a passkey you log in with Face ID, Touch ID, Windows Hello or a security key. It gives the same access as BankID, with no cost per login.",
+  "passkeyAdded": "Added {added} · last used {used}",
+  "removeConfirm": "Remove the passkey “{name}”?",
+  "notSupported": "This browser doesn't support passkeys.",
+  "nameLabel": "Name of the passkey",
+  "nameHint": "For example the device it is on.",
+  "waitingForDevice": "Waiting for the device …",
+  "add": "Add passkey",
+  "added": "The passkey has been added. Next time you can log in with it.",
+  "needBankId": "To add a passkey you must be logged in with BankID. Log out and log in again with BankID, then you can add it here.",
+  "mustLogIn": "You must log in.",
+  "listFailed": "Couldn't fetch passkeys.",
+  "removeFailed": "Couldn't remove the passkey."
+}

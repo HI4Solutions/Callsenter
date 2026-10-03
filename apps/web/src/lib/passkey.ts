@@ -26,20 +26,27 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new Error("Får ikke kontakt med serveren. Prøv igjen.");
+    throw new PasskeyNetworkError();
   }
   const data = (await res.json().catch(() => ({}))) as { error?: string };
-  if (!res.ok) throw new Error(data.error ?? "Noe gikk galt.");
+  if (!res.ok) throw new Error(data.error ?? "");
   return data as T;
 }
 
-// The browser's own errors (cancelled, timed out, no passkey) in Norwegian.
-export function passkeyErrorMessage(error: unknown): string {
+export class PasskeyNetworkError extends Error {
+  override name = "PasskeyNetworkError";
+}
+
+// What went wrong, as a text key (login.passkeyErrors.<key>, or common.noServer), or the API's
+// own message, which is already in the user's language.
+export function passkeyError(error: unknown): { key: "cancelled" | "exists" | "insecure" | "failed" | "noServer" } | { message: string } {
   const name = (error as { name?: string }).name;
-  if (name === "NotAllowedError" || name === "AbortError") return "Innloggingen med passkey ble avbrutt.";
-  if (name === "InvalidStateError") return "Denne enheten har allerede en passkey for kontoen din.";
-  if (name === "SecurityError") return "Passkey virker ikke på denne adressen.";
-  return (error as Error).message || "Noe gikk galt med passkeyen.";
+  if (name === "NotAllowedError" || name === "AbortError") return { key: "cancelled" };
+  if (name === "InvalidStateError") return { key: "exists" };
+  if (name === "SecurityError") return { key: "insecure" };
+  if (name === "PasskeyNetworkError") return { key: "noServer" };
+  const message = (error as Error).message;
+  return message ? { message } : { key: "failed" };
 }
 
 export function passkeysSupported(): boolean {
@@ -65,13 +72,13 @@ export async function addPasskey(name: string): Promise<void> {
 
 export async function listPasskeys(): Promise<MyPasskey[]> {
   const res = await fetch(`${API_URL}/me/passkeys`, { credentials: "include" });
-  if (!res.ok) throw new Error(res.status === 401 ? "Du må logge inn." : "Kunne ikke hente passkeys.");
+  if (!res.ok) throw new Error(res.status === 401 ? "mustLogIn" : "listFailed");
   return (await res.json()) as MyPasskey[];
 }
 
 export async function removePasskey(id: string): Promise<void> {
   const res = await fetch(`${API_URL}/me/passkeys/${id}`, { method: "DELETE", credentials: "include" });
-  if (!res.ok) throw new Error("Kunne ikke fjerne passkeyen.");
+  if (!res.ok) throw new Error("removeFailed");
 }
 
 // A suggested name from the browser, for example "Mac" or "iPhone".

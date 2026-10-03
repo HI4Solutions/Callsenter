@@ -5,13 +5,20 @@
 // reviews yellow and red flags. Every view and playback is written to access_log.
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
-import { isUploadSize, MAX_CHUNK_BYTES, MAX_PIECE_BYTES } from "@veriqall/shared";
+import {
+  isLocale,
+  isUploadSize,
+  type Locale,
+  MAX_CHUNK_BYTES,
+  MAX_PIECE_BYTES,
+} from "@veriqall/shared";
 import { NotFound } from "../admin/organizations.ts";
 import { BadRequest, type Body, isUuid, optionalText, requiredText } from "../admin/validate.ts";
 import type { Session } from "../auth/session.ts";
 import type { CallServices } from "../calls/services.ts";
 import { SONIOX_REALTIME_MODEL, SONIOX_REALTIME_URL } from "../calls/soniox.ts";
-import { DEFAULT_REPORT, extension } from "../calls/process.ts";
+import { defaultReport, extension } from "../calls/process.ts";
+import { localeOr, spokenLanguages } from "../i18n.ts";
 import { chunkKey, pieceKey } from "../calls/store.ts";
 import { withSession } from "../me.ts";
 
@@ -45,6 +52,24 @@ async function transcriptionMode(c: pg.PoolClient): Promise<{ mode: "realtime" |
     mode: settings.get("transcription_mode") === "realtime" ? "realtime" : "chunked",
     terms: Array.isArray(terms) ? (terms as string[]) : [],
   };
+}
+
+// A language for the notes (one of VeriQall's); null follows the call centre.
+function localeParam(body: Body, key: string): Locale | null | undefined {
+  const value = body[key];
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  if (!isLocale(value)) throw new BadRequest("Ukjent språk.");
+  return value;
+}
+
+// A call centre that has locked the language of its notes takes no other.
+async function assertLanguageOpen(c: pg.PoolClient, locale: Locale | null | undefined) {
+  if (!locale) return;
+  const { rows } = await c.query<{ locked: boolean; locale: string }>(
+    "select content_locale_locked as locked, content_locale as locale from organizations where id = app.current_org_id()",
+  );
+  if (rows[0]?.locked && rows[0].locale !== locale) throw new BadRequest("Callsenteret har låst språket for notater.");
 }
 
 function uuidOrNull(body: Body, key: string, label: string): string | null | undefined {
@@ -89,20 +114,26 @@ export async function createCall(db: pg.Pool, session: Session, services: CallSe
   const saleId = uuidOrNull(body, "saleId", "salg") ?? null;
   const productId = uuidOrNull(body, "productId", "produkt") ?? null;
   const notes = body.noteTemplateIds === undefined ? [] : noteTemplateIds(body.noteTemplateIds);
+  const outputLocale = localeParam(body, "outputLocale") ?? null;
+  const spoken = spokenLanguages(body, "spokenLanguages") ?? null;
 
   const created = await withSession(db, session, async (c) => {
     if (!(await moduleEnabled(c, "transcription"))) throw new BadRequest("Transkribering er ikke slått på for callsenteret.");
     if (notes.length) await activeTemplates(c, notes);
+    await assertLanguageOpen(c, outputLocale);
     const settings = await transcriptionMode(c);
     // An uploaded file has no live text.
     const mode = source === "upload" ? "chunked" : settings.mode;
     try {
-      const { rows } = await c.query<{ id: string; expires_at: Date }>(
-        `insert into calls (organization_id, user_id, source, transcription_mode, audio_mime, title, customer_id, sale_id, product_id, note_templates)
-         values (app.current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9) returning id, expires_at`,
-        [session.userId, source, mode, mime, title, customerId, saleId, productId, notes],
+      const { rows } = await c.query<{ id: string; expires_at: Date; languages: string[] }>(
+        `insert into calls (organization_id, user_id, source, transcription_mode, audio_mime, title, customer_id, sale_id, product_id, note_templates,
+           output_locale, spoken_languages)
+         values (app.current_org_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         returning id, expires_at,
+           coalesce(spoken_languages, (select transcription_languages from organizations where id = app.current_org_id())) as languages`,
+        [session.userId, source, mode, mime, title, customerId, saleId, productId, notes, outputLocale, spoken],
       );
-      return { id: rows[0]!.id, expiresAt: rows[0]!.expires_at, mode, terms: settings.terms };
+      return { id: rows[0]!.id, expiresAt: rows[0]!.expires_at, mode, terms: settings.terms, languages: rows[0]!.languages };
     } catch (error) {
       translate(error);
     }
@@ -123,7 +154,7 @@ export async function createCall(db: pg.Pool, session: Session, services: CallSe
     id: created.id,
     mode: realtime ? "realtime" : "chunked",
     expiresAt: created.expiresAt,
-    realtime: realtime && { ...realtime, languageHints: ["no"], terms: created.terms.slice(0, 200) },
+    realtime: realtime && { ...realtime, languageHints: created.languages, terms: created.terms.slice(0, 200) },
   };
 }
 
@@ -342,12 +373,13 @@ export async function listCalls(
   return withSession(db, session, async (c) => {
     const { rows } = await c.query(
       `select ${SUMMARY},
-              case when $1 = '' then null else ts_headline('norwegian', tr.text, websearch_to_tsquery('norwegian', $1),
+              case when $1 = '' then null else ts_headline(app.search_config(coalesce(tr.language, 'nb')), tr.text,
+                websearch_to_tsquery(app.search_config(coalesce(tr.language, 'nb')), $1) || websearch_to_tsquery('simple', $1),
                 'MaxWords=18, MinWords=8, MaxFragments=1, StartSel=«, StopSel=»') end as "match"
        ${FROM}
        left join transcripts tr on tr.call_id = c.id
        where c.organization_id = app.current_org_id()
-         and ($1 = '' or c.reference = $14 or tr.search @@ websearch_to_tsquery('norwegian', $1) or c.title ilike '%' || $1 || '%' or cu.name ilike '%' || $1 || '%')
+         and ($1 = '' or c.reference = $14 or tr.search_all @@ (websearch_to_tsquery($15::regconfig, $1) || websearch_to_tsquery('simple', $1)) or c.title ilike '%' || $1 || '%' or cu.name ilike '%' || $1 || '%')
          and ($2::text is null or a.flag = $2)
          and ($3::text is null or c.status = $3)
          and ($4::uuid is null or c.customer_id = $4)
@@ -362,7 +394,7 @@ export async function listCalls(
          and (not $13 or a.flag is null)
        order by c.started_at desc
        limit 200`,
-      [q, flag, status, customerId, saleId, mine, review, from, to, userId, teamId, flagged, unchecked, callReference(q)],
+      [q, flag, status, customerId, saleId, mine, review, from, to, userId, teamId, flagged, unchecked, callReference(q), await searchConfig(c)],
     );
     // Search results show excerpts of the transcripts: each is a view of that transcript.
     const shown = rows.filter((r) => r.match).map((r) => r.id as string);
@@ -375,6 +407,17 @@ export async function listCalls(
     }
     return rows;
   });
+}
+
+// The search words are stemmed in the user's language (and also matched as they are).
+async function searchConfig(c: pg.PoolClient): Promise<string> {
+  const { rows } = await c.query<{ config: string }>(
+    `select app.search_config(coalesce(
+       (select locale from users where id = app.current_user_id()),
+       (select default_locale from organizations where id = app.current_org_id()),
+       'nb'))::text as config`,
+  );
+  return rows[0]?.config ?? "norwegian";
 }
 
 async function logAccess(c: pg.PoolClient, callId: string, action: "view" | "play", meta: { ip?: string; userAgent?: string }) {
@@ -434,8 +477,12 @@ export async function getCall(db: pg.Pool, session: Session, callId: string, met
       `select ${SUMMARY}, c.note, c.transcription_mode as "transcriptionMode", c.audio_key is not null as "hasAudio",
               coalesce(c.lease_until > now(), false) as working,
               c.template_version_id as "templateVersionId", coalesce(tv.required_points, '[]') as "requiredPoints",
-              c.user_id = app.current_user_id() as "isOwn", c.note_templates as "noteTemplateIds"
-       ${FROM} where c.id = $1`,
+              c.user_id = app.current_user_id() as "isOwn", c.note_templates as "noteTemplateIds",
+              c.output_locale as "outputLocale", c.spoken_languages as "spokenLanguages",
+              o.content_locale as "defaultOutputLocale", o.content_locale_locked as "outputLocaleLocked",
+              o.transcription_languages as "defaultSpokenLanguages",
+              (select language from transcripts where call_id = c.id) as "transcriptLanguage"
+       ${FROM} join organizations o on o.id = c.organization_id where c.id = $1`,
       [callId],
     );
     if (!call.rows[0]) throw new NotFound();
@@ -445,7 +492,7 @@ export async function getCall(db: pg.Pool, session: Session, callId: string, met
       [callId],
     );
     const analyses = await c.query(
-      `select a.id, a.flag, a.summary, a.findings, a.model, a.created_at as "createdAt", a.reviewed_at as "reviewedAt",
+      `select a.id, a.flag, a.summary, a.findings, a.model, a.locale, a.created_at as "createdAt", a.reviewed_at as "reviewedAt",
               ru.full_name as "reviewedByName", a.review_note as "reviewNote"
        from call_analyses a left join users ru on ru.id = a.reviewed_by
        where a.call_id = $1 order by a.created_at desc`,
@@ -453,7 +500,7 @@ export async function getCall(db: pg.Pool, session: Session, callId: string, met
     );
     // The latest adjustment by the seller is the note; the AI text is kept beside it.
     const reports = await c.query(
-      `select r.id, r.template_name as "templateName", r.status, r.error, r.model, r.created_at as "createdAt",
+      `select r.id, r.template_name as "templateName", r.status, r.error, r.model, r.locale, r.created_at as "createdAt",
               coalesce(e.content, r.content) as content, r.content as "aiContent",
               e.created_at as "editedAt", eu.full_name as "editedByName",
               (select count(*) from report_edits x where x.report_id = r.id)::int as edits,
@@ -504,6 +551,8 @@ export async function updateCall(db: pg.Pool, session: Session, services: CallSe
     sale_id: uuidOrNull(body, "saleId", "salg"),
     product_id: uuidOrNull(body, "productId", "produkt"),
     note_templates: body.noteTemplateIds === undefined ? undefined : noteTemplateIds(body.noteTemplateIds),
+    output_locale: localeParam(body, "outputLocale"),
+    spoken_languages: spokenLanguages(body, "spokenLanguages"),
   };
   const sets = Object.entries(values).filter(([, v]) => v !== undefined);
   const analyse = await withSession(db, session, async (c) => {
@@ -514,6 +563,7 @@ export async function updateCall(db: pg.Pool, session: Session, services: CallSe
     if (!rows[0]) throw new NotFound();
     if (!sets.length) return false;
     if (values.note_templates) await activeTemplates(c, values.note_templates as string[]);
+    await assertLanguageOpen(c, values.output_locale as Locale | null | undefined);
     try {
       const updated = await c.query<{ template_version_id: string | null }>(
         `update calls set ${sets.map(([k], i) => `${k} = $${i + 2}`).join(", ")} where id = $1 returning template_version_id`,
@@ -563,18 +613,26 @@ function translateNote(error: unknown): never {
 export async function requestNote(db: pg.Pool, session: Session, services: CallServices, callId: string, body: Body) {
   // Several note templates (the studio's chosen ones), one, or none for the default.
   const ids = body.templateIds !== undefined ? noteTemplateIds(body.templateIds) : [uuidOrNull(body, "templateId", "notatmal") ?? null].filter((v) => v !== null);
+  // A note may be asked for in another language than the call's; null writes it in the call's.
+  const requested = localeParam(body, "locale") ?? null;
   const created = await withSession(db, session, async (c) => {
-    const call = await c.query<{ status: string }>("select status from calls where id = $1", [callId]);
+    const call = await c.query<{ status: string; locale: string }>(
+      `select c.status, case when o.content_locale_locked then o.content_locale else coalesce(c.output_locale, o.content_locale) end as locale
+       from calls c join organizations o on o.id = c.organization_id where c.id = $1`,
+      [callId],
+    );
     if (!call.rows[0]) throw new NotFound();
     if (!["transcribed", "analyzed"].includes(call.rows[0].status)) throw new BadRequest("Samtalen er ikke ferdig transkribert ennå.");
-    const chosen = ids.length ? await activeTemplates(c, ids) : [await defaultTemplate(c)];
+    await assertLanguageOpen(c, requested);
+    const locale = requested ?? localeOr(call.rows[0].locale);
+    const chosen = ids.length ? await activeTemplates(c, ids) : [await defaultTemplate(c, locale)];
     const made: string[] = [];
     try {
       for (const template of chosen) {
         const { rows } = await c.query<{ id: string }>(
-          `insert into reports (organization_id, call_id, template_id, template_name, requested_by, status)
-           values (app.current_org_id(), $1, $2, $3, app.current_user_id(), 'pending') returning id`,
-          [callId, template.id, template.name],
+          `insert into reports (organization_id, call_id, template_id, template_name, requested_by, status, locale)
+           values (app.current_org_id(), $1, $2, $3, app.current_user_id(), 'pending', $4) returning id`,
+          [callId, template.id, template.name, requested],
         );
         made.push(rows[0]!.id);
       }
@@ -588,11 +646,11 @@ export async function requestNote(db: pg.Pool, session: Session, services: CallS
 }
 
 // The call centre's default note template, or VeriQall's built-in one.
-async function defaultTemplate(c: pg.PoolClient): Promise<{ id: string | null; name: string }> {
+async function defaultTemplate(c: pg.PoolClient, locale: Locale): Promise<{ id: string | null; name: string }> {
   const { rows } = await c.query<{ id: string; name: string }>(
     "select id, name from report_templates where organization_id = app.current_org_id() and is_default and archived_at is null",
   );
-  return rows[0] ?? { id: null, name: DEFAULT_REPORT.name };
+  return rows[0] ?? { id: null, name: defaultReport(locale).name };
 }
 
 // Note templates in use, in the order chosen; an unknown or archived one is refused.

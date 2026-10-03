@@ -552,3 +552,34 @@ Regler:
 | API | `POST /org/calls/{id}/notes`, `PATCH /org/calls/{id}/notes/{noteId}`, `GET /org/calls/{id}/notes/{noteId}/history`, `GET`/`PUT /org/studio`; `GET /org/calls/{id}` gir `requiredPoints`, `isOwn` og notatene med justeringer |
 | Worker | `{reportId}` skriver et notat; notater som ble hengende, plukkes opp av ryddejobben |
 | Web | `/samtaler/opptak` (Samtalestudio), `components/calls/` (varsellamper, transkripsjon, tilleggsinformasjon, notater), samtalesiden og dokumentasjonen |
+
+## 19. Språk
+
+Besluttet av Nadeem 3. oktober 2026: VeriQall skal finnes på norsk (bokmål), engelsk, svensk, dansk og tysk, og notater og andre resultater skal kunne lages på alle disse. Arkitekturen skal gjøre det enkelt å legge til flere språk.
+
+**Tre språkvalg som er uavhengige av hverandre:**
+
+| Valg | Hvor | Standard |
+|---|---|---|
+| Språket sidene vises på | Brukeren selv (språkvelgeren i menyen og under Min konto, `users.locale`) | Callsenterets (`organizations.default_locale`), ellers nettleserens, ellers norsk |
+| Språket notater og AI-kontroll skrives på | Selgeren per samtale i Samtalestudio (`calls.output_locale`), og per notat ved «Regenerer» (`reports.locale`) | Callsenterets (`organizations.content_locale`) |
+| Språkene som snakkes i samtalen | Selgeren per samtale (`calls.spoken_languages`) | Callsenterets liste (`organizations.transcription_languages`, standard norsk) |
+
+Superadmin setter callsenterets språk under Callsentre. Med «Lås språket for notater» (`organizations.content_locale_locked`) skrives alle notater og AI-kontroller på callsenterets språk: selgeren får ikke velge et annet i Samtalestudio eller ved «Regenerer», og API-et avviser forsøk. Språkene i samtalen er ikke begrenset til sidenes språk: Soniox kjenner igjen over 60 språk, og listen i velgeren viser navnene på brukerens språk (fra nettleseren). Soniox får språkene som hint og merker hvert ord med språket det hørte. Transkripsjonen får språket som ble hørt mest (`transcripts.language`).
+
+**Hvordan det er bygget:**
+
+- **Språkregisteret** er `LOCALES` i `packages/shared/src/locales.ts`: navnet på språket selv, BCP 47-taggen, navnet AI-en får, Soniox-koden og konfigurasjonen for fulltekstsøk. Databasen har de samme kodene i tabellen `locales` (sjekket av en test).
+- **Sidene** bruker next-intl uten språk i adressen. Språket ligger i informasjonskapselen `vq_locale` på web-domenet, så serveren viser riktig språk med en gang. Tekstene ligger i `apps/web/messages/<språk>/<navnerom>.json`. Norsk er kilden; en test sjekker at alle språk har de samme nøklene og de samme `{plassholderne}` (ICU-format, med flertall). Nøklene er typesjekket mot de norske filene.
+- **Datoer og tall** følger språket (`lib/format.ts`), og tiden vises alltid i norsk tid.
+- **AI-en** får instruksjonene på engelsk og beskjed om hvilket språk den skal skrive på. Notatmaler kan skrives på hvilket som helst språk. Sitater fra samtalen beholdes på språket i samtalen. VeriQalls standardnotat finnes på alle språk (`apps/api/src/i18n.ts`).
+- **Søk** i transkripsjonene finner ord både bøyd på transkripsjonens språk og slik de står (`transcripts.search_all`), med søkeordene bøyd på brukerens språk.
+- **Kundens bekreftelsesside** følger nettleserens språk og har egen språkvelger.
+
+**Slik legges et nytt språk til (for eksempel finsk):**
+
+1. En oppføring i `LOCALES` (`fi`, `fi-FI`, `Finnish`, Soniox-koden `fi`, søkekonfigurasjonen `finnish`).
+2. En migrasjon som legger `fi` i `locales` og i `app.search_config`.
+3. Mappen `apps/web/messages/fi/` med alle navnerommene, og teksten i `apps/api/src/i18n.ts`. Testene og typene sier fra om noe mangler.
+
+**Status 3. oktober:** grunnmuren er på plass (PR «Flerspråklig grunnmur»): språkvalgene, AI og Soniox, søk, innlogging, Min konto, menyen, feilsider og kundens bekreftelse. De andre sidene (Superadmin, Administrasjon, Samtaler, Salg, Kunder, Produkter, Klager og Oversikt), API-meldingene, e-postene og faktura-PDF-en oversettes i egne PR-er etter hvert.

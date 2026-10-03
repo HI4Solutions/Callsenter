@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { API_URL } from "@/lib/auth";
 
@@ -25,6 +26,7 @@ function readDismissed(): string[] {
 // Announcements from the superadmin (Meldinger) for the signed-in user. Each can be closed; that
 // is remembered in this browser only.
 export function Announcements() {
+  const t = useTranslations("shell");
   const [items, setItems] = useState<Announcement[]>([]);
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export function Announcements() {
               <p className="whitespace-pre-line text-sm">{a.body}</p>
               {a.linkUrl && (
                 <a href={a.linkUrl} className="text-sm font-semibold text-brand" rel="noopener noreferrer" target="_blank">
-                  {a.linkText || "Les mer"}
+                  {a.linkText || t("readMore")}
                 </a>
               )}
             </div>
@@ -71,7 +73,7 @@ export function Announcements() {
               type="button"
               onClick={() => dismiss(a.id)}
               className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg"
-              aria-label={`Lukk «${a.title}»`}
+              aria-label={t("closeAnnouncement", { title: a.title })}
             >
               ✕
             </button>

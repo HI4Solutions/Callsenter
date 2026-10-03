@@ -1,0 +1,78 @@
+{
+  "pageTitle": "Bekräfta avtal",
+  "offer": "Erbjudande",
+  "invalidLink": "Länken är ogiltig. Kontrollera att du har använt hela länken.",
+  "closed": {
+    "accepted": "Du har godkänt det här erbjudandet.",
+    "rejected": "Du har tackat nej till det här erbjudandet.",
+    "revoked": "Den här länken har ersatts eller dragits tillbaka. Kontakta säljaren om du väntar på ett erbjudande.",
+    "expired": "Tiden för att svara på erbjudandet har gått ut. Kontakta säljaren om du fortfarande vill ha avtalet."
+  },
+  "declineConfirm": "Tacka nej till erbjudandet? Avtalet ingås då inte.",
+  "product": "Produkt",
+  "price": "Pris",
+  "bindingPeriod": "Bindningstid",
+  "noticePeriod": "Uppsägningstid",
+  "withdrawalPeriod": "Ångerfrist",
+  "seller": "Säljare",
+  "customer": "Kund",
+  "call": "Samtal",
+  "title": "Bekräfta avtalet",
+  "intro": "Du har pratat med {salesperson} från {company} i telefon. Avtalet ingås först när du godkänner erbjudandet skriftligt här.",
+  "aSeller": "en säljare",
+  "theOffer": "Erbjudandet",
+  "withdrawal": "Du har {count, plural, one {# dags} other {# dagars}} ångerrätt. Du kan frånträda avtalet utan att ange skäl inom fristen.",
+  "terms": "Villkor",
+  "answerBy": "Svara senast {date}.",
+  "readAndAccept": "Jag har läst erbjudandet och villkoren och vill ingå avtalet.",
+  "buyerOnly": "Erbjudandet måste godkännas av köparen själv. Du godkänner genom att identifiera dig, och vi använder bara ditt namn (och mobilnumret med Vipps) som bevis.",
+  "acceptBankId": "Godkänn med BankID",
+  "acceptVipps": "Godkänn med Vipps",
+  "decline": "Tacka nej",
+  "results": {
+    "godtatt": {
+      "title": "Tack! Avtalet är bekräftat",
+      "text": "Du har godkänt erbjudandet. Du kan stänga den här sidan."
+    },
+    "avslatt": {
+      "title": "Erbjudandet är avböjt",
+      "text": "Avtalet ingås inte. Du kan stänga den här sidan."
+    },
+    "avbrutt": {
+      "title": "Identifieringen avbröts",
+      "text": "Ingenting har godkänts. Öppna länken igen om du vill godkänna erbjudandet."
+    },
+    "feil_person": {
+      "title": "Erbjudandet måste godkännas av köparen",
+      "text": "Ditt namn eller mobilnummer stämmer inte med köparen, så ingenting har godkänts. Erbjudandet måste godkännas av köparen själv med BankID eller Vipps. Kontakta säljaren om uppgifterna om dig är fel."
+    },
+    "utlopt": {
+      "title": "Tiden har gått ut",
+      "text": "Kontakta säljaren om du fortfarande vill ha avtalet."
+    },
+    "avgjort": {
+      "title": "Erbjudandet är redan besvarat",
+      "text": "Det går inte att svara på samma erbjudande två gånger."
+    },
+    "trukket": {
+      "title": "Erbjudandet gäller inte längre",
+      "text": "Säljaren har dragit tillbaka eller ändrat erbjudandet. Kontakta säljaren om du har frågor."
+    },
+    "annen_nettleser": {
+      "title": "Öppna länken igen",
+      "text": "Identifieringen måste göras i samma webbläsare som du öppnade erbjudandet i. Öppna länken från säljaren igen, läs erbjudandet och godkänn därifrån."
+    },
+    "ikke_satt_opp": {
+      "title": "Den här metoden är inte tillgänglig",
+      "text": "Försök ett annat sätt att identifiera dig."
+    },
+    "ukjent": {
+      "title": "Länken är ogiltig",
+      "text": "Kontrollera att du har använt hela länken från säljaren."
+    },
+    "feil": {
+      "title": "Något gick fel",
+      "text": "Ingenting har godkänts. Öppna länken igen och försök om en stund."
+    }
+  }
+}

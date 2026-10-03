@@ -1,11 +1,12 @@
 // Superadmin: call centres (docs/plan.md, section 10, "Callsentre"). Everything runs as
 // app_user under RLS. Work inside one call centre sets it as the current call centre, so the
 // same policies, guards and audit triggers apply as for the call centre's own admin.
-import { isModuleKey, MODULE_KEYS } from "@veriqall/shared";
+import { isLocale, isModuleKey, MODULE_KEYS } from "@veriqall/shared";
 import type pg from "pg";
 import { randomToken, sha256 } from "../auth/crypto.ts";
 import type { Session } from "../auth/session.ts";
 import { sendInvitation } from "../email.ts";
+import { spokenLanguages } from "../i18n.ts";
 import { withSession } from "../me.ts";
 import {
   BadRequest,
@@ -61,7 +62,26 @@ function organizationFields(body: Body) {
     trial_ends_at: optionalDate(body, "trialEndsAt", "Slutt på prøveperiode"),
     status: status as (typeof STATUSES)[number] | undefined,
     recording_retention_months: retentionMonths(body),
+    default_locale: organizationLocale(body, "defaultLocale"),
+    content_locale: organizationLocale(body, "contentLocale"),
+    content_locale_locked: optionalBoolean(body, "contentLocaleLocked"),
+    transcription_languages: spokenLanguages(body, "transcriptionLanguages") ?? undefined,
   };
+}
+
+function optionalBoolean(body: Body, key: string): boolean | undefined {
+  const value = body[key];
+  if (value === undefined) return undefined;
+  if (typeof value !== "boolean") throw new BadRequest("Ugyldig verdi.");
+  return value;
+}
+
+// The call centre's language for the pages and for notes (docs/plan.md, section 19).
+function organizationLocale(body: Body, key: string): string | undefined {
+  const value = body[key];
+  if (value === undefined) return undefined;
+  if (!isLocale(value)) throw new BadRequest("Ukjent språk.");
+  return value;
 }
 
 // How long recordings and transcripts are kept (decided 2 October 2026: 3, 6, 9 or 12 months).
@@ -136,6 +156,8 @@ export async function getOrganization(db: pg.Pool, session: Session, orgId: stri
               contact_name as "contactName", contact_email as "contactEmail", contact_phone as "contactPhone",
               invoice_email as "invoiceEmail", invoice_address as "invoiceAddress", note,
               recording_retention_months as "recordingRetentionMonths",
+              default_locale as "defaultLocale", content_locale as "contentLocale", content_locale_locked as "contentLocaleLocked",
+              transcription_languages as "transcriptionLanguages",
               created_at as "createdAt", updated_at as "updatedAt"
        from organizations where id = $1`,
       [orgId],

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useSyncExternalStore } from "react";
 import {
   applyResolvedTheme,
@@ -12,11 +13,11 @@ import {
 const CHANGE_EVENT = "veriqall-theme-change";
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 
-const options: { value: ThemePreference; label: string }[] = [
-  { value: "system", label: "System" },
-  { value: "light", label: "Lys" },
-  { value: "dark", label: "Mørk" },
-];
+const options = [
+  { value: "system", label: "themeSystem" },
+  { value: "light", label: "themeLight" },
+  { value: "dark", label: "themeDark" },
+] as const satisfies readonly { value: ThemePreference; label: string }[];
 
 // Fallback for when localStorage is blocked: the choice then holds until the page reloads.
 let memoryPreference: ThemePreference | null = null;
@@ -64,10 +65,11 @@ function choose(next: ThemePreference) {
 }
 
 export function ThemeToggle() {
+  const t = useTranslations("shell");
   const preference = useSyncExternalStore(subscribe, readPreference, () => "system" as const);
 
   return (
-    <div role="group" aria-label="Fargemodus" className="inline-flex rounded-full border border-line bg-surface p-0.5">
+    <div role="group" aria-label={t("theme")} className="inline-flex rounded-full border border-line bg-surface p-0.5">
       {options.map(({ value, label }) => (
         <button
           key={value}
@@ -76,7 +78,7 @@ export function ThemeToggle() {
           onClick={() => choose(value)}
           className="min-h-9 rounded-full px-3 text-sm font-medium text-muted transition-colors hover:text-fg aria-pressed:bg-brand aria-pressed:text-on-brand"
         >
-          {label}
+          {t(label)}
         </button>
       ))}
     </div>

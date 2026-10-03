@@ -18,10 +18,12 @@
     "@simplewebauthn/browser": "^14.0.0",
     "@veriqall/shared": "0.0.0",
     "next": "^16.3.8",
+    "next-intl": "^4.14.9",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
+    "@formatjs/icu-messageformat-parser": "^3.5.20",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",

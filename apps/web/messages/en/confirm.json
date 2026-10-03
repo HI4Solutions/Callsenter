@@ -1,0 +1,78 @@
+{
+  "pageTitle": "Confirm agreement",
+  "offer": "Offer",
+  "invalidLink": "The link is invalid. Check that you used the whole link.",
+  "closed": {
+    "accepted": "You have accepted this offer.",
+    "rejected": "You have declined this offer.",
+    "revoked": "This link has been replaced or withdrawn. Contact the seller if you are waiting for an offer.",
+    "expired": "The deadline for answering the offer has passed. Contact the seller if you still want the agreement."
+  },
+  "declineConfirm": "Decline the offer? The agreement will then not be made.",
+  "product": "Product",
+  "price": "Price",
+  "bindingPeriod": "Binding period",
+  "noticePeriod": "Notice period",
+  "withdrawalPeriod": "Withdrawal period",
+  "seller": "Seller",
+  "customer": "Customer",
+  "call": "Call",
+  "title": "Confirm the agreement",
+  "intro": "You have spoken with {salesperson} from {company} on the phone. The agreement is only made when you accept the offer in writing here.",
+  "aSeller": "a seller",
+  "theOffer": "The offer",
+  "withdrawal": "You have {count, plural, one {# day} other {# days}} to withdraw. You can withdraw from the agreement without giving a reason within the deadline.",
+  "terms": "Terms",
+  "answerBy": "Answer by {date}.",
+  "readAndAccept": "I have read the offer and the terms, and want to enter into the agreement.",
+  "buyerOnly": "The offer must be accepted by the buyer themselves. You accept by identifying yourself, and we only use your name (and your mobile number with Vipps) as evidence.",
+  "acceptBankId": "Accept with BankID",
+  "acceptVipps": "Accept with Vipps",
+  "decline": "Decline",
+  "results": {
+    "godtatt": {
+      "title": "Thank you! The agreement is confirmed",
+      "text": "You have accepted the offer. You can close this page."
+    },
+    "avslatt": {
+      "title": "The offer has been declined",
+      "text": "The agreement will not be made. You can close this page."
+    },
+    "avbrutt": {
+      "title": "The identification was cancelled",
+      "text": "Nothing has been accepted. Open the link again if you want to accept the offer."
+    },
+    "feil_person": {
+      "title": "The offer must be accepted by the buyer",
+      "text": "Your name or mobile number doesn't match the buyer, so nothing has been accepted. The offer must be accepted by the buyer themselves with BankID or Vipps. Contact the seller if the details about you are wrong."
+    },
+    "utlopt": {
+      "title": "The deadline has passed",
+      "text": "Contact the seller if you still want the agreement."
+    },
+    "avgjort": {
+      "title": "The offer has already been answered",
+      "text": "The same offer can't be answered twice."
+    },
+    "trukket": {
+      "title": "The offer no longer applies",
+      "text": "The seller has withdrawn or changed the offer. Contact the seller if you have questions."
+    },
+    "annen_nettleser": {
+      "title": "Open the link again",
+      "text": "The identification must be done in the same browser you opened the offer in. Open the link from the seller again, read the offer and accept from there."
+    },
+    "ikke_satt_opp": {
+      "title": "This method is not available",
+      "text": "Try another way to identify yourself."
+    },
+    "ukjent": {
+      "title": "The link is invalid",
+      "text": "Check that you used the whole link from the seller."
+    },
+    "feil": {
+      "title": "Something went wrong",
+      "text": "Nothing has been accepted. Open the link again and try again shortly."
+    }
+  }
+}

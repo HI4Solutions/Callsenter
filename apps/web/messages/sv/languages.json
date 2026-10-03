@@ -1,0 +1,23 @@
+{
+  "outputLanguage": "Språk för anteckningar",
+  "outputLanguageHint": "Anteckningarna och AI-kontrollen skrivs på det här språket.",
+  "spokenLanguages": "Språk i samtalet",
+  "spokenLanguagesHint": "Hjälper transkriberingen. Soniox känner igen över 60 språk, även när flera används i samma samtal.",
+  "followOrganization": "Som callcentret ({language})",
+  "noteIn": "Anteckning på {language}",
+  "addLanguage": "Lägg till språk",
+  "removeLanguage": "Ta bort {language}",
+  "title": "Språk",
+  "regenerateIn": "Språk för nya anteckningar",
+  "orgIntro": "Callcentrets språk. Användarna kan välja eget språk för sidorna, och säljarna kan välja språk per samtal.",
+  "pageLanguage": "Språk för sidorna",
+  "pageLanguageHint": "Används för användare som inte har valt eget språk.",
+  "contentLanguage": "Språk för anteckningar och AI-kontroll",
+  "transcriptionLanguages": "Språk i samtalen",
+  "save": "Spara språk",
+  "saving": "Sparar …",
+  "saved": "Sparat.",
+  "lockContent": "Lås språket för anteckningar",
+  "lockContentHint": "Säljarna kan då inte välja ett annat språk för anteckningar och AI-kontroll.",
+  "locked": "Låst av callcentret: {language}"
+}

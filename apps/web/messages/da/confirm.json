@@ -1,0 +1,78 @@
+{
+  "pageTitle": "Bekræft aftale",
+  "offer": "Tilbud",
+  "invalidLink": "Linket er ugyldigt. Tjek, at du har brugt hele linket.",
+  "closed": {
+    "accepted": "Du har accepteret dette tilbud.",
+    "rejected": "Du har afslået dette tilbud.",
+    "revoked": "Dette link er erstattet eller trukket tilbage. Kontakt sælgeren, hvis du venter på et tilbud.",
+    "expired": "Fristen for at svare på tilbuddet er udløbet. Kontakt sælgeren, hvis du stadig ønsker aftalen."
+  },
+  "declineConfirm": "Afslå tilbuddet? Aftalen bliver så ikke indgået.",
+  "product": "Produkt",
+  "price": "Pris",
+  "bindingPeriod": "Bindingsperiode",
+  "noticePeriod": "Opsigelsesvarsel",
+  "withdrawalPeriod": "Fortrydelsesfrist",
+  "seller": "Sælger",
+  "customer": "Kunde",
+  "call": "Samtale",
+  "title": "Bekræft aftalen",
+  "intro": "Du har talt med {salesperson} fra {company} i telefonen. Aftalen er først indgået, når du accepterer tilbuddet skriftligt her.",
+  "aSeller": "en sælger",
+  "theOffer": "Tilbuddet",
+  "withdrawal": "Du har {count, plural, one {# dags} other {# dages}} fortrydelsesret. Du kan træde tilbage fra aftalen uden at angive en grund inden for fristen.",
+  "terms": "Vilkår",
+  "answerBy": "Svar senest {date}.",
+  "readAndAccept": "Jeg har læst tilbuddet og vilkårene og vil indgå aftalen.",
+  "buyerOnly": "Tilbuddet skal accepteres af køberen selv. Du accepterer ved at identificere dig, og vi bruger kun dit navn (og dit mobilnummer ved Vipps) som bevis.",
+  "acceptBankId": "Acceptér med BankID",
+  "acceptVipps": "Acceptér med Vipps",
+  "decline": "Afslå",
+  "results": {
+    "godtatt": {
+      "title": "Tak! Aftalen er bekræftet",
+      "text": "Du har accepteret tilbuddet. Du kan lukke denne side."
+    },
+    "avslatt": {
+      "title": "Tilbuddet er afslået",
+      "text": "Aftalen bliver ikke indgået. Du kan lukke denne side."
+    },
+    "avbrutt": {
+      "title": "Identifikationen blev afbrudt",
+      "text": "Intet er accepteret. Åbn linket igen, hvis du vil acceptere tilbuddet."
+    },
+    "feil_person": {
+      "title": "Tilbuddet skal accepteres af køberen",
+      "text": "Dit navn eller mobilnummer stemmer ikke med køberen, så intet er accepteret. Tilbuddet skal accepteres af køberen selv med BankID eller Vipps. Kontakt sælgeren, hvis oplysningerne om dig er forkerte."
+    },
+    "utlopt": {
+      "title": "Fristen er udløbet",
+      "text": "Kontakt sælgeren, hvis du stadig ønsker aftalen."
+    },
+    "avgjort": {
+      "title": "Tilbuddet er allerede besvaret",
+      "text": "Det er ikke muligt at svare på det samme tilbud to gange."
+    },
+    "trukket": {
+      "title": "Tilbuddet gælder ikke længere",
+      "text": "Sælgeren har trukket tilbuddet tilbage eller ændret det. Kontakt sælgeren, hvis du har spørgsmål."
+    },
+    "annen_nettleser": {
+      "title": "Åbn linket igen",
+      "text": "Identifikationen skal ske i den samme browser, som du åbnede tilbuddet i. Åbn linket fra sælgeren igen, læs tilbuddet og acceptér derfra."
+    },
+    "ikke_satt_opp": {
+      "title": "Denne metode er ikke tilgængelig",
+      "text": "Prøv en anden måde at identificere dig på."
+    },
+    "ukjent": {
+      "title": "Linket er ugyldigt",
+      "text": "Tjek, at du har brugt hele linket fra sælgeren."
+    },
+    "feil": {
+      "title": "Noget gik galt",
+      "text": "Intet er accepteret. Åbn linket igen, og prøv igen om lidt."
+    }
+  }
+}

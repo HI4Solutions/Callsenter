@@ -13,6 +13,8 @@ export interface SonioxToken {
   end_ms?: number;
   speaker?: string;
   is_final?: boolean;
+  // With language identification: the language Soniox heard (its code, "no", "sv", ...).
+  language?: string;
 }
 
 export interface SonioxContext {
@@ -70,11 +72,14 @@ export class Soniox {
     return id;
   }
 
-  async createTranscription(fileId: string, context: SonioxContext, clientReferenceId: string): Promise<string> {
+  // languages: the languages expected in the call, as Soniox codes (hints, not a limit). Soniox
+  // also tags each token with the language it heard, which gives the transcript its language.
+  async createTranscription(fileId: string, context: SonioxContext, clientReferenceId: string, languages: string[] = ["no"]): Promise<string> {
     const { id } = await this.#call<{ id: string }>("POST", "/v1/transcriptions", {
       model: SONIOX_ASYNC_MODEL,
       file_id: fileId,
-      language_hints: ["no"],
+      language_hints: languages,
+      enable_language_identification: true,
       enable_speaker_diarization: true,
       ...(context.terms?.length || context.general?.length ? { context } : {}),
       client_reference_id: clientReferenceId,
@@ -107,6 +112,17 @@ export interface Segment {
   startMs: number;
   endMs: number;
   text: string;
+  // On a piece's segments: the language heard in the piece (Soniox code).
+  language?: string;
+}
+
+// The language Soniox heard most (by characters), as its code; null without identification.
+export function mainLanguage(tokens: { text: string; language?: string }[]): string | null {
+  const count = new Map<string, number>();
+  for (const t of tokens) if (t.language) count.set(t.language, (count.get(t.language) ?? 0) + t.text.length);
+  let best: string | null = null;
+  for (const [language, n] of count) if (best === null || n > count.get(best)!) best = language;
+  return best;
 }
 
 // Joins Soniox tokens (sub-word pieces with timestamps) into segments: a new segment when the

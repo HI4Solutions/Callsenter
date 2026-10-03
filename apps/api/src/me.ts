@@ -1,5 +1,6 @@
 // GET /me: who is signed in, which call centres they belong to, and what they may do in the
 // active one. Runs as app_user under RLS, with the session's user, call centre and strength.
+import { isLocale, type Locale } from "@veriqall/shared";
 import type pg from "pg";
 import type { Session } from "./auth/session.ts";
 
@@ -13,6 +14,15 @@ export interface Me {
   permissions: string[];
   // Modules switched on for the active call centre.
   modules: string[];
+  // The user's own language for the pages (null follows the call centre), the active call
+  // centre's, and the language its notes are written in (docs/plan.md, section 19).
+  locale: Locale | null;
+  organizationLocale: Locale | null;
+  contentLocale: Locale | null;
+  // The call centre writes every note in contentLocale; sellers cannot choose another.
+  contentLocaleLocked: boolean;
+  // The languages the call centre's calls are in (Soniox codes), the studio's default.
+  transcriptionLanguages: string[];
 }
 
 export async function withSession<T>(appDb: pg.Pool, session: Session, fn: (db: pg.PoolClient) => Promise<T>): Promise<T> {
@@ -37,7 +47,7 @@ export async function withSession<T>(appDb: pg.Pool, session: Session, fn: (db: 
 
 export function loadMe(appDb: pg.Pool, session: Session): Promise<Me> {
   return withSession(appDb, session, async (db) => {
-    const user = await db.query<{ id: string; full_name: string }>("select id, full_name from users where id = $1", [
+    const user = await db.query<{ id: string; full_name: string; locale: string | null }>("select id, full_name, locale from users where id = $1", [
       session.userId,
     ]);
     // The user's call centres, plus the current one when a superadmin has stepped into it.
@@ -52,6 +62,15 @@ export function loadMe(appDb: pg.Pool, session: Session): Promise<Me> {
     const modules = await db.query<{ module: string }>(
       "select module from organization_modules where organization_id = app.current_org_id() and enabled order by 1",
     );
+    const languages = await db.query<{
+      default_locale: string;
+      content_locale: string;
+      content_locale_locked: boolean;
+      transcription_languages: string[];
+    }>(
+      `select default_locale, content_locale, content_locale_locked, transcription_languages
+       from organizations where id = app.current_org_id()`,
+    );
     return {
       user: { id: session.userId, name: user.rows[0]?.full_name ?? "" },
       provider: session.provider,
@@ -61,6 +80,21 @@ export function loadMe(appDb: pg.Pool, session: Session): Promise<Me> {
       activeOrganizationId: flags.rows[0]?.org ?? null,
       permissions: permissions.rows.map((r) => r.p),
       modules: modules.rows.map((r) => r.module),
+      locale: localeOrNull(user.rows[0]?.locale),
+      organizationLocale: localeOrNull(languages.rows[0]?.default_locale),
+      contentLocale: localeOrNull(languages.rows[0]?.content_locale),
+      contentLocaleLocked: languages.rows[0]?.content_locale_locked ?? false,
+      transcriptionLanguages: languages.rows[0]?.transcription_languages ?? [],
     };
   });
+}
+
+function localeOrNull(value: unknown): Locale | null {
+  return isLocale(value) ? value : null;
+}
+
+// The user's own language for the pages; null follows the call centre.
+export async function setMyLocale(appDb: pg.Pool, session: Session, locale: Locale | null) {
+  await withSession(appDb, session, (db) => db.query("select app.set_my_locale($1)", [locale]));
+  return { locale };
 }

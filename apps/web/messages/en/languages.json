@@ -1,0 +1,23 @@
+{
+  "outputLanguage": "Language for notes",
+  "outputLanguageHint": "The notes and the AI control are written in this language.",
+  "spokenLanguages": "Languages in the call",
+  "spokenLanguagesHint": "Helps the transcription. Soniox recognises more than 60 languages, also when several are used in the same call.",
+  "followOrganization": "Same as the call centre ({language})",
+  "noteIn": "Note in {language}",
+  "addLanguage": "Add language",
+  "removeLanguage": "Remove {language}",
+  "title": "Languages",
+  "regenerateIn": "Language for new notes",
+  "orgIntro": "The call centre's languages. Users can choose their own language for the pages, and sellers can choose languages per call.",
+  "pageLanguage": "Language for the pages",
+  "pageLanguageHint": "Used for users who have not chosen their own language.",
+  "contentLanguage": "Language for notes and the AI control",
+  "transcriptionLanguages": "Languages in the calls",
+  "save": "Save languages",
+  "saving": "Saving …",
+  "saved": "Saved.",
+  "lockContent": "Lock the language for notes",
+  "lockContentHint": "Sellers then cannot choose another language for notes and the AI control.",
+  "locked": "Locked by the call centre: {language}"
+}
