@@ -734,6 +734,8 @@ export async function housekeeping(deps: WorkerDeps, hasTime: () => boolean = ()
     }
     if (expired.rows.length < 200 || !hasTime()) break;
   }
+  // Login states and passkey challenges last minutes; anyone can create them, so old ones go.
+  await deps.db.query("select app.purge_login_states()");
   // A recording nobody finished: process what was uploaded, or drop it if nothing was.
   await deps.db.query(
     "delete from calls where status = 'recording' and chunk_count = 0 and started_at < now() - interval '1 day'",

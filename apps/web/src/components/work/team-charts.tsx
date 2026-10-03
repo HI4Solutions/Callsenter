@@ -71,18 +71,18 @@ export function SellerBars({ sellers }: { sellers: TeamSeller[] }) {
       {metric === "redShare" && <p className="text-sm text-muted">Brudd som andel av selgerens samtaler i perioden.</p>}
       <ul className="flex flex-col gap-2">
         {rows.map((r) => (
-          <li key={r.seller.userId} className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
+          <li
+            key={r.seller.userId}
+            className="grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto]"
+          >
             <Link href={`/oversikt/selgere/${r.seller.userId}`} className="truncate text-sm font-semibold text-brand" title={r.seller.name}>
               {r.seller.name}
             </Link>
-            <span className="flex min-w-0 items-center gap-2">
-              <span
-                className="h-3.5 shrink-0 rounded-r bg-brand"
-                style={{ width: `${(r.value / max) * 75}%`, minWidth: r.value > 0 ? "3px" : "0" }}
-                aria-hidden="true"
-              />
-              <span className="text-sm whitespace-nowrap">{r.text}</span>
+            {/* The bar has its own track, so a long figure never pushes the row wider than the card. */}
+            <span className="min-w-0" aria-hidden="true">
+              <span className="block h-3.5 rounded-r bg-brand" style={{ width: `${(r.value / max) * 100}%`, minWidth: r.value > 0 ? "3px" : "0" }} />
             </span>
+            <span className="text-right text-sm whitespace-nowrap">{r.text}</span>
           </li>
         ))}
       </ul>
