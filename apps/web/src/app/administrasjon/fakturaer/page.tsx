@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { ErrorMessage } from "@/components/admin/field";
-import { InvoiceStatusBadge } from "@/components/billing/invoice-status";
-import { type InvoiceSummary, invoiceTitle, kr } from "@/lib/billing";
+import { InvoiceStatusBadge, useInvoiceTitle } from "@/components/billing/invoice-status";
+import { type InvoiceSummary, kr } from "@/lib/billing";
 import { formatDate } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 
@@ -15,6 +15,7 @@ type OrgInvoice = Pick<InvoiceSummary, "id" | "kind" | "status" | "number" | "is
 export default function OrgInvoicesPage() {
   const t = useTranslations("org.invoices");
   const tc = useTranslations("common");
+  const invoiceTitle = useInvoiceTitle();
   const [invoices, setInvoices] = useState<OrgInvoice[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 

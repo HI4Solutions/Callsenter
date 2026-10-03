@@ -6,11 +6,10 @@ import { Card } from "@/components/admin/card";
 import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { useMe } from "@/components/org/org-shell";
-import { formatDateTime, invitationState, toCsv } from "@/lib/format";
+import { invitationKey } from "@/lib/admin";
+import { formatDateTime, toCsv } from "@/lib/format";
 import { memberState, orgFetch, type OrgOverview } from "@/lib/org";
 
-// invitationState() gives the state in Norwegian; the key in org.users.invitations.state.
-const INVITATION_STATE = { Brukt: "used", "Trukket tilbake": "revoked", Utløpt: "expired", Venter: "pending" } as const;
 
 export default function MembersPage() {
   const me = useMe();
@@ -332,16 +331,16 @@ function Invitations({ data, onChanged }: { data: OrgOverview; onChanged: () => 
     <Card title={t("title")}>
       <ul className="divide-y divide-line">
         {data.invitations.map((inv) => {
-          const state = invitationState(inv);
+          const state = invitationKey(inv);
           return (
             <li key={inv.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-semibold">{inv.name}</p>
                 <p className="text-sm text-muted">
-                  {t("created", { date: formatDateTime(inv.createdAt), state: t(`state.${INVITATION_STATE[state]}`) })}
+                  {t("created", { date: formatDateTime(inv.createdAt), state: t(`state.${state}`) })}
                 </p>
               </div>
-              {state === "Venter" && (
+              {state === "pending" && (
                 <button type="button" className={secondaryButton} onClick={() => revoke(inv.id)}>
                   {t("revoke")}
                 </button>
