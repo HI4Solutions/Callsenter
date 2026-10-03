@@ -153,11 +153,17 @@ export async function completeLogin(
     console.error(`[${provider}] identity without sub; keys: ${Object.keys(profile).join(",")}`);
     throw new AuthFailure("feil", "invalid", "identity without sub");
   }
+  // BankID: the level comes from the signed id token. What we asked for in acr_values passed
+  // through the browser, so it proves nothing; another e-ID method would give another acr.
+  const acr = stringClaim((claims ?? {}) as Record<string, unknown>, "acr");
+  if (settings.acrValues && acr !== settings.acrValues) {
+    throw new AuthFailure("feil", "invalid", `unexpected acr: ${acr ?? "none"}`);
+  }
   return {
     provider,
     subject,
     name: stringClaim(profile, "name"),
     phone: stringClaim(profile, "phone_number", "phoneNumber"),
-    acr: stringClaim((claims ?? {}) as Record<string, unknown>, "acr") ?? settings.acrValues,
+    acr,
   };
 }
