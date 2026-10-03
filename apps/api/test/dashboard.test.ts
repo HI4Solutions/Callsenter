@@ -160,6 +160,22 @@ describe("dashboard: AI flags and calls to follow up", () => {
 });
 
 describe("coaching", () => {
+  it("gives the seller the team's average and the leader each seller day by day", async () => {
+    const s = await setup();
+    const bench = await call(s.seller, "GET", "/org/dashboard/benchmark", undefined, { from: "2026-09-01", to: "2026-09-07" });
+    expect(bench.status).toBe(200);
+    // Only two in the team: no average that would reveal a colleague's numbers.
+    expect(bench.body).toMatchObject({ from: "2026-09-01", to: "2026-09-07", benchmark: { teamName: "Nord", tooFew: true, perSeller: null } });
+
+    const team = await call(s.leader, "GET", "/org/dashboard/team", undefined, { team: s.team, from: "2026-09-01", to: "2026-09-07" });
+    expect(team.status).toBe(200);
+    expect(team.body.days).toHaveLength(7);
+    expect(team.body.sellers.map((p: { userId: string }) => p.userId)).toContain(s.sellerId);
+    expect((await call(s.seller, "GET", "/org/dashboard/team", undefined, { team: s.team })).status).toBe(403);
+    expect((await call(s.leader, "GET", "/org/dashboard/team")).status).toBe(403);
+    expect((await call(s.leader, "GET", "/org/dashboard/team", undefined, { team: "nope" })).status).toBe(400);
+  });
+
   it("lets a leader give feedback that the seller reads and marks as read", async () => {
     const s = await setup();
     const given = await call(s.leader, "POST", "/org/coaching", { sellerId: s.sellerId, kind: "praise", body: "God avslutning" });
