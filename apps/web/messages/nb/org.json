@@ -1,0 +1,199 @@
+{
+  "shell": {
+    "title": "Administrasjon",
+    "pageTitle": "Administrasjon · VeriQall",
+    "eyebrow": "Administrasjon · {organization}",
+    "noApi": "API-adressen er ikke satt opp.",
+    "noOrganization": "Du er ikke medlem av noe callsenter.",
+    "noAccess": "Du har ikke tilgang til administrasjonen i dette callsenteret.",
+    "needsStrongLogin": "Administrasjon krever innlogging med BankID eller passkey. Logg ut og logg inn igjen.",
+    "tabs": {
+      "overview": "Oversikt",
+      "users": "Brukere",
+      "teams": "Team",
+      "roles": "Roller",
+      "messages": "Meldinger",
+      "invoices": "Fakturaer"
+    }
+  },
+  "overview": {
+    "title": "Oversikt",
+    "intro": "{name}. {subscription}",
+    "subscription": {
+      "suspended": "Callsenteret er stengt. Ta kontakt med VeriQall.",
+      "accessUntil": "Tilgang til {date}.",
+      "trialUntil": "Prøveperiode til {date}.",
+      "active": "Aktivt."
+    },
+    "share": "{count} av {total}",
+    "activeUsers": "Aktive brukere",
+    "loggedIn7": "{count} innlogget siste 7 dager",
+    "awaitingFirstLogin": "Venter på første innlogging",
+    "invitationsExpired": "{count} med utløpt invitasjon",
+    "invitationsPending": "{count} gyldige invitasjoner",
+    "inactive30": "Ikke innlogget på 30 dager",
+    "disabled": "{count} deaktivert",
+    "unpaid": "Ubetalt",
+    "amount": "{amount} kr",
+    "overdueInvoices": "{count, plural, one {# faktura} other {# fakturaer}} forfalt",
+    "nextDue": "Neste forfall {date}",
+    "nothingOverdue": "Ingenting forfalt",
+    "transcribedIn": "Transkribert i {month}",
+    "hours": "{hours} t",
+    "login": {
+      "title": "Innlogging",
+      "link": "Brukere",
+      "passkey": "Passkey",
+      "note": "Av de aktive brukerne, etter hvilke innloggingsmåter de har koblet til. Administrasjon og innsyn i alle samtaler krever BankID eller passkey."
+    },
+    "teams": {
+      "title": "Team",
+      "link": "Team",
+      "note": "Medlemmer per team, også de som ikke har logget inn ennå.",
+      "withoutTeam": "{count} er ikke med i noe team.",
+      "empty": "Ingen team ennå. Team trengs for teamledere og tallene per team."
+    },
+    "activity": {
+      "title": "Aktivitet i {month}",
+      "team": "Team",
+      "calls": "Samtaler",
+      "sales": "Salg",
+      "confirmed": "Bekreftet",
+      "noTeam": "Uten team",
+      "more": "Tallene per selger og per dag står under <link>Callsenter → Oversikt</link>."
+    },
+    "usage": {
+      "title": "Forbruk",
+      "thisMonth": "Denne måneden",
+      "previousMonth": "Forrige måned",
+      "hours": "Timer transkribert",
+      "controls": "AI-kontroller",
+      "notes": "Notater",
+      "note": "Talt som på fakturaen: hver samtale én gang."
+    },
+    "roles": {
+      "title": "Roller",
+      "link": "Roller"
+    },
+    "invoices": {
+      "title": "Fakturaer",
+      "link": "Alle fakturaer",
+      "unpaid": "Ubetalte",
+      "overdue": "Forfalt",
+      "nextDue": "Neste forfall",
+      "lastPaid": "Siste betaling"
+    },
+    "modules": {
+      "title": "Moduler",
+      "empty": "Ingen moduler er slått på.",
+      "note": "Moduler slås på og av av VeriQall. Send en melding under Meldinger hvis dere trenger flere."
+    }
+  },
+  "users": {
+    "title": "Brukere",
+    "intro": "Inviter brukere, gi dem rolle og team, og deaktiver dem som slutter.",
+    "exportCsv": "Eksporter CSV",
+    "csv": {
+      "name": "Navn",
+      "phone": "Mobil",
+      "email": "E-post",
+      "role": "Rolle",
+      "team": "Team",
+      "status": "Status",
+      "lastLogin": "Sist innlogget"
+    },
+    "csvFile": "brukere-{date}.csv",
+    "search": "Søk",
+    "searchPlaceholder": "Navn, mobil eller e-post",
+    "noMatch": "Ingen brukere passer søket.",
+    "you": "(deg)",
+    "noContact": "Ingen kontaktinfo",
+    "lastLogin": "sist innlogget {when}",
+    "role": "Rolle",
+    "team": "Team",
+    "noTeam": "Uten team",
+    "lacksPermissions": "(krever rettigheter du ikke har)",
+    "confirmDisable": "Deaktivere {name}? Brukeren mister tilgangen til callsenteret.",
+    "disable": "Deaktiver",
+    "enable": "Aktiver igjen",
+    "invite": {
+      "title": "Inviter bruker",
+      "name": "Navn",
+      "phone": "Mobilnummer",
+      "phoneHint": "Med Vipps kobles brukeren via mobilnummeret.",
+      "email": "E-post",
+      "creating": "Lager invitasjon …",
+      "create": "Lag invitasjon",
+      "added": "Personen er allerede bruker av VeriQall og er lagt til. Av sikkerhetshensyn lages det ingen lenke: callsenteret vises når hen logger inn med sin egen BankID, Vipps eller passkey.",
+      "link": "Invitasjonslenke",
+      "emailed": "Sendt på e-post til {email}.",
+      "alsoSendYourself": "Du kan også sende lenken selv, for eksempel på SMS.",
+      "sendIt": "Send lenken til personen.",
+      "validity": "Den kan brukes én gang og gjelder til {date}. Den vises bare nå.",
+      "copied": "Kopiert",
+      "copy": "Kopier lenke"
+    },
+    "invitations": {
+      "title": "Invitasjoner",
+      "created": "Laget {date} · {state}",
+      "state": {
+        "used": "Brukt",
+        "revoked": "Trukket tilbake",
+        "expired": "Utløpt",
+        "pending": "Venter"
+      },
+      "revoke": "Trekk tilbake"
+    }
+  },
+  "teams": {
+    "title": "Team",
+    "intro": "Team brukes til å gi ledere innsyn i samtalene og salgene til sine selgere.",
+    "new": "Nytt team",
+    "name": "Navn",
+    "create": "Opprett team",
+    "list": "Team ({count})",
+    "empty": "Ingen team ennå",
+    "emptyHint": "Lag det første over. Team trengs for teamledere, og for tall per team på dashboardet.",
+    "archived": "Arkiverte team",
+    "restore": "Gjenopprett",
+    "members": "{count, plural, one {# medlem} other {# medlemmer}}",
+    "saveName": "Lagre navn",
+    "archive": "Arkiver",
+    "confirmArchive": "Arkivere {name}? Medlemmene blir uten team."
+  },
+  "roles": {
+    "title": "Roller",
+    "intro": "En rolle er et sett rettigheter. Du kan bare gi rettigheter du har selv, og du kan ikke endre rollen du har selv.",
+    "new": "Ny rolle",
+    "otherGroup": "Annet",
+    "confirmArchive": "Arkivere rollen {name}?",
+    "yours": "(din rolle)",
+    "users": "{count, plural, one {# bruker} other {# brukere}}",
+    "defaultRole": "standardrolle",
+    "noPermissions": "Ingen rettigheter",
+    "edit": "Endre",
+    "archive": "Arkiver",
+    "archived": "Arkiverte roller",
+    "restore": "Gjenopprett",
+    "editTitle": "Endre {name}",
+    "name": "Navn",
+    "requiresStrongLogin": "Krever BankID eller passkey.",
+    "notHeld": "Du har ikke denne selv.",
+    "saving": "Lagrer …",
+    "save": "Lagre",
+    "create": "Opprett rolle",
+    "cancel": "Avbryt"
+  },
+  "invoices": {
+    "title": "Fakturaer",
+    "intro": "Fakturaer fra VeriQall til callsenteret.",
+    "empty": "Ingen fakturaer ennå.",
+    "due": ", forfall {date}",
+    "all": "← Alle fakturaer",
+    "downloadPdf": "Last ned PDF"
+  },
+  "messages": {
+    "title": "Meldinger",
+    "intro": "Samtaler med VeriQall. Alle med tilgang til administrasjonen ser dem."
+  }
+}

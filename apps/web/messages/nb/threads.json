@@ -1,0 +1,20 @@
+{
+  "new": "Ny samtale",
+  "empty": "Ingen samtaler ennå.",
+  "unread": "Ulest",
+  "messages": "{count, plural, one {# melding} other {# meldinger}}",
+  "closed": "lukket",
+  "choose": "Velg en samtale, eller start en ny.",
+  "newWithOrganization": "Ny samtale med et callsenter",
+  "newWithVeriqall": "Ny samtale med VeriQall",
+  "organization": "Callsenter",
+  "chooseOrganization": "Velg callsenter",
+  "subject": "Emne",
+  "message": "Melding",
+  "sending": "Sender …",
+  "send": "Send",
+  "close": "Lukk samtalen",
+  "reopen": "Åpne igjen",
+  "reply": "Svar",
+  "sendReply": "Send svar"
+}
