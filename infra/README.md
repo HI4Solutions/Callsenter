@@ -24,9 +24,9 @@ CloudFormation (YAML) for VeriQall, én stack per lag og miljø. Alle stacker he
 
    Den gir GitHub-rollen lov til å deploye `veriqall-staging-*`-stacker gjennom en egen CloudFormation-rolle, laste opp Lambda-pakker og starte migrator-Lambdaen. Rollen trenger ikke noe mer. Den eldre inline-policyen `callsenter-deploy-permissions` på rollen (RDS, Amplify og Secrets Manager direkte) bør fjernes når bootstrap er på plass, så GitHub ikke kan endre ressurser utenom CloudFormation.
 
-2. **Resten skjer ved push** til `staging` (eller `main` for produksjon): `.github/workflows/deploy-*.yml` bygger Lambda-pakken og kjører `infra/deploy.sh`. Skriptet deployer network → data → app, kjører migrasjonene via migrator-Lambdaen og sjekker `GET /health`.
+2. **Resten skjer ved push** til `staging` (eller `main` for produksjon): `.github/workflows/deploy-*.yml` bygger Lambda-pakken og kjører `infra/deploy.sh`. Skriptet deployer network → data → app med den nye migratoren, kjører migrasjonene via migrator-Lambdaen, gir deretter API-et og workeren den nye koden, og sjekker `GET /health`. Feiler en migrasjon, fortsetter den gamle koden mot det gamle skjemaet. En migrasjon må derfor også virke med koden før den (legg til først, fjern i en senere deploy). Migratoren venter høyst 5 sekunder på en tabellås og prøver opptil 5 ganger, så den aldri får API-et til å stå i kø bak seg.
 
-Produksjons-workflowen gjør ingenting før repo-variabelen `PRODUCTION_ENABLED` er satt til `true` (ved lansering).
+Produksjons-workflowen gjør ingenting før repo-variabelen `PRODUCTION_ENABLED` er satt til `true` (ved lansering). Produksjon krever i tillegg `API_DOMAIN_NAME` og `API_CERTIFICATE_ARN`, ellers stopper `deploy.sh`: web-appen kaller `https://api.veriqall.no`, og innloggingen virker bare på det domenet.
 
 En deploy kan også startes manuelt: **Actions → Deploy to staging → Run workflow** (velg branchen `staging`). Det trengs for eksempel etter at en variabel på GitHub Environment er endret.
 

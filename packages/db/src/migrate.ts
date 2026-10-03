@@ -10,6 +10,15 @@ const LOCK_KEY = 7_311_822_011;
 
 const FILE_PATTERN = /^(\d{4})_[a-z0-9_]+\.sql$/;
 
+// A migration waits at most this long for a table lock, then tries again a few times. Without
+// it, DDL waiting behind a long transaction (the worker holds some for minutes) makes every
+// other query on the table queue behind the DDL, and the API stops answering.
+export interface MigrateOptions {
+  lockTimeoutMs?: number;
+  lockAttempts?: number;
+  retryDelayMs?: number;
+}
+
 export interface Migration {
   version: string;
   sql: string;
@@ -36,7 +45,8 @@ export async function loadMigrations(dir = MIGRATIONS_DIR): Promise<Migration[]>
 
 // Applies pending migrations in order, each in its own transaction. Refuses to run if an
 // applied migration was edited or removed, or if a new one sorts before the latest applied.
-export async function migrate(client: ClientBase, migrations: Migration[]): Promise<string[]> {
+export async function migrate(client: ClientBase, migrations: Migration[], options: MigrateOptions = {}): Promise<string[]> {
+  const { lockTimeoutMs = 5000, lockAttempts = 5, retryDelayMs = 2000 } = options;
   await client.query(`
     create table if not exists schema_migrations (
       version text primary key,
@@ -69,19 +79,29 @@ export async function migrate(client: ClientBase, migrations: Migration[]): Prom
 
     const done: string[] = [];
     for (const migration of pending) {
-      await client.query("begin");
-      try {
-        await client.query(migration.sql);
-        await client.query("insert into schema_migrations (version, checksum) values ($1, $2)", [
-          migration.version,
-          migration.checksum,
-        ]);
-        await client.query("commit");
-      } catch (error) {
-        await client.query("rollback");
-        throw new Error(`migration ${migration.version} failed: ${(error as Error).message}`, {
-          cause: error,
-        });
+      for (let attempt = 1; ; attempt++) {
+        await client.query("begin");
+        try {
+          await client.query(`set local lock_timeout = ${Math.max(1, Math.round(lockTimeoutMs))}`);
+          await client.query(migration.sql);
+          await client.query("insert into schema_migrations (version, checksum) values ($1, $2)", [
+            migration.version,
+            migration.checksum,
+          ]);
+          await client.query("commit");
+          break;
+        } catch (error) {
+          await client.query("rollback");
+          // 55P03: lock_not_available, from lock_timeout. Wait a little and try the whole
+          // migration again; it was rolled back.
+          if ((error as { code?: string }).code === "55P03" && attempt < lockAttempts) {
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt));
+            continue;
+          }
+          throw new Error(`migration ${migration.version} failed: ${(error as Error).message}`, {
+            cause: error,
+          });
+        }
       }
       done.push(migration.version);
     }
