@@ -10,6 +10,7 @@ import type customers from "../../messages/nb/customers.json";
 import type dashboard from "../../messages/nb/dashboard.json";
 import type domain from "../../messages/nb/domain.json";
 import type economy from "../../messages/nb/economy.json";
+import type landing from "../../messages/nb/landing.json";
 import type languages from "../../messages/nb/languages.json";
 import type login from "../../messages/nb/login.json";
 import type org from "../../messages/nb/org.json";
@@ -38,6 +39,7 @@ export interface Messages {
   economy: typeof economy;
   dashboard: typeof dashboard;
   admin: typeof admin;
+  landing: typeof landing;
 }
 
 declare module "next-intl" {

@@ -583,3 +583,29 @@ Superadmin setter callsenterets språk under Callsentre. Med «Lås språket for
 3. Mappen `apps/web/messages/fi/` med alle navnerommene, og tekstene i `apps/api/src/i18n/` (`worker.ts`, `messages.ts` og `documents.ts`). Testene og typene sier fra om noe mangler.
 
 **Status 3. oktober:** alt er oversatt: språkvalgene, AI og Soniox, søk og alle sidene. Tekster databasen lager selv, får en nøkkel som sidene viser på brukerens språk (kategoriene for AI-funn i dashboardet og radene i omsetningsrapporten), og en kreditnota uten begrunnelse får standardteksten på callsenterets språk. Data fra callsenteret (roller, team, produkter, notatmaler og punktene i produktmalen) vises slik de er skrevet. API-ets meldinger (feilmeldinger, arbeiderens feil og systemets merknader i salgshistorikken) oversettes til språket i forespørselen (`apps/api/src/i18n/messages.ts`, sjekket av `messages-coverage.test.ts`), og invitasjoner, faktura-e-post og faktura-PDF skrives på callsenterets språk (`organizations.default_locale`, `apps/api/src/i18n/documents.ts`).
+
+## 20. Landingsside
+
+Påbegynt 3. oktober 2026 (Nadeems ønske). Siden skal ikke være synlig for noen før den er ferdig; vi fortsetter å jobbe med den.
+
+**Slik er den gjemt:** i staging ser superadmin siden på `/forhandsvisning/landingsside` (besluttet av Nadeem 3. oktober). Siden tegnes i nettleseren først etter at `/me` har bekreftet superadmin, med samme sjekk som superadminportalen (`apps/web/src/components/landing/superadmin-preview.tsx`); utloggede sendes til innlogging, og andre får avslag. Tekstene (navnerommet `landing`) ligger likevel i sidens kilde som alle andre tekster, så en som kjenner adressen og leser kildekoden, kan finne dem; det er ingen lenker til siden. Lokalt, uten API, finnes den også som `apps/web/src/app/landingsside/page.dev.tsx` (bare i utvikling, som `/design`). Koden ligger i repoet, som er offentlig.
+
+**Innhold** (`apps/web/src/components/landing/landing-page.tsx`, tekstene i `apps/web/messages/<språk>/landing.json` på alle fem språk):
+
+1. Hero med «Hver samtale dokumentert. Hvert salg verifisert.», knappene «Be om en demo» (e-post) og «Logg inn», tre fakta (EU, innlogging, språk), og et stillbilde av AI-kontrollen bygget av appens egne komponenter: varsellamper, transkripsjon og kundens aksept.
+2. Hvorfor: kunden må godta skriftlig, klagen kommer uker senere, ingen rekker å høre alle samtalene.
+3. Slik virker det, i fem steg: opptak i nettleseren, transkripsjon, AI-kontroll, kundens bekreftelse (merket som tilleggsmodul), dokumentasjon og klager.
+4. Modulene (åtte kort), hvem siden er for (selger, leder, compliance, admin), «Bygget for å være bevis» (EU, skille per callsenter, innlogging, sporing, uforanderlige bevis, sletting), språk, pris (pakke, forbruk og salgsverifisering, uten tall), spørsmål og svar, og en avsluttende oppfordring.
+5. Bunntekst med Hi4 Solutions AS, kontaktadresse og språkvelger.
+
+Siden bruker appens design: samme tokens, lys og mørk modus, og grønn, gul og rød bare i AI-flaggene i stillbildet.
+
+**Åpne punkter før publisering:**
+
+- Kontaktadressen `kontakt@veriqall.no` er en plassholder (`CONTACT_EMAIL` i komponenten).
+- Prisene står uten tall; tilbud etter avtale.
+- Setningen om skriftlig aksept er skrevet for Norge (angrerettloven § 10). På engelsk, dansk og tysk står den generelt («i mange markeder»); svensk har samme krav og er like konkret som norsk.
+- Ingen kundesitater eller tall, siden vi ikke har noen å vise til ennå.
+- Personvernerklæring og vilkår finnes ikke som sider ennå, så bunnteksten lenker ikke til dem.
+
+**Slik publiseres den:** `src/app/page.tsx` viser `<LandingPage />` i stedet for å sende til `/logg-inn` (innloggede brukere bør fortsatt sendes videre til portalen sin, slik `/logg-inn` gjør i dag), forhåndsvisningen fjernes, og `noindex` for `/` fjernes (`next.config.ts` og `layout.tsx` sier i dag noindex for hele appen).

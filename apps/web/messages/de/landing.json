@@ -1,0 +1,145 @@
+{
+  "meta": {
+    "title": "Dokumentierter und bestätigter Telefonverkauf",
+    "description": "VeriQall nimmt Verkaufsgespräche auf, transkribiert und prüft sie mit KI, lässt den Kunden den Kauf mit BankID oder Vipps bestätigen und sammelt die Dokumentation für Nachverfolgung, Beschwerden und Coaching."
+  },
+  "hero": {
+    "eyebrow": "Für Callcenter, die am Telefon verkaufen",
+    "title": "Jedes Gespräch dokumentiert. Jeder Verkauf bestätigt.",
+    "lead": "VeriQall nimmt die Verkaufsgespräche auf und transkribiert sie, prüft sie mit KI gegen die Produktvorlage, lässt den Kunden den Kauf mit BankID oder Vipps bestätigen und sammelt alles als Dokumentation für Nachverfolgung, Beschwerden und Coaching.",
+    "demo": "Demo anfragen",
+    "demoSubject": "Demo von VeriQall",
+    "login": "Anmelden",
+    "fact1": "Gespeichert und verarbeitet in der EU",
+    "fact2": "Anmeldung mit BankID, Vipps und Passkey",
+    "fact3": "Fünf Sprachen in der App, über 60 in der Transkription"
+  },
+  "demo": {
+    "caption": "Die KI-Prüfung, wie der Verkäufer sie während des Gesprächs sieht.",
+    "title": "KI-Prüfung",
+    "template": "Mobil Fri 10 GB",
+    "reference": "Referenz VQ-7K3M-Q9TX",
+    "point1": "Preis genannt: 299 kr pro Monat",
+    "point2": "Vertragslaufzeit von 12 Monaten erklärt",
+    "point3": "Widerrufsrecht von 14 Tagen erwähnt",
+    "point3Note": "Erst erwähnt, nachdem der Kunde zugesagt hatte (04:12).",
+    "point4": "Keine verbotenen Formulierungen",
+    "transcriptTitle": "Transkription",
+    "seller": "Verkäufer",
+    "customer": "Kunde",
+    "line1": "Dann richten wir den Vertrag ab dem 1. November ein: 299 Kronen im Monat mit zwölf Monaten Laufzeit.",
+    "line2": "Ja, das klingt gut.",
+    "line3": "Und Sie haben natürlich 14 Tage Widerrufsrecht.",
+    "confirmation": "Der Kunde hat das Angebot am 3. Oktober um 14:32 Uhr mit BankID angenommen."
+  },
+  "why": {
+    "title": "Telefonverkauf stellt strenge Anforderungen, und die Beweise liegen im Gespräch",
+    "item1Title": "Der Kunde muss schriftlich zustimmen",
+    "item1": "Beim Telefonverkauf an Verbraucher ist der Vertrag in vielen Märkten erst bindend, wenn der Kunde das Angebot nach dem Gespräch schriftlich angenommen hat. Ohne klare Spur wird der Verkauf leicht bestritten.",
+    "item2Title": "Die Beschwerde kommt Wochen später",
+    "item2": "Dann muss jemand die Aufnahme finden, das Gespräch anhören und zeigen, was tatsächlich gesagt, angeboten und angenommen wurde.",
+    "item3Title": "Niemand kann alle Gespräche anhören",
+    "item3": "Leitung und Compliance hören eine Stichprobe. Abweichungen fallen spät auf, und das Coaching beruht auf Bauchgefühl."
+  },
+  "how": {
+    "title": "So funktioniert es",
+    "step1Title": "Im Browser aufnehmen",
+    "step1": "Der Verkäufer nimmt das Gespräch im Gesprächsstudio auf, über das Mikrofon oder aus dem Tab, in dem die Telefonielösung oder Teams läuft. Keine Installation, kein Wechsel des Telefonsystems.",
+    "step2Title": "Transkription während des Gesprächs",
+    "step2": "Der Text kommt innerhalb von Sekunden, mit Zeitstempeln und Verknüpfung zum Audio. Über 60 Sprachen und eine Suche, die jedes Gespräch wiederfindet.",
+    "step3Title": "KI-Prüfung gegen die Produktvorlage",
+    "step3": "Preis, Laufzeit, Widerrufsrecht sowie genehmigte und verbotene Formulierungen werden gegen die Vorlage des Produkts geprüft. Die Warnleuchten zeigen während des Gesprächs Grün, Gelb oder Rot, damit der Verkäufer nachbessern kann, bevor der Kunde auflegt.",
+    "step4Title": "Der Kunde bestätigt mit BankID oder Vipps",
+    "step4": "Der Kunde erhält einen Link, sieht das Angebot mit Preis, Laufzeit und Widerrufsfrist und nimmt an oder lehnt ab. Nur der Käufer selbst kann annehmen, und der Beweis wird so gespeichert, dass er nie geändert werden kann.",
+    "step4Note": "Zusatzmodul. Nutzen Sie ein eigenes System zur Bestätigung, fügt der Verkäufer dort die Referenz des Gesprächs ein.",
+    "step5Title": "Dokumentation und Beschwerden",
+    "step5": "Jeder Verkauf erhält eine von der KI geschriebene Notiz und eine gesammelte Dokumentation: das Angebot, die Annahme, das Gespräch, die Transkription und die Prüfung. Eine Beschwerde wird mit allem an einem Ort bearbeitet."
+  },
+  "features": {
+    "title": "Alles, was das Callcenter braucht",
+    "intro": "Die Module werden pro Callcenter freigeschaltet, sodass Sie für das zahlen, was Sie nutzen.",
+    "f1Title": "Gesprächsstudio",
+    "f1": "Warnleuchten pro Pflichtpunkt, Live-Transkription, eine Notiz, die während des Gesprächs entsteht, und eine Referenz, die Sie in Ihr eigenes Verkaufssystem einfügen.",
+    "f2Title": "Produktvorlagen",
+    "f2": "Preis, Bedingungen, Pflichtpunkte und verbotene Formulierungen pro Produkt. Versioniert, sodass jedes Gespräch an der damals gültigen Vorlage gemessen wird.",
+    "f3Title": "Notizen und Berichte",
+    "f3": "Die KI schreibt die Notiz nach Ihren eigenen Notizvorlagen, in der Sprache Ihrer Wahl. Der Verkäufer kann sie anpassen, die KI-Version bleibt erhalten.",
+    "f4Title": "Kunden und Verkäufe",
+    "f4": "Kunden, Produkte und Verkäufe mit Statusverlauf und vollständiger Historie, verknüpft mit den Gesprächen.",
+    "f5Title": "Beschwerdemanagement",
+    "f5": "Aufnahme, Transkription, Angebot, Annahme und Abweichungen werden zu einer fertigen Beschwerdedokumentation zusammengeführt.",
+    "f6Title": "Dashboard und Coaching",
+    "f6": "Eigene Zahlen für den Verkäufer, das Team für die Leitung, das ganze Callcenter für den Admin und ein eigener Qualitätsreiter für Compliance. Feedback geht direkt an den Verkäufer.",
+    "f7Title": "Rollen und Berechtigungen",
+    "f7": "Legen Sie eigene Rollen an und vergeben Sie Berechtigungen pro Rolle. Niemand kann mehr vergeben, als er selbst hat.",
+    "f8Title": "Verwaltung",
+    "f8": "Benutzer, Teams, Rollen, Rechnungen und Nachrichten an uns, gesammelt für den Admin des Callcenters."
+  },
+  "roles": {
+    "title": "Für das ganze Callcenter gemacht",
+    "r1Title": "Der Verkäufer",
+    "r1": "Sieht die Leuchten während des Gesprächs, bekommt die Notiz geschrieben und muss das Gespräch später nie suchen.",
+    "r2Title": "Die Leitung",
+    "r2": "Sieht das Team im Überblick, wer Nachverfolgung braucht, und gibt Feedback zu konkreten Gesprächen.",
+    "r3Title": "Compliance",
+    "r3": "Arbeitet die Markierungen in einer Warteschlange ab, baut den Beschwerdefall aus der Dokumentation auf und sieht, wer welche Aufnahmen geöffnet hat.",
+    "r4Title": "Der Admin",
+    "r4": "Verwaltet Benutzer, Teams und Rollen und sieht Verbrauch und Rechnungen."
+  },
+  "trust": {
+    "title": "Gebaut, um Beweis zu sein",
+    "intro": "Die Dokumentation muss standhalten, wenn jemand einen Verkauf bestreitet. Deshalb ist VeriQall von Grund auf mit Nachverfolgung, Verschlüsselung und Zugriffskontrolle gebaut.",
+    "t1Title": "In der EU gespeichert",
+    "t1": "Aufnahmen, Transkriptionen und Daten werden verschlüsselt bei AWS in Stockholm gespeichert. Die Transkription erfolgt in der EU, und die KI-Prüfung läuft bei AWS in derselben Region.",
+    "t2Title": "Jedes Callcenter sieht nur das eigene",
+    "t2": "Die Daten sind pro Callcenter bis hinunter in die Datenbank getrennt, nicht nur in der App.",
+    "t3Title": "Anmeldung mit BankID, Vipps und Passkey",
+    "t3": "Administrative Aufgaben erfordern eine mit BankID gestartete Sitzung.",
+    "t4Title": "Alles wird nachverfolgt",
+    "t4": "Jede Änderung steht in einem unveränderlichen Revisionsprotokoll, jedes Abspielen einer Aufnahme in einem Zugriffsprotokoll.",
+    "t5Title": "Beweise, die sich nicht ändern lassen",
+    "t5": "Die Annahme des Kunden wird mit dem Dokument, das der Kunde gesehen hat, Methode, Zeitpunkt und einer kryptografischen Prüfsumme gespeichert. Eine entschiedene Bestätigung kann nie geändert werden.",
+    "t6Title": "Löschung nach Plan",
+    "t6": "Aufnahmen werden nach 3 bis 12 Monaten automatisch gelöscht, je nachdem, was Sie wählen. Persönliche Identifikationsnummern werden nie im Klartext gespeichert."
+  },
+  "languages": {
+    "title": "In Ihrer Sprache",
+    "text": "Die App gibt es auf Norwegisch, Englisch, Schwedisch, Dänisch und Deutsch, und jeder Benutzer wählt selbst. Notizen und KI-Prüfung werden in der Sprache geschrieben, die das Callcenter festlegt, oder in der, die der Verkäufer pro Gespräch wählt. Die Transkription erkennt über 60 Sprachen, auch wenn in einem Gespräch mehrere Sprachen gesprochen werden."
+  },
+  "pricing": {
+    "title": "Preis",
+    "intro": "Monatspreis pro Callcenter nach Paket und Modulen, plus Verbrauch. Wir erstellen ein Angebot nach einer Durchsicht Ihres Bedarfs.",
+    "p1Title": "Paket",
+    "p1": "Fester Monatspreis für das Callcenter, mit den Modulen Ihrer Wahl.",
+    "p2Title": "Verbrauch",
+    "p2": "Transkription pro Stunde Audio und KI-Prüfung pro Gespräch, monatlich nachträglich abgerechnet.",
+    "p3Title": "Verkaufsbestätigung",
+    "p3": "Zusatzmodul. Jede Annahme mit BankID oder Vipps wird pro Bestätigung abgerechnet.",
+    "cta": "Angebot anfragen"
+  },
+  "faq": {
+    "title": "Fragen und Antworten",
+    "q1": "Müssen wir unser Telefonsystem wechseln?",
+    "a1": "Nein. Die Aufnahme erfolgt im Browser, über das Mikrofon oder aus dem Tab, in dem die Telefonielösung läuft. Der Verkauf wird dort erfasst, wo Sie es heute tun, mit eingefügter Referenz des Gesprächs.",
+    "q2": "Wie ist das mit der Einwilligung zur Aufnahme?",
+    "a2": "Sie informieren den Kunden über die Aufnahme wie heute. VeriQall speichert die Aufnahme sicher und löscht sie automatisch, wenn die Aufbewahrungsfrist abläuft.",
+    "q3": "Können wir unser eigenes System zur Bestätigung behalten?",
+    "a3": "Ja. Die Verkaufsbestätigung mit BankID und Vipps ist ein optionales Zusatzmodul. Ohne sie verknüpfen Sie das Gespräch über die Referenz mit dem Verkauf.",
+    "q4": "Welche Sprachen werden unterstützt?",
+    "a4": "Die App auf Norwegisch, Englisch, Schwedisch, Dänisch und Deutsch, Notizen und KI-Prüfung in denselben Sprachen. Transkription in über 60 Sprachen.",
+    "q5": "Wo werden die Daten gespeichert, und wie lange?",
+    "a5": "Verschlüsselt bei AWS in Stockholm. Aufnahmen werden nach 3 bis 12 Monaten automatisch gelöscht, je nachdem, was das Callcenter wählt.",
+    "q6": "Wie fangen wir an?",
+    "a6": "Wir legen das Callcenter an und laden Ihren Administrator ein. Der Admin lädt die Benutzer ein, die sich mit Vipps oder BankID anmelden. Keine Installation, und Sie können noch am selben Tag loslegen."
+  },
+  "cta": {
+    "title": "Möchten Sie VeriQall im Einsatz sehen?",
+    "text": "Schreiben Sie uns eine E-Mail, dann zeigen wir Ihnen die Plattform und richten ein Test-Callcenter für Sie ein.",
+    "button": "Demo anfragen"
+  },
+  "footer": {
+    "provider": "VeriQall wird von Hi4 Solutions AS bereitgestellt.",
+    "contact": "Kontakt",
+    "login": "Anmelden"
+  }
+}

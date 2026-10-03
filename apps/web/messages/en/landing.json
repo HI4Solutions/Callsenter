@@ -1,0 +1,145 @@
+{
+  "meta": {
+    "title": "Documented and verified telephone sales",
+    "description": "VeriQall records, transcribes and checks sales calls with AI, lets the customer confirm the purchase with BankID or Vipps, and gathers the documentation for follow-up, complaints and coaching."
+  },
+  "hero": {
+    "eyebrow": "For call centres that sell by phone",
+    "title": "Every call documented. Every sale verified.",
+    "lead": "VeriQall records and transcribes your sales calls, checks them against the product template with AI, lets the customer confirm the purchase with BankID or Vipps, and gathers everything as documentation for follow-up, complaints and coaching.",
+    "demo": "Request a demo",
+    "demoSubject": "VeriQall demo",
+    "login": "Log in",
+    "fact1": "Stored and processed in the EU",
+    "fact2": "Log in with BankID, Vipps and passkeys",
+    "fact3": "Five languages in the app, over 60 in transcription"
+  },
+  "demo": {
+    "caption": "The AI control as the seller sees it while the call is in progress.",
+    "title": "AI control",
+    "template": "Mobil Fri 10 GB",
+    "reference": "Reference VQ-7K3M-Q9TX",
+    "point1": "Price stated: NOK 299 per month",
+    "point2": "12-month binding period explained",
+    "point3": "14-day right of withdrawal mentioned",
+    "point3Note": "Only mentioned after the customer said yes (04:12).",
+    "point4": "No forbidden phrases",
+    "transcriptTitle": "Transcript",
+    "seller": "Seller",
+    "customer": "Customer",
+    "line1": "Then we’ll set up the plan from 1 November: 299 kroner a month with a twelve-month binding period.",
+    "line2": "Yes, that sounds fine.",
+    "line3": "And of course you have a 14-day right of withdrawal.",
+    "confirmation": "The customer accepted the offer with BankID on 3 October at 14:32."
+  },
+  "why": {
+    "title": "Telephone sales come with strict requirements, and the evidence is in the call",
+    "item1Title": "The customer must accept in writing",
+    "item1": "In telephone sales to consumers, the agreement is often only binding once the customer has accepted the offer in writing after the call. Without a clear trail, the sale is easily disputed.",
+    "item2Title": "The complaint arrives weeks later",
+    "item2": "Then someone has to find the recording, listen through the call and show what was actually said, offered and accepted.",
+    "item3Title": "Nobody has time to listen to every call",
+    "item3": "Managers and compliance hear a sample. Deviations are found late, and coaching is based on gut feeling."
+  },
+  "how": {
+    "title": "How it works",
+    "step1Title": "Record in the browser",
+    "step1": "The seller records the call in the Call studio, from the microphone or from the tab where the telephony solution or Teams is running. No installation, and no change of telephony system.",
+    "step2Title": "Transcription while the call is in progress",
+    "step2": "The text arrives within seconds, with timestamps and links to the audio. Over 60 languages, and a search that finds every call again.",
+    "step3Title": "AI control against the product template",
+    "step3": "Price, binding period, right of withdrawal, and approved and forbidden phrases are checked against the template for the product. The warning lamps turn green, yellow or red while the call is in progress, so the seller can put things right before the customer hangs up.",
+    "step4Title": "The customer confirms with BankID or Vipps",
+    "step4": "The customer gets a link, sees the offer with price, binding period and withdrawal deadline, and accepts or declines. Only the buyer can accept, and the evidence is stored so that it can never be changed.",
+    "step4Note": "Add-on module. If you use your own system for confirmation, the seller pastes the call’s reference there.",
+    "step5Title": "Documentation and complaints",
+    "step5": "Every sale gets a note written by AI and complete documentation: the offer, the acceptance, the call, the transcript and the control. A complaint is handled with everything in one place."
+  },
+  "features": {
+    "title": "Everything the call centre needs",
+    "intro": "Modules are switched on per call centre, so you pay for what you use.",
+    "f1Title": "Call studio",
+    "f1": "Warning lamps per required point, live transcription, a note written while you talk, and a reference you paste into your own sales system.",
+    "f2Title": "Product templates",
+    "f2": "Price, terms, required points and forbidden phrases per product. Versioned, so every call is measured against the template that applied at the time.",
+    "f3Title": "Notes and reports",
+    "f3": "AI writes the note from your own note templates, in the language you choose. The seller can adjust it, and the AI version is kept.",
+    "f4Title": "Customers and sales",
+    "f4": "Customers, products and sales with a status flow and full history, linked to the calls.",
+    "f5Title": "Complaint handling",
+    "f5": "Recording, transcript, offer, acceptance and deviations are gathered into finished complaint documentation.",
+    "f6Title": "Dashboard and coaching",
+    "f6": "The seller’s own figures, the team for the manager, the whole call centre for the admin, and a quality tab for compliance. Feedback goes straight to the seller.",
+    "f7Title": "Roles and permissions",
+    "f7": "Create your own roles and grant permissions per role. Nobody can hand out more than they hold themselves.",
+    "f8Title": "Administration",
+    "f8": "Users, teams, roles, invoices and messages to us, in one place for the call centre’s admin."
+  },
+  "roles": {
+    "title": "Made for the whole call centre",
+    "r1Title": "The seller",
+    "r1": "Sees the lamps while the call is in progress, gets the note written, and never has to hunt for the call later.",
+    "r2Title": "The manager",
+    "r2": "Sees the team as a whole, who needs follow-up, and gives feedback on specific calls.",
+    "r3Title": "Compliance",
+    "r3": "Works through the flags in a queue, builds the complaint case from the documentation, and sees who has opened which recordings.",
+    "r4Title": "The admin",
+    "r4": "Manages users, teams and roles, and sees usage and invoices."
+  },
+  "trust": {
+    "title": "Built to be evidence",
+    "intro": "The documentation has to hold when someone disputes a sale. That is why VeriQall is built with tracking, encryption and access control from the ground up.",
+    "t1Title": "Stored in the EU",
+    "t1": "Recordings, transcripts and data are stored encrypted at AWS in Stockholm. Transcription takes place in the EU, and the AI control runs at AWS in the same region.",
+    "t2Title": "Each call centre sees only its own",
+    "t2": "Data is separated per call centre all the way down in the database, not just in the app.",
+    "t3Title": "Log in with BankID, Vipps and passkeys",
+    "t3": "Administrative tasks require a session started with BankID.",
+    "t4Title": "Everything is tracked",
+    "t4": "Every change is written to an audit log that cannot be altered, and every playback of a recording to an access log.",
+    "t5Title": "Evidence that cannot be changed",
+    "t5": "The customer’s acceptance is stored with the document the customer saw, the method, the time and a cryptographic checksum. A decided confirmation can never be changed.",
+    "t6Title": "Deletion on schedule",
+    "t6": "Recordings are deleted automatically after 3 to 12 months, as you choose. National identity numbers are never stored in plain text."
+  },
+  "languages": {
+    "title": "In your language",
+    "text": "The app is available in Norwegian, English, Swedish, Danish and German, and every user chooses for themselves. Notes and AI control are written in the language the call centre decides, or the one the seller chooses per call. Transcription recognises over 60 languages, even when several languages are spoken in the same call."
+  },
+  "pricing": {
+    "title": "Pricing",
+    "intro": "A monthly price per call centre by package and modules, with usage on top. We quote after reviewing your needs.",
+    "p1Title": "Package",
+    "p1": "A fixed monthly price for the call centre, with the modules you choose.",
+    "p2Title": "Usage",
+    "p2": "Transcription per hour of audio and AI control per call, invoiced in arrears each month.",
+    "p3Title": "Sale verification",
+    "p3": "Add-on module. Every acceptance with BankID or Vipps is invoiced per confirmation.",
+    "cta": "Request a quote"
+  },
+  "faq": {
+    "title": "Questions and answers",
+    "q1": "Do we have to change our telephony system?",
+    "a1": "No. Recording happens in the browser, from the microphone or from the tab where the telephony solution runs. The sale is registered where you do it today, with the call’s reference pasted in.",
+    "q2": "What about consent to recording?",
+    "a2": "You inform the customer about the recording as you do today. VeriQall stores the recording securely and deletes it automatically when the retention period ends.",
+    "q3": "Can we keep our own system for confirmation?",
+    "a3": "Yes. Sale verification with BankID and Vipps is an optional add-on module. Without it, you link the call to the sale with the reference.",
+    "q4": "Which languages are supported?",
+    "a4": "The app in Norwegian, English, Swedish, Danish and German, and notes and AI control in the same languages. Transcription in over 60 languages.",
+    "q5": "Where is the data stored, and for how long?",
+    "a5": "Encrypted at AWS in Stockholm. Recordings are deleted automatically after 3 to 12 months, as the call centre chooses.",
+    "q6": "How do we get started?",
+    "a6": "We create the call centre and invite your administrator. The admin invites the users, who sign in with Vipps or BankID. No installation, and you can be up and running the same day."
+  },
+  "cta": {
+    "title": "Want to see VeriQall in use?",
+    "text": "Send us an e-mail and we will show you the platform and set up a test call centre for you.",
+    "button": "Request a demo"
+  },
+  "footer": {
+    "provider": "VeriQall is provided by Hi4 Solutions AS.",
+    "contact": "Contact",
+    "login": "Log in"
+  }
+}
