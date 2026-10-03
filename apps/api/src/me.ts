@@ -19,6 +19,8 @@ export interface Me {
   locale: Locale | null;
   organizationLocale: Locale | null;
   contentLocale: Locale | null;
+  // The call centre writes every note in contentLocale; sellers cannot choose another.
+  contentLocaleLocked: boolean;
   // The languages the call centre's calls are in (Soniox codes), the studio's default.
   transcriptionLanguages: string[];
 }
@@ -60,8 +62,14 @@ export function loadMe(appDb: pg.Pool, session: Session): Promise<Me> {
     const modules = await db.query<{ module: string }>(
       "select module from organization_modules where organization_id = app.current_org_id() and enabled order by 1",
     );
-    const languages = await db.query<{ default_locale: string; content_locale: string; transcription_languages: string[] }>(
-      "select default_locale, content_locale, transcription_languages from organizations where id = app.current_org_id()",
+    const languages = await db.query<{
+      default_locale: string;
+      content_locale: string;
+      content_locale_locked: boolean;
+      transcription_languages: string[];
+    }>(
+      `select default_locale, content_locale, content_locale_locked, transcription_languages
+       from organizations where id = app.current_org_id()`,
     );
     return {
       user: { id: session.userId, name: user.rows[0]?.full_name ?? "" },
@@ -75,6 +83,7 @@ export function loadMe(appDb: pg.Pool, session: Session): Promise<Me> {
       locale: localeOrNull(user.rows[0]?.locale),
       organizationLocale: localeOrNull(languages.rows[0]?.default_locale),
       contentLocale: localeOrNull(languages.rows[0]?.content_locale),
+      contentLocaleLocked: languages.rows[0]?.content_locale_locked ?? false,
       transcriptionLanguages: languages.rows[0]?.transcription_languages ?? [],
     };
   });

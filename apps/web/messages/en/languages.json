@@ -16,5 +16,8 @@
   "transcriptionLanguages": "Languages in the calls",
   "save": "Save languages",
   "saving": "Saving …",
-  "saved": "Saved."
+  "saved": "Saved.",
+  "lockContent": "Lock the language for notes",
+  "lockContentHint": "Sellers then cannot choose another language for notes and the AI control.",
+  "locked": "Locked by the call centre: {language}"
 }

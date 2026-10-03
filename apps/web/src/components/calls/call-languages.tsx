@@ -42,7 +42,11 @@ export function CallLanguages({
   onChange,
 }: {
   value: CallLanguageChoice;
-  defaults: { outputLocale: Locale; spokenLanguages: string[] };
+  defaults: {
+    outputLocale: Locale;
+    spokenLanguages: string[];
+    outputLocaleLocked?: boolean;
+  };
   onChange: (next: CallLanguageChoice) => void;
 }) {
   const t = useTranslations("languages");
@@ -58,29 +62,36 @@ export function CallLanguages({
 
   return (
     <div className="flex flex-col gap-4">
-      <Field label={t("outputLanguage")} hint={t("outputLanguageHint")}>
-        <select
-          className={`${inputClass} sm:max-w-md`}
-          value={value.outputLocale ?? ""}
-          onChange={(e) =>
-            onChange({
-              ...value,
-              outputLocale: (e.target.value || null) as Locale | null,
-            })
-          }
-        >
-          <option value="">
-            {t("followOrganization", {
-              language: LOCALES[defaults.outputLocale].name,
-            })}
-          </option>
-          {LOCALE_CODES.map((code) => (
-            <option key={code} value={code} lang={LOCALES[code].tag}>
-              {LOCALES[code].name}
+      {defaults.outputLocaleLocked ? (
+        <p className="text-sm">
+          <span className="font-semibold">{t("outputLanguage")}: </span>
+          {t("locked", { language: LOCALES[defaults.outputLocale].name })}
+        </p>
+      ) : (
+        <Field label={t("outputLanguage")} hint={t("outputLanguageHint")}>
+          <select
+            className={`${inputClass} sm:max-w-md`}
+            value={value.outputLocale ?? ""}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                outputLocale: (e.target.value || null) as Locale | null,
+              })
+            }
+          >
+            <option value="">
+              {t("followOrganization", {
+                language: LOCALES[defaults.outputLocale].name,
+              })}
             </option>
-          ))}
-        </select>
-      </Field>
+            {LOCALE_CODES.map((code) => (
+              <option key={code} value={code} lang={LOCALES[code].tag}>
+                {LOCALES[code].name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
       <SpokenLanguages value={spoken} onChange={setSpoken} />
     </div>
   );

@@ -31,8 +31,10 @@ create function app.valid_soniox_languages(codes text[]) returns boolean
 alter table organizations
   add column default_locale text not null default 'nb' references locales (code),
   add column content_locale text not null default 'nb' references locales (code),
-  add column transcription_languages text[] not null default '{no}' check (app.valid_soniox_languages(transcription_languages));
-grant select (default_locale, content_locale, transcription_languages) on organizations to app_worker;
+  add column transcription_languages text[] not null default '{no}' check (app.valid_soniox_languages(transcription_languages)),
+  -- Locked: every note and AI control is written in content_locale; sellers cannot choose another.
+  add column content_locale_locked boolean not null default false;
+grant select (default_locale, content_locale, transcription_languages, content_locale_locked) on organizations to app_worker;
 
 -- The user's own language for the pages; null follows the call centre. Users cannot update their
 -- own row (only admins can), so they set it through app.set_my_locale.

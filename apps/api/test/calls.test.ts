@@ -209,6 +209,33 @@ describe("calls: languages", () => {
     expect((await call(seller, "PATCH", `/org/calls/${german}`, { spokenLanguages: ["xx-1"] })).status).toBe(400);
   });
 
+  it("writes every note in the call centre's language when a superadmin has locked it", async () => {
+    const s = await setup();
+    const sellerId = await member(s.org, "seller");
+    const seller = await sessionFor(sellerId, s.org, "vipps");
+    // Chosen before the lock: the call keeps its choice, but the worker uses the locked language.
+    const { id } = await record(seller, { productId: s.productId, outputLocale: "de" });
+    const superadmin = await createUser();
+    await makePlatformAdmin(superadmin);
+    const admin = await sessionFor(superadmin, null);
+    expect((await call(admin, "PATCH", `/admin/organizations/${s.org}`, { contentLocale: "da", contentLocaleLocked: true })).status).toBe(200);
+    expect((await call(admin, "GET", `/admin/organizations/${s.org}`)).body).toMatchObject({ contentLocale: "da", contentLocaleLocked: true });
+    expect((await call(admin, "PATCH", `/admin/organizations/${s.org}`, { contentLocaleLocked: "ja" })).status).toBe(400);
+
+    await processCall(workerDeps, id);
+    expect(systems.at(-1)).toContain("Write in Danish.");
+    const detail = (await call(seller, "GET", `/org/calls/${id}`)).body;
+    expect(detail).toMatchObject({ outputLocaleLocked: true, defaultOutputLocale: "da" });
+    expect(detail.reports[0].locale).toBe("da");
+    expect((await call(seller, "GET", "/me")).body).toMatchObject({ contentLocale: "da", contentLocaleLocked: true });
+
+    // Another language is refused; the locked one, or none, is fine.
+    expect((await call(seller, "POST", `/org/calls/${id}/notes`, { locale: "en" })).body.error).toBe("Callsenteret har låst språket for notater.");
+    expect((await call(seller, "POST", `/org/calls/${id}/notes`, { locale: "da" })).status).toBe(201);
+    expect((await call(seller, "POST", "/org/calls", { source: "tab", mime: "audio/webm", outputLocale: "sv" })).status).toBe(400);
+    expect((await call(seller, "PATCH", `/org/calls/${id}`, { outputLocale: "sv" })).status).toBe(400);
+  });
+
   it("lets a user choose the language of the pages", async () => {
     const s = await setup();
     const sellerId = await member(s.org, "seller");

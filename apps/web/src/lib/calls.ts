@@ -58,6 +58,8 @@ export interface CallDetail extends CallSummary {
   outputLocale: Locale | null;
   spokenLanguages: string[] | null;
   defaultOutputLocale: Locale;
+  // The call centre has locked the language of notes to defaultOutputLocale.
+  outputLocaleLocked: boolean;
   defaultSpokenLanguages: string[];
   transcriptLanguage: Locale | null;
   segments: { seq: number; speaker: string | null; startMs: number; endMs: number; text: string }[];
