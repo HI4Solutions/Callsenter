@@ -17,6 +17,7 @@ import {
   callStatus,
   chunkUrl,
   completeCall,
+  callLog,
   createCall,
   createReportTemplate,
   editNote,
@@ -84,7 +85,7 @@ const COMPLAINT = /^\/org\/complaints\/([^/]+)$/;
 const COMPLAINT_NOTES = /^\/org\/complaints\/([^/]+)\/notes$/;
 const SALE_CONFIRMATION_REVOKE = /^\/org\/sales\/([^/]+)\/confirmations\/([^/]+)\/revoke$/;
 const CALL = /^\/org\/calls\/([^/]+)$/;
-const CALL_ACTION = /^\/org\/calls\/([^/]+)\/(chunks|complete|retry|realtime-key|audio)$/;
+const CALL_ACTION = /^\/org\/calls\/([^/]+)\/(chunks|complete|retry|realtime-key|audio|log)$/;
 const CALL_ANALYSIS = /^\/org\/calls\/([^/]+)\/analyses\/([^/]+)$/;
 const CALL_PIECES = /^\/org\/calls\/([^/]+)\/pieces$/;
 const CALL_PIECE_DONE = /^\/org\/calls\/([^/]+)\/pieces\/(\d+)\/uploaded$/;
@@ -287,6 +288,10 @@ export async function handleOrg(
       const action = CALL_ACTION.exec(path);
       if (action && isUuid(action[1])) {
         const [, id, name] = action;
+        if (method === "GET" && name === "log") {
+          await requirePermission(deps.appDb, session, "audit.read");
+          return reply(200, await callLog(deps.appDb, session, id));
+        }
         if (method === "GET" && name === "audio") {
           await requirePermission(deps.appDb, session, "calls.audio.play");
           return reply(200, await audioUrl(deps.appDb, session, services, id, meta));

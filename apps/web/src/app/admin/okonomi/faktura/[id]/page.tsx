@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/admin/card";
-import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton } from "@/components/admin/field";
+import { ErrorMessage, Field, inputClass, primaryButton, secondaryButton, LoadState } from "@/components/admin/field";
 import { EconomyNav } from "@/components/billing/economy-nav";
 import { InvoiceStatusBadge } from "@/components/billing/invoice-status";
 import { InvoiceView } from "@/components/billing/invoice-view";
@@ -34,7 +34,7 @@ export default function InvoicePage() {
     };
   }, [id]);
 
-  if (!invoice) return error ? <ErrorMessage message={error} /> : <p className="text-muted">Laster …</p>;
+  if (!invoice) return <LoadState error={error} />;
   const editable = invoice.status === "draft" || invoice.status === "scheduled";
 
   function changed(next: InvoiceDetail & { emailed?: boolean }, message?: string) {
@@ -50,7 +50,7 @@ export default function InvoicePage() {
       </div>
       <div className="flex flex-wrap items-end justify-between gap-4 print:hidden">
         <div>
-          <Link href="/admin/okonomi/faktura" className="text-sm font-semibold text-brand">
+          <Link href="/admin/okonomi/faktura" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">
             ← Alle fakturaer
           </Link>
           <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -333,7 +333,7 @@ function Sent({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: I
           <ul className="divide-y divide-line">
             {invoice.payments.map((p) => (
               <li key={p.id} className="flex flex-wrap gap-3 py-2">
-                <span className="font-semibold tabular-nums">{kr(p.amount)}</span>
+                <span className="font-semibold">{kr(p.amount)}</span>
                 <span className="text-muted">
                   {formatDate(p.paidOn)} · {PAYMENT_METHOD[p.method]}
                   {p.reference && ` · ${p.reference}`}
@@ -357,7 +357,7 @@ function Sent({ invoice, onChanged }: { invoice: InvoiceDetail; onChanged: (i: I
                 setReference("");
               });
             }}
-            className="grid gap-3 sm:grid-cols-[8rem_10rem_8rem_1fr_auto] sm:items-end"
+            className="grid gap-3 sm:grid-cols-2 sm:items-end xl:grid-cols-[8rem_10rem_8rem_minmax(0,1fr)_auto]"
           >
             <Field label="Beløp">
               <input required inputMode="decimal" className={inputClass} value={amount} onChange={(e) => setAmount(e.target.value)} />
