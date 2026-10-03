@@ -7,6 +7,7 @@ import type complaints from "../../messages/nb/complaints.json";
 import type confirm from "../../messages/nb/confirm.json";
 import type customers from "../../messages/nb/customers.json";
 import type domain from "../../messages/nb/domain.json";
+import type economy from "../../messages/nb/economy.json";
 import type languages from "../../messages/nb/languages.json";
 import type login from "../../messages/nb/login.json";
 import type org from "../../messages/nb/org.json";
@@ -32,6 +33,7 @@ export interface Messages {
   customers: typeof customers;
   products: typeof products;
   complaints: typeof complaints;
+  economy: typeof economy;
 }
 
 declare module "next-intl" {

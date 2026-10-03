@@ -1,8 +1,15 @@
 import { API_URL } from "./auth";
+import { formatTagNow } from "./format";
 
 // Invoicing (apps/api/src/admin/billing.ts): Hi4 Solutions AS invoices the call centres.
 
-export type InvoiceStatus = "draft" | "scheduled" | "sent" | "paid" | "credited" | "payment_missed";
+export type InvoiceStatus =
+  | "draft"
+  | "scheduled"
+  | "sent"
+  | "paid"
+  | "credited"
+  | "payment_missed";
 
 export interface InvoiceSummary {
   id: string;
@@ -64,7 +71,14 @@ export interface InvoiceDetail extends InvoiceSummary {
   creditOfNumber: number | null;
   creditNote: { id: string; number: number } | null;
   lines: InvoiceLine[];
-  payments: { id: string; amount: string; paidOn: string; method: "bank" | "stripe" | "other"; reference: string | null; createdAt: string }[];
+  payments: {
+    id: string;
+    amount: string;
+    paidOn: string;
+    method: "bank" | "stripe" | "other";
+    reference: string | null;
+    createdAt: string;
+  }[];
   // Superadmins only: when and to whom it was e-mailed.
   emails: { sentTo: string; sentAt: string }[];
 }
@@ -124,7 +138,14 @@ export interface RecurringInvoice {
   organizationName: string;
   name: string;
   customerNumber: number;
-  lines: { kind?: "package" | "text" | "fee"; packageId?: string | null; description: string; quantity: number; unitPrice: number; vatRate: number }[];
+  lines: {
+    kind?: "package" | "text" | "fee";
+    packageId?: string | null;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    vatRate: number;
+  }[];
   intervalMonths: 1 | 3 | 6 | 12;
   nextDate: string;
   sendDate: string;
@@ -154,21 +175,36 @@ export const INVOICE_STATUS: Record<InvoiceStatus, string> = {
   credited: "Kreditert",
   payment_missed: "Betaling uteblitt",
 };
-export const PAYMENT_METHOD = { bank: "Bank", stripe: "Stripe", other: "Annet" } as const;
-export const INTERVAL: Record<RecurringInvoice["intervalMonths"], string> = { 1: "Hver måned", 3: "Hvert kvartal", 6: "Hvert halvår", 12: "Hvert år" };
+export const PAYMENT_METHOD = {
+  bank: "Bank",
+  stripe: "Stripe",
+  other: "Annet",
+} as const;
+export const INTERVAL: Record<RecurringInvoice["intervalMonths"], string> = {
+  1: "Hver måned",
+  3: "Hvert kvartal",
+  6: "Hvert halvår",
+  12: "Hvert år",
+};
 export const VAT_RATES = [0.25, 0.15, 0.12, 0] as const;
 
-const nok = new Intl.NumberFormat("nb-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Kroner in the page's language ("1 234,50 kr", "NOK 1,234.50"). Intl keeps the amount and the
+// currency together with a no-break space.
 export function kr(value: string | number | null): string {
-  // A no-break space, so an amount never breaks before "kr".
-  return value === null ? "–" : `${nok.format(Number(value))}\u00a0kr`;
+  if (value === null) return "–";
+  return new Intl.NumberFormat(formatTagNow(), {
+    style: "currency",
+    currency: "NOK",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value));
 }
 
 // Two decimals, or up to four below one dollar (a single AI call costs fractions of a cent).
 export function usd(value: string | number | null): string {
   if (value === null) return "–";
   const n = Number(value);
-  return new Intl.NumberFormat("nb-NO", {
+  return new Intl.NumberFormat(formatTagNow(), {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 2,
@@ -176,21 +212,34 @@ export function usd(value: string | number | null): string {
   }).format(n);
 }
 
+// "25 %" in Norwegian, "25%" in English.
 export function percent(rate: number): string {
-  return `${Math.round(rate * 100)}\u00a0%`;
+  return new Intl.NumberFormat(formatTagNow(), {
+    style: "percent",
+    maximumFractionDigits: 0,
+  }).format(rate);
 }
 
 // 12345678903 as "1234 56 78903".
 export function formatAccount(value: string | null | undefined): string {
-  return value && /^\d{11}$/.test(value) ? `${value.slice(0, 4)} ${value.slice(4, 6)} ${value.slice(6)}` : (value ?? "");
+  return value && /^\d{11}$/.test(value)
+    ? `${value.slice(0, 4)} ${value.slice(4, 6)} ${value.slice(6)}`
+    : (value ?? "");
 }
 
 // Opens a PDF from the API (with the session cookie) in a new tab.
-export async function openPdf(path: string): Promise<void> {
+// fallbackError: shown when the API gives no reason (pages pass it in their language).
+export async function openPdf(
+  path: string,
+  fallbackError = "Fikk ikke laget PDF-en.",
+): Promise<void> {
   const tab = window.open("", "_blank");
   try {
     const res = await fetch(`${API_URL}${path}`, { credentials: "include" });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Fikk ikke laget PDF-en.");
+    if (!res.ok)
+      throw new Error(
+        (await res.json().catch(() => ({}))).error ?? fallbackError,
+      );
     const url = URL.createObjectURL(await res.blob());
     if (tab) tab.location.href = url;
     else window.location.href = url;
@@ -200,7 +249,9 @@ export async function openPdf(path: string): Promise<void> {
   }
 }
 
-export function invoiceTitle(i: Pick<InvoiceSummary, "kind" | "number">): string {
+export function invoiceTitle(
+  i: Pick<InvoiceSummary, "kind" | "number">,
+): string {
   const kind = i.kind === "credit" ? "Kreditnota" : "Faktura";
   return i.number === null ? `${kind} (utkast)` : `${kind} ${i.number}`;
 }

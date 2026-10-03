@@ -5,12 +5,16 @@ import { adminFetch, type OrganizationSummary } from "@/lib/admin";
 import type { BillingPackage, BillingSettings } from "@/lib/billing";
 
 export function osloToday() {
-  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo" }).format(new Date());
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo" }).format(
+    new Date(),
+  );
 }
 
 // Loads what the forms need: call centres, packages and the settings (invoice fee, due days).
 export function useInvoiceForm() {
-  const [organizations, setOrganizations] = useState<OrganizationSummary[] | null>(null);
+  const [organizations, setOrganizations] = useState<
+    OrganizationSummary[] | null
+  >(null);
   const [packages, setPackages] = useState<BillingPackage[]>([]);
   const [settings, setSettings] = useState<BillingSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -34,4 +38,3 @@ export function useInvoiceForm() {
   }, []);
   return { organizations, packages, settings, error };
 }
-
