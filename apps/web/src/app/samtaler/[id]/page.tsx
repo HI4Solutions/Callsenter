@@ -117,7 +117,7 @@ export default function CallPage() {
 
       <div className={`grid gap-8 lg:items-start [&>*]:min-w-0 ${side ? "lg:grid-cols-2" : ""}`}>
         {side && (
-          <div className="flex flex-col gap-8 lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
+          <div className="flex flex-col gap-8 lg:sticky lg:top-20 lg:col-start-2 lg:row-start-1 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
             {canPlay && (
               <Card title="Opptak">
                 {audio ? (

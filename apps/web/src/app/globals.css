@@ -69,6 +69,11 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
+/* The header stays at the top (layout.tsx): anchors and focused fields scroll clear of it. */
+html {
+  scroll-padding-top: 4.5rem;
+}
+
 /* Logo: both variants are in the DOM; the theme decides which one shows. */
 .logo-dark {
   display: none;
