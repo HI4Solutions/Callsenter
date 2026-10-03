@@ -57,7 +57,7 @@ Hver fase bygger på den forrige.
 - **Innlogging:** Vipps Logg inn (via Vipps bedrift) og BankID via Idura, begge OIDC. Brukeren identifiseres med `sub`. Etter innlogging utsteder appen sin egen kortlevde sesjon.
 - **Kryptering i hvile:** egen kundeadministrert KMS-nøkkel per miljø for RDS (må velges når instansen opprettes), S3, CloudWatch Logs og Secrets Manager.
 - **Kryptering i transitt:** TLS overalt, `rds.force_ssl=1`, og en S3-bøttepolicy som nekter trafikk uten TLS (`aws:SecureTransport`) og ukrypterte opplastinger.
-- **Revisjonslogg i tre lag:** CloudTrail til en egen kryptert bøtte med log file validation, pgAudit i Postgres, og `audit_log` og `access_log` i appen.
+- **Revisjonslogg i tre lag:** CloudTrail til en egen kryptert bøtte med log file validation (`infra/cloudtrail.yml`, satt opp 3. oktober 2026, låst i 365 dager), pgAudit i Postgres, og `audit_log` og `access_log` i appen.
 - **Secrets per miljø:** samlet i én hemmelighet per miljø (JSON) i Secrets Manager: `VIPPS_CLIENT_ID`, `VIPPS_CLIENT_SECRET`, `VIPPS_SUBSCRIPTION_KEY`, `VIPPS_MSN`, `IDURA_CLIENT_ID`, `IDURA_CLIENT_SECRET`, `SONIOX_API_KEY`.
 - **Kostnader:** se seksjon 9.
 
@@ -190,11 +190,13 @@ Logoen kan genereres på nytt med `tools/brand/`: last ned fonten til `tools/bra
 
 - **Hvordan kommer lydopptakene inn?** Opplasting etter samtalen, eller integrasjon med callsenterets telefonisystem? Dette avgjør fase 2.
 - **Kontooppsett:** egne AWS-kontoer for staging og produksjon (anbefalt) eller én konto med tagger. I dag ligger begge i samme konto.
-- ~~SMS-leverandør~~: trengs ikke. Besluttet 2. oktober at bekreftelse og signering av salg ikke gjøres av VeriQall (seksjon 14).
+- **SMS til kunden** (besluttet 3. oktober): hører til tilleggsmodulen Salgsverifisering og venter. Leverandør velges når modulen tas i bruk.
 - **Bedrock:** hvilke Claude-modeller er tilgjengelige direkte i `eu-north-1`, og krever noen EU cross-region inference (behandling i andre EU-regioner)?
 - **Lovkrav:** sjekk hva angrerettloven krever av bekreftelse og skriftlig aksept ved telefonsalg. Modul 8 er bygget som skriftlig aksept med BankID eller Vipps (seksjon 14), men trenger en juridisk vurdering.
-- **Lagringstid** for opptak og transkripsjoner, og sletting på forespørsel.
-- **Fakturamodul:** besluttet 2. oktober at callsentrene betaler med både faktura og Stripe (se seksjon 10).
+- **Samtykke til opptak og informasjon til kunden** (besluttet 3. oktober): er selgerens og callsenterets ansvar, og de kan gjøre det i sitt eget system. Det kan bli en egen tilleggsmodul i VeriQall som videreutvikles senere.
+- **Databehandleravtaler** med callsentrene: tas senere, før lansering.
+- **Lagringstid** (besluttet 3. oktober): velges av superadmin per callsenter (3, 6, 9 eller 12 måneder, seksjon 13), slik det allerede er bygget. Sletting på forespørsel gjenstår.
+- **Fakturamodul:** besluttet 2. oktober at callsentrene betaler med både faktura og Stripe (se seksjon 10). Stripe venter (besluttet 3. oktober).
 - **E-post for invitasjoner:** Amazon SES med `veriqall.no` (DNS-poster hos one.com). Til da kopierer superadmin lenken selv.
 - **Logo:** venter på Nadeems godkjenning.
 - **Repo:** døpe om til `veriqall`, og gjøre det privat før ekte nøkler eller kundedata.

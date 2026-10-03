@@ -9,6 +9,7 @@ CloudFormation (YAML) for VeriQall, én stack per lag og miljø. Alle stacker he
 | `data.yml` | `veriqall-<miljø>-data` | KMS-nøkkel, RDS Postgres 17, lydbøtte, app-hemmelighet, lagringstid for databaseloggen, alarmer for databasen | `deploy.sh` |
 | `app.yml` | `veriqall-<miljø>-app` | API-, worker- og migrator-Lambda, HTTP API, morgenkjøringen, alarmer for Lambda og API | `deploy.sh` |
 | `amplify-web.yml` | `veriqall-<miljø>-web` | Amplify-appen (Next.js) | admin, manuelt |
+| `cloudtrail.yml` | `veriqall-cloudtrail` | CloudTrail for hele kontoen, egen KMS-nøkkel og bøtte (revisjonslogg lag 1) | admin, én gang per AWS-konto |
 
 ## Slik deployes et miljø
 
@@ -32,7 +33,7 @@ En deploy kan også startes manuelt: **Actions → Deploy to staging → Run wor
 
 ## Valgfrie variabler på GitHub Environment
 
-- `ALERT_EMAIL`: e-post for alarmene i miljøet (se Overvåking). AWS sender først en e-post der abonnementet må bekreftes.
+- `ALERT_EMAIL`: e-post for alarmene i miljøet (se Overvåking). AWS sender først en e-post der abonnementet må bekreftes. Uten variabelen beholder `deploy.sh` adressen som allerede står på network-stacken (parameteren `AlertEmail`), så den kan også settes direkte på stacken. I staging er den satt slik 3. oktober 2026.
 - `API_DOMAIN_NAME` og `API_CERTIFICATE_ARN`: eget domene for API-et, for eksempel `api.staging.veriqall.no`, med ACM-sertifikat validert via CNAME hos one.com. Stack-outputen `ApiDomainTarget` er CNAME-målet.
 - `IDURA_DOMAIN`: Idura-domenet for BankID, uten `https://`. Mangler den, er BankID-knappen «ikke satt opp».
 - `APP_ORIGIN`: adressen til web-appen. Standard er `https://staging.veriqall.no` og `https://app.veriqall.no`.
@@ -66,7 +67,25 @@ Alarmene sender til SNS-emnet `veriqall-<miljø>-alerts`, som sender e-post til 
 
 **Databaseloggen** (`/aws/rds/instance/veriqall-<miljø>/postgresql`, med pgAudit og tilkoblinger) lages av RDS selv. En liten funksjon i data-stacken (`veriqall-<miljø>-db-log-settings`) gir den lagringstid (`LogRetentionDays`, 365 dager) og miljøets KMS-nøkkel ved hver endring.
 
-**Artefaktbøtta** beholder Lambda-pakkene stackene bruker (under 2 MB hver), så en deploy som feiler lenge etter forrige deploy, kan rulles tilbake. Bare overskrevne versjoner slettes, etter 30 dager. Endringen 3. oktober 2026 gjelder først når bootstrap-stacken er oppdatert (kjør steg 1 på nytt med den nye malen). Til da slettes pakker som er eldre enn 90 dager.
+**Artefaktbøtta** beholder Lambda-pakkene stackene bruker (under 2 MB hver), så en deploy som feiler lenge etter forrige deploy, kan rulles tilbake. Bare overskrevne versjoner slettes, etter 30 dager. Bootstrap-stacken i staging er oppdatert med dette 3. oktober 2026.
+
+## Revisjonslogg i AWS (CloudTrail)
+
+`infra/cloudtrail.yml` gir revisjonsloggens lag 1 (`docs/plan.md`, seksjon 3): én trail (`veriqall`) for alle regioner i kontoen, med globale tjenester (IAM) og log file validation, til en egen bøtte kryptert med en egen KMS-nøkkel (`alias/veriqall-cloudtrail`, årlig rotasjon). Bare administrasjonshendelser (hvem endret hva i kontoen), ikke datahendelser; den første kopien av dem er gratis.
+
+- **Låst i 365 dager** med S3 Object Lock (governance) og slettet etter det (`RetentionDays`).
+- **Utenfor deploy-kjeden:** stacken heter ikke `veriqall-<miljø>-*`, så GitHub-rollen kan ikke endre den, og roller under `/veriqall/` (de CloudFormation-rollen kan lage) nektes å lese, slette eller løsne loggene og å slå av eller slette nøkkelen.
+- **Sjekk at loggene er urørt:** `aws cloudtrail validate-logs --trail-arn <TrailArn> --start-time <tid>` (stack-outputen `TrailArn`).
+
+Opprettet i staging-kontoen 3. oktober 2026, med slettebeskyttelse. Med egen konto for produksjon deployes den én gang til der:
+
+```
+aws cloudformation deploy --region eu-north-1 \
+  --stack-name veriqall-cloudtrail \
+  --template-file infra/cloudtrail.yml
+aws cloudformation update-termination-protection --region eu-north-1 \
+  --stack-name veriqall-cloudtrail --enable-termination-protection
+```
 
 Vipps-verten er `api.vipps.no` (produksjon) i begge miljøer. Staging bruker egne nøkler fra en salgsenhet i Vipps-produksjon, se `docs/auth.md`.
 
