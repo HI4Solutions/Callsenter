@@ -254,7 +254,8 @@ Påbegynt 2. oktober 2026. Admin i et callsenter administrerer sitt eget callsen
 
 | Fane | Innhold | Når |
 |---|---|---|
-| Brukere | Invitere med rolle og team (også personer som er brukere i et annet callsenter), endre rolle og team, deaktivere og aktivere, invitasjoner, CSV. Man kan ikke endre sitt eget medlemskap. Navnet kan bare endres før første innlogging (deretter kommer det fra BankID eller Vipps) | PR E1 (laget) |
+| Oversikt | Startsiden i portalen (3. oktober, Nadeems ønske om et dashboard per nivå):<br>• brukere: aktive, venter på første innlogging, utløpte invitasjoner, ikke innlogget på 30 dager<br>• innloggingsmåter: BankID, Vipps og passkey<br>• team og roller med antall medlemmer<br>• aktivitet per team denne måneden (krever `dashboard.all`)<br>• forbruk denne og forrige måned, talt som på fakturaen<br>• fakturaer: ubetalt, forfalt, neste forfall (krever `billing.read`)<br>• moduler<br>Bare antall, fra `app.org_summary` (`0031_org_summary.sql`, `GET /org/summary`). | 3. oktober |
+| Brukere | Flyttet til `/administrasjon/brukere`. Invitere med rolle og team (også personer som er brukere i et annet callsenter), endre rolle og team, deaktivere og aktivere, invitasjoner, CSV. Man kan ikke endre sitt eget medlemskap. Navnet kan bare endres før første innlogging (deretter kommer det fra BankID eller Vipps) | PR E1 (laget) |
 | Team | Opprette, endre navn, arkivere (medlemmene blir uten team) og gjenopprette | PR E1 (laget) |
 | Roller | Lage roller og endre navn og rettigheter (bare blant dem man har selv), arkivere og gjenopprette. Man kan ikke endre rollen man har selv, eller arkivere en rolle med brukere. Krever `roles.manage` | PR E2 (laget) |
 | Meldinger | Samtaletråder mellom admin og superadmin, med ulest-markering på begge sider, lukke og åpne. Superadmin ser dem under Meldinger → Samtaler og kan starte en samtale med et callsenter | PR E2 (laget) |

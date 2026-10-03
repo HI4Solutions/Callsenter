@@ -482,6 +482,13 @@ export async function handleOrg(
       return reply(201, await replyThread(deps.appDb, session, "org", messages[1], body()));
     }
     if (method === "GET" && path === "/org/overview") return reply(200, await overview(deps.appDb, session));
+    // The admin's overview: users, logins, teams, roles, usage, activity and invoices.
+    if (method === "GET" && path === "/org/summary") {
+      return reply(
+        200,
+        await withSession(deps.appDb, session, async (c) => (await c.query<{ s: Record<string, unknown> }>("select app.org_summary() as s")).rows[0]!.s),
+      );
+    }
     let match = MEMBER.exec(path);
     if (match && isUuid(match[1]) && method === "PATCH") return reply(200, await updateMember(deps.appDb, session, match[1], body()));
     if (method === "POST" && path === "/org/invitations") {
