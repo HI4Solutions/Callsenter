@@ -201,6 +201,8 @@ Logoen kan genereres på nytt med `tools/brand/`: last ned fonten til `tools/bra
 - **Logo:** venter på Nadeems godkjenning.
 - **Repo:** døpe om til `veriqall`, og gjøre det privat før ekte nøkler eller kundedata.
 
+Utkast til personvernerklæring, databehandleravtale, behandlingsprotokoll og oversikt over informasjonskapsler ligger i `docs/gdpr/` (3. oktober). De er ikke juridisk gjennomgått, og `docs/gdpr/README.md` lister det som gjenstår.
+
 ## 9. Beslutninger og kostnader
 
 Besluttet 2. oktober 2026:
