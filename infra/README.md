@@ -38,6 +38,7 @@ En deploy kan også startes manuelt: **Actions → Deploy to staging → Run wor
 - `IDURA_DOMAIN`: Idura-domenet for BankID, uten `https://`. Mangler den, er BankID-knappen «ikke satt opp».
 - `APP_ORIGIN`: adressen til web-appen. Standard er `https://staging.veriqall.no` og `https://app.veriqall.no`.
 - `EMAIL_DOMAIN`: slår på e-post (invitasjoner og fakturaer). Domenet e-post sendes fra (`noreply@`), `staging.veriqall.no` i staging og `veriqall.no` i produksjon. Lager SES-identiteten. Krever at bootstrap-stacken er oppdatert med SES- og EventBridge-rettigheter (kjør steg 1 på nytt med den nye malen). Deploy-loggen og stack-outputen `EmailDnsRecords` viser DNS-postene som skal inn hos one.com: tre DKIM-CNAME-er, og MX og SPF for `mail.<domene>`. Legg i tillegg inn DMARC (`_dmarc.<domene>` TXT `v=DMARC1; p=none;`). Til SES-kontoen er tatt ut av sandkassen (søkes om én gang per konto og region), kan det bare sendes til verifiserte adresser.
+- `INBOUND_EMAIL_DOMAIN`: slår på innkommende e-post til Superadmin → Meldinger → Henvendelser (`docs/plan.md`, seksjon 20), for eksempel `svar.staging.veriqall.no`. Krever `EMAIL_DOMAIN`. Lager SES-identiteten for domenet, en bøtte for e-postene (30 dager) og mottaksregelen, og `deploy.sh` gjør regelen aktiv (én aktiv per konto og region; krever bootstrap-stacken fra 4. oktober eller nyere, ellers en advarsel og aktivering for hånd). Deploy-loggen og stack-outputen `InboundDnsRecords` viser postene hos one.com: MX til `inbound-smtp.eu-north-1.amazonaws.com` og tre DKIM-CNAME-er.
 
 ## Kapasitet
 
