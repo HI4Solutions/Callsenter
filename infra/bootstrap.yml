@@ -199,6 +199,14 @@ Resources:
             Effect: Allow
             Action: lambda:InvokeFunction
             Resource: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:veriqall-${Environment}-migrator
+          # Incoming e-mail (docs/plan.md, section 20): deploy.sh makes the environment's receipt rule
+          # set the active one. SES has no resource-level permissions for these two actions.
+          - Sid: ActivateInboundEmail
+            Effect: Allow
+            Action:
+              - ses:DescribeActiveReceiptRuleSet
+              - ses:SetActiveReceiptRuleSet
+            Resource: "*"
 
 Outputs:
   ArtifactsBucketName:

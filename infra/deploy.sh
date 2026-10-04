@@ -118,7 +118,14 @@ if [[ -n "${EMAIL_DOMAIN:-}" ]]; then
 fi
 if [[ -n "${INBOUND_EMAIL_DOMAIN:-}" ]]; then
   # SES has one active receipt rule set per account and region; this environment's becomes it.
-  aws ses set-active-receipt-rule-set --region "$region" --rule-set-name "$(output "veriqall-$env-app" InboundRuleSetName)"
+  # Older bootstrap stacks lack the permission: then a warning, and it is done by hand once.
+  rule_set=$(output "veriqall-$env-app" InboundRuleSetName)
+  active=$(aws ses describe-active-receipt-rule-set --region "$region" --query Metadata.Name --output text 2>/dev/null || true)
+  if [[ "$active" != "$rule_set" ]]; then
+    if ! aws ses set-active-receipt-rule-set --region "$region" --rule-set-name "$rule_set"; then
+      echo "::warning::Could not make $rule_set the active SES receipt rule set. Update the bootstrap stack (infra/README.md, step 1) or activate it in the SES console."
+    fi
+  fi
   echo "DNS records for incoming e-mail (add at one.com once):"
   output "veriqall-$env-app" InboundDnsRecords | tr '|' '\n'
 fi
