@@ -611,7 +611,7 @@ Siden bruker appens design: samme tokens, lys og mørk modus, og grønn, gul og 
 - En meny under toppen som blir stående (Slik virker det, Funksjoner, Spørsmål, Kontakt) og markerer delen som vises (`section-nav.tsx`). På mobil kan raden sveipes og følger med. Når heltens knapper er rullet forbi, kommer «Be om en demo» til høyre (ikke på mobil).
 - En tynn fremdriftslinje i merkefargen helt øverst (`scroll-progress.tsx`).
 - «Be om en demo» har en glød i merkefargen, løftes litt og pilen glir ved peker eller trykk (`demo-link.tsx`); i helten pulserer den to ganger etter lasting. Knappen står også etter «Slik virker det» og etter «Bygget for å være bevis».
-- Stillbildet i helten spilles av én gang: lampene tennes én og én, transkripsjonen kommer, og til sist kundens aksept. Grønn, gul og rød er fortsatt bare AI-flagg.
+- Stillbildet i helten spilles av én gang når det kommer til syne (på mobil først når man ruller ned til det): lampene tennes én og én, transkripsjonen kommer, og til sist kundens aksept. Grønn, gul og rød er fortsatt bare AI-flagg.
 - «Slik virker det» er en tidslinje der streken fylles med merkefargen mens man ruller, og hvert nummer fylles når streken når det.
 - Deler og kort glir inn når de kommer til syne, litt forskjøvet.
 - På mobil er Funksjoner, «Laget for hele callsenteret» og «Bygget for å være bevis» sveipbare rader med fester og prikker (`carousel.tsx`).
