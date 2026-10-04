@@ -50,7 +50,7 @@
   "how": {
     "title": "How it works",
     "step1Title": "Record in the browser",
-    "step1": "The seller records the call in the Call studio, from the microphone or from the tab where the telephony solution or Teams is running. No installation, and no change of telephony system.",
+    "step1": "The seller records the call in the Sales studio, from the microphone or from the tab where the telephony solution or Teams is running. No installation, and no change of telephony system.",
     "step2Title": "Transcription while the call is in progress",
     "step2": "The text arrives within seconds, with timestamps and links to the audio. Over 60 languages, and a search that finds every call again.",
     "step3Title": "AI control against the product template",
@@ -64,7 +64,7 @@
   "features": {
     "title": "Everything the call centre needs",
     "intro": "Modules are switched on per call centre, so you pay for what you use.",
-    "f1Title": "Call studio",
+    "f1Title": "Sales studio",
     "f1": "Warning lamps per required point, live transcription, a note written while you talk, and a reference you paste into your own sales system.",
     "f2Title": "Product templates",
     "f2": "Price, terms, required points and forbidden phrases per product. Versioned, so every call is measured against the template that applied at the time.",

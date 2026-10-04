@@ -50,7 +50,7 @@
   "how": {
     "title": "Sådan virker det",
     "step1Title": "Optag i browseren",
-    "step1": "Sælgeren optager samtalen i Samtalestudiet, fra mikrofonen eller fra det faneblad, hvor telefoniløsningen eller Teams kører. Ingen installation og intet skift af telefonisystem.",
+    "step1": "Sælgeren optager samtalen i Salgsstudiet, fra mikrofonen eller fra det faneblad, hvor telefoniløsningen eller Teams kører. Ingen installation og intet skift af telefonisystem.",
     "step2Title": "Transskription, mens samtalen er i gang",
     "step2": "Teksten kommer inden for få sekunder, med tidsstempel og kobling til lyden. Over 60 sprog og en søgning, der finder hver samtale igen.",
     "step3Title": "AI-kontrol mod produktskabelonen",
@@ -64,7 +64,7 @@
   "features": {
     "title": "Alt, hvad callcentret har brug for",
     "intro": "Modulerne slås til pr. callcenter, så I betaler for det, I bruger.",
-    "f1Title": "Samtalestudie",
+    "f1Title": "Salgsstudie",
     "f1": "Advarselslamper pr. obligatorisk punkt, transskription live, et notat, der skrives, mens du taler, og en reference, du indsætter i jeres eget salgssystem.",
     "f2Title": "Produktskabeloner",
     "f2": "Pris, vilkår, obligatoriske punkter og forbudte formuleringer pr. produkt. Versioneret, så hver samtale måles mod den skabelon, der gjaldt dengang.",

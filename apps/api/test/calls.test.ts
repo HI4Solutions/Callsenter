@@ -390,6 +390,35 @@ describe("calls: transcription in pieces", () => {
     expect(usage.rows[0].n).toBe(2);
   });
 
+  it("discards a call being recorded: nothing more is transcribed, and housekeeping deletes it all", async () => {
+    await owner.query(`update platform_settings set value = '"chunked"' where key = 'transcription_mode'`);
+    const s = await setup();
+    const seller = await sessionFor(await member(s.org, "seller"), s.org);
+    const colleague = await sessionFor(await member(s.org, "admin"), s.org);
+    const id = await recordInPieces(seller, 2, { productId: s.productId });
+    await processPiece(workerDeps, id, 0);
+    // Only the seller recording it.
+    expect((await call(colleague, "POST", `/org/calls/${id}/discard`)).body.error).toBe("Opptaket er allerede avsluttet.");
+    expect((await call(seller, "POST", `/org/calls/${id}/discard`)).body).toEqual({ id, status: "discarded" });
+    // Gone from view, and it cannot be finished, uploaded to or discarded again.
+    expect((await call(seller, "GET", `/org/calls/${id}`)).status).toBe(404);
+    expect((await call(seller, "POST", `/org/calls/${id}/complete`, { pieces: 2 })).status).not.toBe(200);
+    expect((await call(seller, "POST", `/org/calls/${id}/chunks`, { seq: 1, size: 1000 })).status).not.toBe(200);
+    expect((await call(seller, "POST", `/org/calls/${id}/discard`)).status).toBe(400);
+    // The piece still waiting is not sent to Soniox.
+    sonioxLog.length = 0;
+    await processPiece(workerDeps, id, 1);
+    expect(sonioxLog).toEqual([]);
+    await housekeeping(workerDeps);
+    expect((await owner.query("select 1 from calls where id = $1", [id])).rowCount).toBe(0);
+    expect([...objects.keys()].some((k) => k.includes(id))).toBe(false);
+    const audit = await owner.query(
+      "select new_data ->> 'status' as status from audit_log where table_name = 'calls' and record_id = $1 and action = 'update'",
+      [id],
+    );
+    expect(audit.rows.map((r) => r.status)).toContain("discarded");
+  });
+
   it("transcribes the whole recording when a piece is missing", async () => {
     await owner.query(`update platform_settings set value = '"chunked"' where key = 'transcription_mode'`);
     const s = await setup();

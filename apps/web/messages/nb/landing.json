@@ -50,7 +50,7 @@
   "how": {
     "title": "Slik virker det",
     "step1Title": "Ta opp i nettleseren",
-    "step1": "Selgeren tar opp samtalen i Samtalestudio, fra mikrofonen eller fra fanen der telefonløsningen eller Teams kjører. Ingen installasjon, og ingen bytte av telefonisystem.",
+    "step1": "Selgeren tar opp samtalen i Salgsstudio, fra mikrofonen eller fra fanen der telefonløsningen eller Teams kjører. Ingen installasjon, og ingen bytte av telefonisystem.",
     "step2Title": "Transkripsjon mens samtalen pågår",
     "step2": "Teksten kommer i løpet av sekunder, med tidsstempel og kobling til lyden. Over 60 språk, og et søk som finner igjen hver samtale.",
     "step3Title": "AI-kontroll mot produktmalen",
@@ -64,7 +64,7 @@
   "features": {
     "title": "Alt callsenteret trenger",
     "intro": "Modulene slås på per callsenter, så dere betaler for det dere bruker.",
-    "f1Title": "Samtalestudio",
+    "f1Title": "Salgsstudio",
     "f1": "Varsellamper per obligatorisk punkt, transkripsjon live, et notat som skrives mens du snakker, og en referanse du limer inn i eget salgssystem.",
     "f2Title": "Produktmaler",
     "f2": "Pris, vilkår, obligatoriske punkter og forbudte formuleringer per produkt. Versjonert, så hver samtale måles mot malen som gjaldt da.",

@@ -50,7 +50,7 @@
   "how": {
     "title": "So funktioniert es",
     "step1Title": "Im Browser aufnehmen",
-    "step1": "Der Verkäufer nimmt das Gespräch im Gesprächsstudio auf, über das Mikrofon oder aus dem Tab, in dem die Telefonielösung oder Teams läuft. Keine Installation, kein Wechsel des Telefonsystems.",
+    "step1": "Der Verkäufer nimmt das Gespräch im Verkaufsstudio auf, über das Mikrofon oder aus dem Tab, in dem die Telefonielösung oder Teams läuft. Keine Installation, kein Wechsel des Telefonsystems.",
     "step2Title": "Transkription während des Gesprächs",
     "step2": "Der Text kommt innerhalb von Sekunden, mit Zeitstempeln und Verknüpfung zum Audio. Über 60 Sprachen und eine Suche, die jedes Gespräch wiederfindet.",
     "step3Title": "KI-Prüfung gegen die Produktvorlage",
@@ -64,7 +64,7 @@
   "features": {
     "title": "Alles, was das Callcenter braucht",
     "intro": "Die Module werden pro Callcenter freigeschaltet, sodass Sie für das zahlen, was Sie nutzen.",
-    "f1Title": "Gesprächsstudio",
+    "f1Title": "Verkaufsstudio",
     "f1": "Warnleuchten pro Pflichtpunkt, Live-Transkription, eine Notiz, die während des Gesprächs entsteht, und eine Referenz, die Sie in Ihr eigenes Verkaufssystem einfügen.",
     "f2Title": "Produktvorlagen",
     "f2": "Preis, Bedingungen, Pflichtpunkte und verbotene Formulierungen pro Produkt. Versioniert, sodass jedes Gespräch an der damals gültigen Vorlage gemessen wird.",

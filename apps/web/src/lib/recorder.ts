@@ -8,6 +8,9 @@
 // - realtime: the same audio is streamed to Soniox. That text is a help for the seller only; the
 //   stored recording is transcribed on the server afterwards. If realtime drops, pieces take over
 //   for the live text.
+// The microphone (and the tab) go through an AudioContext into one stream that the recorders
+// record. That is what lets Salgsstudio pause a call and free the microphone for another call,
+// switch microphone while recording, and warn when no sound comes in.
 import { AdminError, apiFetch } from "./api";
 import type { CreatedCall } from "./calls";
 
@@ -19,6 +22,7 @@ export type RecorderErrorKey =
   | "tabCancelled"
   | "noTabAudio"
   | "noMicrophone"
+  | "micBlocked"
   | "incompleteUpload"
   | "uploadFailed";
 
@@ -58,6 +62,47 @@ export function tabAudioSupported(): boolean {
   return /Chrome|Edg\//.test(ua) && !/Mobile|Android|iPhone|iPad/.test(ua);
 }
 
+export interface Microphone {
+  id: string;
+  // Empty until the browser has been allowed to use the microphone.
+  label: string;
+}
+
+// The microphones the browser knows of. Their names show once microphone access is granted.
+export async function listMicrophones(): Promise<Microphone[]> {
+  if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) return [];
+  const devices = await navigator.mediaDevices.enumerateDevices().catch(() => []);
+  return devices
+    .filter((d) => d.kind === "audioinput")
+    .map((d) => ({ id: d.deviceId, label: d.label }));
+}
+
+// Opens a microphone: the one chosen, or the system's default if that one is gone.
+async function openMicrophone(deviceId: string | null): Promise<MediaStream> {
+  const audio = (id?: string): MediaTrackConstraints => ({
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+    channelCount: 1,
+    ...(id ? { deviceId: { exact: id } } : {}),
+  });
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: audio(deviceId && deviceId !== "default" ? deviceId : undefined) });
+  } catch (error) {
+    const name = (error as DOMException)?.name;
+    if (name === "NotAllowedError" || name === "SecurityError") throw new RecorderError("micBlocked");
+    // The chosen microphone was unplugged: the default one, if there is any.
+    if (deviceId && (name === "OverconstrainedError" || name === "NotFoundError")) {
+      try {
+        return await navigator.mediaDevices.getUserMedia({ audio: audio() });
+      } catch {
+        // Falls through to "no microphone".
+      }
+    }
+    throw new RecorderError("noMicrophone");
+  }
+}
+
 async function openTab(): Promise<MediaStream> {
   if (tabShareActive()) return sharedTab!;
   let display: MediaStream;
@@ -91,7 +136,16 @@ export function stopTabShare() {
 export interface RecorderCallbacks {
   onLiveText?: (finalText: string, partial: string) => void;
   // Live text stopped (no key, lost connection or an error at Soniox). Recording goes on.
-  onRealtimeLost?: () => void;
+  // "paused": the call was paused; the text comes in pieces after it is resumed.
+  onRealtimeLost?: (reason: "lost" | "paused") => void;
+  // The microphone's level (0 to 1), a few times a second while recording.
+  onLevel?: (level: number) => void;
+  // No sound from the microphone for a while (true), or sound again (false).
+  onSilence?: (silent: boolean) => void;
+  // Pieces have been transcribed, but no words came out of them (true), or words again (false).
+  onNoSpeech?: (empty: boolean) => void;
+  // The microphone was unplugged or stopped by the system.
+  onMicrophoneLost?: () => void;
   onUploads?: (state: {
     uploaded: number;
     pending: number;
@@ -115,7 +169,22 @@ export class CallRecorder {
   readonly capture: Capture;
   readonly mime: string;
   #mic: MediaStream;
-  #context: AudioContext | null = null;
+  #micId: string | null;
+  #tab: MediaStream | null;
+  #context: AudioContext;
+  #destination: MediaStreamAudioDestinationNode;
+  #micSource: MediaStreamAudioSourceNode | null = null;
+  #tabSource: MediaStreamAudioSourceNode | null = null;
+  #analyser: AnalyserNode;
+  #levelTimer: ReturnType<typeof setInterval> | null = null;
+  #quietSince = 0;
+  #silent = false;
+  #noSpeech = false;
+  #paused = false;
+  #pausedAt = 0;
+  #pausedMs = 0;
+  // Live text was ended by a pause; pieces take over when the call is resumed.
+  #resumeWithPieces = false;
   #stream: MediaStream;
   #storage: MediaRecorder | null = null;
   #live: MediaRecorder | null = null;
@@ -146,68 +215,124 @@ export class CallRecorder {
     capture: Capture,
     mime: string,
     mic: MediaStream,
-    stream: MediaStream,
-    context: AudioContext | null,
+    micId: string | null,
+    tab: MediaStream | null,
     cb: RecorderCallbacks,
   ) {
     this.capture = capture;
     this.mime = mime;
     this.#mic = mic;
-    this.#stream = stream;
-    this.#context = context;
+    this.#micId = micId;
+    this.#tab = tab;
     this.#callbacks = cb;
+    this.#context = new AudioContext();
+    this.#destination = this.#context.createMediaStreamDestination();
+    this.#analyser = this.#context.createAnalyser();
+    this.#analyser.fftSize = 1024;
+    this.#stream = this.#destination.stream;
+    this.#connectMic(mic);
+    if (tab) {
+      this.#tabSource = this.#context.createMediaStreamSource(new MediaStream(tab.getAudioTracks()));
+      this.#tabSource.connect(this.#destination);
+    }
   }
 
-  // Opens the microphone, and for "tab" the shared tab, and mixes them into one track.
+  // Opens the chosen microphone, and for "tab" the shared tab, and mixes them into one stream.
   static async open(
     capture: Capture,
     mime: string,
     callbacks: RecorderCallbacks = {},
+    microphoneId: string | null = null,
   ): Promise<CallRecorder> {
-    let mic: MediaStream;
-    try {
-      mic = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1,
-        },
-      });
-    } catch {
-      throw new RecorderError("noMicrophone");
+    const mic = await openMicrophone(microphoneId);
+    let tab: MediaStream | null = null;
+    if (capture === "tab") {
+      try {
+        tab = await openTab();
+      } catch (error) {
+        mic.getTracks().forEach((t) => t.stop());
+        throw error;
+      }
+      tab.getAudioTracks()[0]!.addEventListener("ended", () => callbacks.onTabEnded?.());
     }
-    if (capture === "microphone")
-      return new CallRecorder(capture, mime, mic, mic, null, callbacks);
-    let tab: MediaStream;
-    try {
-      tab = await openTab();
-    } catch (error) {
-      mic.getTracks().forEach((t) => t.stop());
-      throw error;
-    }
-    const context = new AudioContext();
-    const destination = context.createMediaStreamDestination();
-    context.createMediaStreamSource(mic).connect(destination);
-    context
-      .createMediaStreamSource(new MediaStream(tab.getAudioTracks()))
-      .connect(destination);
-    const recorder = new CallRecorder(
-      capture,
-      mime,
-      mic,
-      destination.stream,
-      context,
-      callbacks,
-    );
-    tab
-      .getAudioTracks()[0]!
-      .addEventListener("ended", () => callbacks.onTabEnded?.());
+    const recorder = new CallRecorder(capture, mime, mic, microphoneId, tab, callbacks);
+    // Opened after awaiting the browser's dialogs: make sure the audio runs.
+    await recorder.#context.resume().catch(() => undefined);
     return recorder;
   }
 
+  #connectMic(mic: MediaStream) {
+    this.#micSource?.disconnect();
+    this.#micSource = this.#context.createMediaStreamSource(mic);
+    this.#micSource.connect(this.#destination);
+    this.#micSource.connect(this.#analyser);
+    mic.getAudioTracks()[0]?.addEventListener("ended", () => {
+      if (this.#mic === mic && !this.#stopped && !this.#paused) this.#callbacks.onMicrophoneLost?.();
+    });
+  }
+
+  get paused() {
+    return this.#paused;
+  }
+
+  // The microphone in use (its device id), for the picker.
+  get microphoneId(): string | null {
+    return this.#mic.getAudioTracks()[0]?.getSettings().deviceId ?? this.#micId;
+  }
+
+  // Switches to another microphone while recording, without a break in the recording.
+  async switchMicrophone(deviceId: string | null) {
+    this.#micId = deviceId;
+    if (this.#paused || this.#stopped) return;
+    const next = await openMicrophone(deviceId);
+    const previous = this.#mic;
+    this.#mic = next;
+    this.#connectMic(next);
+    previous.getTracks().forEach((t) => t.stop());
+    this.#quietSince = Date.now();
+    this.#setSilent(false);
+  }
+
+  // Measures the microphone a few times a second. Quiet for 8 seconds in a row means no sound
+  // is coming in (a muted or wrong microphone); any sound clears it again.
+  #startLevels() {
+    if (this.#levelTimer) return;
+    const data = new Float32Array(this.#analyser.fftSize);
+    this.#quietSince = Date.now();
+    this.#levelTimer = setInterval(() => {
+      this.#analyser.getFloatTimeDomainData(data);
+      let sum = 0;
+      for (const v of data) sum += v * v;
+      const rms = Math.sqrt(sum / data.length);
+      this.#callbacks.onLevel?.(Math.min(1, rms * 8));
+      const track = this.#mic.getAudioTracks()[0];
+      const quiet = rms < 0.003 || !track || track.muted || track.readyState !== "live";
+      if (!quiet) {
+        this.#quietSince = Date.now();
+        this.#setSilent(false);
+      } else if (Date.now() - this.#quietSince > 8000) {
+        this.#setSilent(true);
+      }
+    }, 250);
+  }
+
+  #stopLevels() {
+    if (this.#levelTimer) clearInterval(this.#levelTimer);
+    this.#levelTimer = null;
+    this.#callbacks.onLevel?.(0);
+  }
+
+  #setSilent(silent: boolean) {
+    if (silent === this.#silent) return;
+    this.#silent = silent;
+    this.#callbacks.onSilence?.(silent);
+  }
+
+  // Time recorded, without the pauses.
   get elapsedMs() {
-    return this.#startedAt ? Date.now() - this.#startedAt : 0;
+    if (!this.#startedAt) return 0;
+    const now = this.#paused ? this.#pausedAt : Date.now();
+    return now - this.#startedAt - this.#pausedMs;
   }
 
   start(call: CreatedCall) {
@@ -223,12 +348,77 @@ export class CallRecorder {
     this.#storage.start(CHUNK_MS);
     if (call.realtime) this.#startLive(call);
     else this.#startPieces();
+    this.#startLevels();
+  }
+
+  // Pauses the call: what was recorded is uploaded, the microphone (and tab) are let go, so
+  // another call can be recorded meanwhile. The call stays open on the server until resumed or
+  // stopped; one left paused for 3 hours is finished there.
+  async pause() {
+    if (this.#paused || this.#stopped || !this.#storage) return;
+    this.#paused = true;
+    this.#pausedAt = Date.now();
+    this.#stopLevels();
+    this.#setSilent(false);
+    if (this.#storage.state === "recording") {
+      this.#storage.requestData();
+      this.#storage.pause();
+    }
+    this.#stopPieces();
+    // Live text does not survive a pause; pieces take over when the call goes on.
+    if (this.#socket) {
+      const socket = this.#socket;
+      this.#socket = null;
+      if (this.#live?.state === "recording") this.#live.stop();
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send("");
+        setTimeout(() => socket.close(), 2000);
+      } else socket.close();
+      this.#resumeWithPieces = true;
+      this.#callbacks.onRealtimeLost?.("paused");
+    }
+    this.#micSource?.disconnect();
+    this.#micSource = null;
+    this.#mic.getTracks().forEach((t) => t.stop());
+    this.#tabSource?.disconnect();
+    await this.#context.suspend().catch(() => undefined);
+  }
+
+  // Goes on where the call was paused, with the same microphone (and the tab, if still shared).
+  async resume() {
+    if (!this.#paused || this.#stopped || !this.#storage) return;
+    const mic = await openMicrophone(this.#micId);
+    this.#mic = mic;
+    this.#connectMic(mic);
+    if (this.#tab?.getAudioTracks().some((t) => t.readyState === "live")) {
+      this.#tabSource?.connect(this.#destination);
+    }
+    await this.#context.resume().catch(() => undefined);
+    this.#pausedMs += Date.now() - this.#pausedAt;
+    this.#paused = false;
+    if (this.#storage.state === "paused") this.#storage.resume();
+    if (this.#resumeWithPieces || !this.#socket) {
+      this.#finalText = "";
+      this.#startPieces();
+    }
+    this.#startLevels();
+  }
+
+  // Ends the current piece and the timers; pieces start again on resume.
+  #stopPieces() {
+    if (this.#pieceTimer) clearInterval(this.#pieceTimer);
+    this.#pieceTimer = null;
+    if (this.#pollTimer) clearInterval(this.#pollTimer);
+    this.#pollTimer = null;
+    const piece = this.#piece;
+    this.#piece = null;
+    if (piece?.state === "recording") piece.stop();
   }
 
   // A complete audio file every 15 seconds: the next one starts before the previous stops, so no
   // audio falls between them.
   #startPieces() {
-    if (this.#piece || this.#stopped) return;
+    if (this.#piece || this.#stopped || this.#paused) return;
     const begin = () => {
       const startMs = this.elapsedMs;
       const recorder = new MediaRecorder(this.#stream, {
@@ -248,12 +438,12 @@ export class CallRecorder {
     };
     this.#piece = begin();
     this.#pieceTimer = setInterval(() => {
-      if (this.#stopped) return;
+      if (this.#stopped || this.#paused) return;
       const previous = this.#piece;
       this.#piece = begin();
       if (previous?.state === "recording") previous.stop();
     }, CHUNK_MS);
-    this.#pollTimer = setInterval(() => void this.#pollPieces(), 3000);
+    this.#pollTimer ??= setInterval(() => void this.#pollPieces(), 3000);
   }
 
   #enqueuePiece(seq: number, startMs: number, blob: Blob) {
@@ -336,6 +526,12 @@ export class CallRecorder {
       .filter(Boolean)
       .join(" ");
     this.#callbacks.onLiveText?.(text, this.#piecesPending.size ? " …" : "");
+    // Two pieces (30 seconds) transcribed without a single word: tell the seller.
+    const empty = !text.trim() && this.#pieceTexts.size >= 2;
+    if (empty !== this.#noSpeech) {
+      this.#noSpeech = empty;
+      this.#callbacks.onNoSpeech?.(empty);
+    }
   }
 
   #startLive(call: CreatedCall) {
@@ -344,7 +540,7 @@ export class CallRecorder {
     try {
       socket = new WebSocket(config.url);
     } catch {
-      this.#callbacks.onRealtimeLost?.();
+      this.#callbacks.onRealtimeLost?.("lost");
       return;
     }
     this.#socket = socket;
@@ -353,7 +549,7 @@ export class CallRecorder {
       if (this.#socket !== socket) return;
       this.#socket = null;
       if (this.#live?.state === "recording") this.#live.stop();
-      this.#callbacks.onRealtimeLost?.();
+      this.#callbacks.onRealtimeLost?.("lost");
       // Pieces take over the live text from here.
       this.#finalText = "";
       this.#startPieces();
@@ -403,7 +599,7 @@ export class CallRecorder {
     });
     socket.addEventListener("error", lost);
     socket.addEventListener("close", () => {
-      if (this.#storage?.state === "recording") lost();
+      if (this.#storage?.state === "recording" && !this.#paused) lost();
     });
   }
 
@@ -477,6 +673,7 @@ export class CallRecorder {
   async stop(): Promise<number> {
     const durationMs = this.elapsedMs;
     this.#stopped = true;
+    this.#stopLevels();
     const storage = this.#storage;
     if (storage && storage.state !== "inactive") {
       await new Promise<void>((resolve) => {
@@ -486,7 +683,7 @@ export class CallRecorder {
     }
     if (this.#pieceTimer) clearInterval(this.#pieceTimer);
     const piece = this.#piece;
-    if (piece && piece.state !== "inactive") {
+    if (piece && piece.state === "recording") {
       await new Promise<void>((resolve) => {
         piece.addEventListener("stop", () => resolve(), { once: true });
         piece.stop();
@@ -517,21 +714,32 @@ export class CallRecorder {
   // uploaded can be finished from the call page, or is finished automatically later.
   abort() {
     this.#stopped = true;
+    this.#stopLevels();
     if (this.#pieceTimer) clearInterval(this.#pieceTimer);
     if (this.#pollTimer) clearInterval(this.#pollTimer);
     if (this.#piece?.state === "recording") this.#piece.stop();
-    if (this.#storage?.state === "recording") this.#storage.stop();
+    if (this.#storage && this.#storage.state !== "inactive") this.#storage.stop();
     if (this.#live?.state === "recording") this.#live.stop();
     this.#socket?.close();
     this.#socket = null;
     this.release();
   }
 
+  // "Forkast": stops everything, uploads nothing more, and has the server drop the call with its
+  // audio and text. It is not transcribed as a whole, analysed or given a note.
+  async discard() {
+    this.#fatal = { message: null };
+    this.#queue = [];
+    this.abort();
+    if (!this.#callId) return;
+    await apiFetch(`/org/calls/${this.#callId}/discard`, { method: "POST" });
+  }
+
   // Frees the microphone (the tab share stays for the next recording).
   release() {
+    this.#stopLevels();
     this.#mic.getTracks().forEach((t) => t.stop());
-    if (this.#context) void this.#context.close();
-    this.#context = null;
+    if (this.#context.state !== "closed") void this.#context.close();
   }
 }
 

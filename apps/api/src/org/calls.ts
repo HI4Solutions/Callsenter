@@ -307,6 +307,19 @@ export async function completeCall(db: pg.Pool, session: Session, services: Call
   return { id: callId, status: "processing" };
 }
 
+// Salgsstudio's "Forkast": the seller drops a call while it is being recorded (or paused). It is
+// never finished or analysed; the database hides it at once (migration 0039), and the worker's
+// housekeeping, started here, deletes its audio, pieces and text.
+export async function discardCall(db: pg.Pool, session: Session, services: CallServices, callId: string) {
+  const discarded = await withSession(db, session, async (c) => {
+    const { rows } = await c.query<{ ok: boolean }>("select app.discard_call($1) as ok", [callId]);
+    return rows[0]?.ok === true;
+  });
+  if (!discarded) throw new BadRequest("Opptaket er allerede avsluttet.");
+  await services.startWorker().catch((error: unknown) => console.error("discard: could not start the worker", error));
+  return { id: callId, status: "discarded" };
+}
+
 export async function retryCall(db: pg.Pool, session: Session, services: CallServices, callId: string) {
   await withSession(db, session, async (c) => {
     const { rows } = await c.query<{ status: string; transcribed: boolean }>(
