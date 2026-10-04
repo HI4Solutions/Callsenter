@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { api, as, auth, createOrg, createUser, makePlatformAdmin, member, owner } from "./helpers.ts";
+import { api, as, auth, createOrg, createUser, makePlatformAdmin, member, owner, worker } from "./helpers.ts";
 
 const create = (ip: string, email = "kari@example.test") =>
   auth.query<{ id: string }>("select app.contact_request_create($1, $2, $3, $4, $5, $6, $7, $8) as id", [
@@ -54,5 +54,29 @@ describe("contact requests", () => {
     await owner.query("update users set email = $2 where id = $1", [admin, `super-${admin.slice(0, 8)}@example.test`]);
     const recipients = (await auth.query<{ email: string }>("select email from app.contact_request_recipients() as email")).rows.map((r) => r.email);
     expect(recipients).toContain(`super-${admin.slice(0, 8)}@example.test`);
+  });
+
+  it("keep the correspondence for superadmins, with e-mails received by the worker", async () => {
+    const admin = await createUser("Svar Admin");
+    await makePlatformAdmin(admin);
+    const email = `kari-${admin.slice(0, 8)}@example.test`;
+    // Received twice by SES: stored once.
+    const receive = () => worker.query<{ added: boolean }>("select app.contact_message_receive($1, 'Kari', 'Re: Hei', 'Takk!', $2) as added", [email.toUpperCase(), `<m-${admin}>`]);
+    expect((await receive()).rows[0]!.added).toBe(true);
+    expect((await receive()).rows[0]!.added).toBe(false);
+    await expect(worker.query("select * from contact_messages")).rejects.toThrow(/permission denied/);
+    await as(api, { userId: admin }, async (db) => {
+      const rows = (await db.query("select email, direction, read_at from contact_messages where email = $1", [email])).rows;
+      expect(rows).toEqual([{ email, direction: "in", read_at: null }]);
+      await db.query("insert into contact_messages (email, direction, body, sent_by) values ($1, 'out', 'Hei igjen', $2)", [email, admin]);
+      // An outgoing message needs its author.
+      await expect(db.query("insert into contact_messages (email, direction, body) values ($1, 'out', 'x')", [email])).rejects.toThrow(/check/);
+    });
+    const org = await createOrg();
+    const seller = await member(org, "seller");
+    await as(api, { userId: seller, orgId: org }, async (db) => {
+      expect((await db.query("select id from contact_messages where email = $1", [email])).rows).toHaveLength(0);
+      await expect(db.query("insert into contact_messages (email, direction, body, sent_by) values ($1, 'out', 'x', $2)", [email, seller])).rejects.toThrow(/row-level security/);
+    });
   });
 });

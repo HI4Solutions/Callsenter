@@ -12,5 +12,6 @@
   "perMonth": "{amount}/Monat",
   "once": "{amount} einmalig",
   "orgNumber": "Org.-Nr. {number}",
-  "documentId": "Dokument-ID: {hash}"
+  "documentId": "Dokument-ID: {hash}",
+  "cancel": "Abbrechen"
 }

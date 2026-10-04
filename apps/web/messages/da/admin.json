@@ -372,15 +372,32 @@
     "publish": "Publicér",
     "contact": {
       "title": "Henvendelser",
-      "intro": "Fra kontaktformularen på landingssiden. Svar på e-mail, og markér henvendelsen som behandlet.",
+      "intro": "Fra kontaktformularen på landingssiden, én tråd pr. e-mailadresse. Svar sendes som e-mail, og svar tilbage kommer i din indbakke.",
+      "introInbound": "Fra kontaktformularen og e-mail til {email}, én tråd pr. e-mailadresse. Svar sendes som e-mail, og svar tilbage kommer her.",
       "none": "Ingen henvendelser endnu.",
-      "open": "Ny",
-      "handled": "Behandlet {date} af {name}",
+      "choose": "Vælg en samtale.",
+      "allThreads": "Alle samtaler",
+      "unread": "{count, plural, one {# ny} other {# nye}}",
       "markHandled": "Markér som behandlet",
-      "reopen": "Åbn igen",
+      "reopen": "Markér som ny",
       "phone": "Telefon",
       "company": "Firma",
-      "language": "Sprog"
+      "language": "Sprog",
+      "reply": "Svar",
+      "replyHint": "Sendes til {email} som e-mail i VeriQalls design, på det sprog, personen skrev på.",
+      "preview": "Forhåndsvis e-mail",
+      "send": "Send",
+      "sending": "Sender …",
+      "notSent": "Ikke sendt",
+      "noEmail": "E-mail er ikke sat op, så svar kan ikke sendes herfra endnu.",
+      "showEmail": "Vis e-mail",
+      "to": "Til",
+      "replyTo": "Svar til",
+      "kind": {
+        "form": "Kontaktformular",
+        "email": "E-mail",
+        "reply": "Svar"
+      }
     }
   },
   "security": {

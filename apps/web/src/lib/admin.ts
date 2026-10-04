@@ -509,16 +509,29 @@ export function attention(o: PlatformOverview, now: number): Attention[] {
   return items;
 }
 
-// A request from the landing page's contact form (Meldinger → Henvendelser).
-export interface ContactRequest {
-  id: string;
-  name: string;
+// Correspondence with a landing page visitor, one thread per e-mail address (Meldinger → Henvendelser).
+export interface ContactThread {
   email: string;
-  phone: string | null;
+  name: string | null;
   company: string | null;
-  message: string;
+  phone: string | null;
   locale: string | null;
-  createdAt: string;
-  handledAt: string | null;
-  handledByName: string | null;
+  lastAt: string;
+  unread: number;
+  messages: {
+    id: string;
+    kind: "form" | "email" | "reply";
+    body: string;
+    subject: string | null;
+    createdAt: string;
+    sentByName: string | null;
+    sent: boolean;
+    unread: boolean;
+  }[];
+}
+
+export interface ContactThreads {
+  emailEnabled: boolean;
+  inboundEmail: string | null;
+  threads: ContactThread[];
 }

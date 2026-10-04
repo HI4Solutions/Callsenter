@@ -20,7 +20,8 @@
     "@veriqall/db": "*",
     "jose": "^6.2.12",
     "pdf-lib": "^1.17.1",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "postal-mime": "^2.7.6"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.164",

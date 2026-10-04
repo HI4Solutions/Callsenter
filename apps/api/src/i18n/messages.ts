@@ -9,6 +9,8 @@ type Catalog = Record<string, string>;
 
 export const MESSAGES: Record<Exclude<Locale, "nb">, Catalog> = {
   en: {
+    "E-post er ikke satt opp.": "E-mail is not set up.",
+    "E-posten kunne ikke sendes. Svaret er lagret, men ikke sendt.": "The e-mail could not be sent. The reply is saved but not sent.",
     "E-postadressen er ugyldig.": "The e-mail address is invalid.",
     "For mange henvendelser. Prøv igjen senere.": "Too many requests. Try again later.",
     "Ugyldig dato: {label}.": "Invalid date: {label}.",
@@ -257,6 +259,8 @@ export const MESSAGES: Record<Exclude<Locale, "nb">, Catalog> = {
     "Forsøk på å godta med Vipps av en annen enn kjøperen. Navnet eller mobilnummeret stemte ikke. Salget venter fortsatt.": "Attempt to accept with Vipps by someone other than the buyer. The name or mobile number did not match. The sale is still waiting.",
   },
   sv: {
+    "E-post er ikke satt opp.": "E-post är inte konfigurerad.",
+    "E-posten kunne ikke sendes. Svaret er lagret, men ikke sendt.": "E-postmeddelandet kunde inte skickas. Svaret är sparat men inte skickat.",
     "E-postadressen er ugyldig.": "E-postadressen är ogiltig.",
     "For mange henvendelser. Prøv igjen senere.": "För många förfrågningar. Försök igen senare.",
     "Ugyldig dato: {label}.": "Ogiltigt datum: {label}.",
@@ -505,6 +509,8 @@ export const MESSAGES: Record<Exclude<Locale, "nb">, Catalog> = {
     "Forsøk på å godta med Vipps av en annen enn kjøperen. Navnet eller mobilnummeret stemte ikke. Salget venter fortsatt.": "Försök att godkänna med Vipps av någon annan än köparen. Namnet eller mobilnumret stämde inte. Försäljningen väntar fortfarande.",
   },
   da: {
+    "E-post er ikke satt opp.": "E-mail er ikke sat op.",
+    "E-posten kunne ikke sendes. Svaret er lagret, men ikke sendt.": "E-mailen kunne ikke sendes. Svaret er gemt, men ikke sendt.",
     "E-postadressen er ugyldig.": "E-mailadressen er ugyldig.",
     "For mange henvendelser. Prøv igjen senere.": "For mange henvendelser. Prøv igen senere.",
     "Ugyldig dato: {label}.": "Ugyldig dato: {label}.",
@@ -753,6 +759,8 @@ export const MESSAGES: Record<Exclude<Locale, "nb">, Catalog> = {
     "Forsøk på å godta med Vipps av en annen enn kjøperen. Navnet eller mobilnummeret stemte ikke. Salget venter fortsatt.": "Forsøg på at acceptere med Vipps af en anden end køberen. Navnet eller mobilnummeret passede ikke. Salget venter stadig.",
   },
   de: {
+    "E-post er ikke satt opp.": "E-Mail ist nicht eingerichtet.",
+    "E-posten kunne ikke sendes. Svaret er lagret, men ikke sendt.": "Die E-Mail konnte nicht gesendet werden. Die Antwort ist gespeichert, aber nicht gesendet.",
     "E-postadressen er ugyldig.": "Die E-Mail-Adresse ist ungültig.",
     "For mange henvendelser. Prøv igjen senere.": "Zu viele Anfragen. Versuchen Sie es später erneut.",
     "Ugyldig dato: {label}.": "Ungültiges Datum: {label}.",

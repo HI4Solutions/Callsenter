@@ -3,7 +3,8 @@
 // retention, finishes abandoned recordings and frees calls a crashed run left behind. With
 // {reportId} it writes a note asked for in the studio (docs/plan.md, section 18), and with
 // {callId, piece} it transcribes one piece of a call that is still being recorded. Every
-// morning ({task: "daily"}, EventBridge) it also runs invoicing (docs/plan.md, section 16).
+// morning ({task: "daily"}, EventBridge) it also runs invoicing (docs/plan.md, section 16), and
+// SES starts it with each e-mail received for the inbound address (src/inbound.ts).
 import type pg from "pg";
 import { deliverInvoice } from "./admin/billing.ts";
 import { updateUsdNok } from "./exchange.ts";
@@ -11,9 +12,11 @@ import { type WorkerDeps, housekeeping, pendingReports, processCall, processPiec
 import { loadAi, loadSoniox } from "./calls/runtime.ts";
 import { s3Store } from "./calls/store.ts";
 import { iamPool } from "./db.ts";
+import { isSesEvent, receiveEmails } from "./inbound.ts";
 import { required } from "./env.ts";
 
 let deps: Promise<WorkerDeps> | undefined;
+let inboundDb: pg.Pool | undefined;
 
 async function load(): Promise<WorkerDeps> {
   return {
@@ -53,6 +56,8 @@ export async function billingDaily(db: pg.Pool) {
 }
 
 export async function handler(event: { callId?: unknown; reportId?: unknown; piece?: unknown; task?: unknown }, context?: { getRemainingTimeInMillis(): number }) {
+  // E-mail received by SES for the inbound address (src/inbound.ts): only that.
+  if (isSesEvent(event)) return receiveEmails((inboundDb ??= iamPool("veriqall_worker")), event, required("INBOUND_BUCKET"));
   deps ??= load();
   deps.catch(() => (deps = undefined));
   const d = await deps;

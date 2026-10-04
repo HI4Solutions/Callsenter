@@ -11,15 +11,13 @@ import {
   secondaryButton,
 } from "@/components/admin/field";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { ContactThreadsView } from "@/components/admin/contact-threads";
 import { Threads } from "@/components/threads";
-import { LOCALES } from "@veriqall/shared";
 import {
   type AdminAnnouncement,
   adminFetch,
   announcementState,
-  type ContactRequest,
   formatDate,
-  formatDateTime,
   type OrganizationSummary,
 } from "@/lib/admin";
 
@@ -402,80 +400,6 @@ function Editor({
 }
 
 
-// Requests from the landing page's contact form (docs/plan.md, section 20). Answered by e-mail;
-// marking one handled records who did it.
-function ContactRequests() {
-  const t = useTranslations("admin.messages.contact");
-  const tc = useTranslations("common");
-  const [list, setList] = useState<ContactRequest[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const reload = useCallback(
-    () =>
-      adminFetch<ContactRequest[]>("/contact-requests")
-        .then((rows) => {
-          setList(rows);
-          setError(null);
-        })
-        .catch((e: Error) => setError(e.message)),
-    [],
-  );
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-
-  async function setHandled(id: string, handled: boolean) {
-    try {
-      await adminFetch(`/contact-requests/${id}`, { method: "PATCH", body: { handled } });
-      await reload();
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }
-
-  return (
-    <Card title={t("title")}>
-      <p className="text-sm text-muted">{t("intro")}</p>
-      <ErrorMessage message={error} />
-      {list === null ? (
-        <p className="mt-4 text-muted">{tc("loading")}</p>
-      ) : list.length === 0 ? (
-        <p className="mt-4 text-muted">{t("none")}</p>
-      ) : (
-        <ul className="mt-4 divide-y divide-line">
-          {list.map((r) => (
-            <li key={r.id} className="flex flex-col gap-2 py-4">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span className="font-semibold">{r.name}</span>
-                <a href={`mailto:${r.email}`} className="font-medium text-brand">
-                  {r.email}
-                </a>
-                {r.handledAt ? (
-                  <StatusBadge tone="ok">{t("handled", { date: formatDate(r.handledAt), name: r.handledByName ?? "" })}</StatusBadge>
-                ) : (
-                  <StatusBadge tone="warning">{t("open")}</StatusBadge>
-                )}
-              </div>
-              <p className="text-sm text-muted">
-                {formatDateTime(r.createdAt)}
-                {r.phone && ` · ${t("phone")}: ${r.phone}`}
-                {r.company && ` · ${t("company")}: ${r.company}`}
-                {r.locale && ` · ${t("language")}: ${LOCALES[r.locale as keyof typeof LOCALES]?.name ?? r.locale}`}
-              </p>
-              <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{r.message}</p>
-              <div>
-                <button type="button" className={secondaryButton} onClick={() => setHandled(r.id, !r.handledAt)}>
-                  {r.handledAt ? t("reopen") : t("markHandled")}
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
-  );
-}
-
 export default function MessagesPage() {
   const t = useTranslations("admin.messages");
   const [section, setSection] = useState<"samtaler" | "henvendelser" | "kunngjoringer">(
@@ -528,7 +452,7 @@ export default function MessagesPage() {
       {section === "samtaler" ? (
         <Threads base="/admin" organizations={organizations} />
       ) : section === "henvendelser" ? (
-        <ContactRequests />
+        <ContactThreadsView />
       ) : (
         <Announcements />
       )}

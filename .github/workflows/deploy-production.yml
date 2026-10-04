@@ -31,6 +31,7 @@ jobs:
       APP_ORIGIN: ${{ vars.APP_ORIGIN }}
       IDURA_DOMAIN: ${{ vars.IDURA_DOMAIN }}
       EMAIL_DOMAIN: ${{ vars.EMAIL_DOMAIN }}
+      INBOUND_EMAIL_DOMAIN: ${{ vars.INBOUND_EMAIL_DOMAIN }}
     steps:
       - uses: actions/checkout@v4
 

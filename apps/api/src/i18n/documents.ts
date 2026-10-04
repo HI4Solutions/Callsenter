@@ -64,6 +64,12 @@ interface DocumentTexts {
     usageAudio: (month: string) => string;
     usageAi: (month: string) => string;
   };
+  // A superadmin's answer to a request from the landing page's contact form.
+  contactReply: {
+    subject: string;
+    youWrote: string;
+    answerHint: string;
+  };
 }
 
 export const DOCUMENT_TEXTS: Record<Locale, DocumentTexts> = {
@@ -120,6 +126,11 @@ export const DOCUMENT_TEXTS: Record<Locale, DocumentTexts> = {
       usageAudio: (month) => `Transkribering ${month}, timer lyd`,
       usageAi: (month) => `AI-kontroll ${month}, samtaler`,
     },
+    contactReply: {
+      subject: "Svar på henvendelsen din til VeriQall",
+      youWrote: "Du skrev:",
+      answerHint: "Du kan svare direkte på denne e-posten.",
+    },
   },
   en: {
     invitation: {
@@ -175,6 +186,11 @@ export const DOCUMENT_TEXTS: Record<Locale, DocumentTexts> = {
       usageAudio: (month) => `Transcription ${month}, hours of audio`,
       usageAi: (month) => `AI control ${month}, calls`,
     },
+    contactReply: {
+      subject: "Reply to your enquiry to VeriQall",
+      youWrote: "You wrote:",
+      answerHint: "You can reply directly to this e-mail.",
+    },
   },
   sv: {
     invitation: {
@@ -228,6 +244,11 @@ export const DOCUMENT_TEXTS: Record<Locale, DocumentTexts> = {
       fileCredit: "kreditnota",
       usageAudio: (month) => `Transkribering ${month}, timmar ljud`,
       usageAi: (month) => `AI-kontroll ${month}, samtal`,
+    },
+    contactReply: {
+      subject: "Svar på din förfrågan till VeriQall",
+      youWrote: "Du skrev:",
+      answerHint: "Du kan svara direkt på det här e-postmeddelandet.",
     },
   },
   da: {
@@ -284,6 +305,11 @@ export const DOCUMENT_TEXTS: Record<Locale, DocumentTexts> = {
       usageAudio: (month) => `Transskription ${month}, timer lyd`,
       usageAi: (month) => `AI-kontrol ${month}, samtaler`,
     },
+    contactReply: {
+      subject: "Svar på din henvendelse til VeriQall",
+      youWrote: "Du skrev:",
+      answerHint: "Du kan svare direkte på denne e-mail.",
+    },
   },
   de: {
     invitation: {
@@ -339,6 +365,11 @@ export const DOCUMENT_TEXTS: Record<Locale, DocumentTexts> = {
       fileCredit: "gutschrift",
       usageAudio: (month) => `Transkription ${month}, Stunden Audio`,
       usageAi: (month) => `KI-Prüfung ${month}, Gespräche`,
+    },
+    contactReply: {
+      subject: "Antwort auf Ihre Anfrage an VeriQall",
+      youWrote: "Sie schrieben:",
+      answerHint: "Sie können direkt auf diese E-Mail antworten.",
     },
   },
 };

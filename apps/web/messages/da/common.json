@@ -12,5 +12,6 @@
   "perMonth": "{amount}/md.",
   "once": "{amount} engangs",
   "orgNumber": "CVR-nr. {number}",
-  "documentId": "Dokument-ID: {hash}"
+  "documentId": "Dokument-ID: {hash}",
+  "cancel": "Annuller"
 }

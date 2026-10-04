@@ -1,8 +1,9 @@
 import { randomBytes } from "node:crypto";
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import { describe, expect, it } from "vitest";
-import { api, auth, createOrg, createUser, makePlatformAdmin, member, owner } from "../../../packages/db/test/helpers.ts";
+import { api, auth, createOrg, createUser, makePlatformAdmin, member, owner, worker } from "../../../packages/db/test/helpers.ts";
 import { createHandler } from "../src/api.ts";
+import { type Email, setMailer } from "../src/email.ts";
 import { sha256 } from "../src/auth/crypto.ts";
 import type { AuthDeps } from "../src/auth/types.ts";
 
@@ -116,28 +117,72 @@ describe("growth", () => {
   });
 });
 
-describe("contact requests", () => {
-  it("come in from the landing page without a session, and superadmins handle them", async () => {
-    const admin = await superadmin();
-    const name = `Kari ${randomBytes(3).toString("hex")}`;
-    const sent = await call("", "POST", "/contact", { body: { name, email: "kari@example.test", company: "Nord", message: "Vi vil se en demo." } });
-    expect(sent.status).toBe(201);
+describe("contact threads", () => {
+  it("collect the form, our replies and their e-mails per address, and send replies in VeriQall's design", async () => {
+    const userId = await createUser("Svar Admin");
+    await makePlatformAdmin(userId);
+    await owner.query("update users set email = $2 where id = $1", [userId, `svar-${userId.slice(0, 8)}@example.test`]);
+    const admin = await cookieFor(userId);
+    const email = `sven-${randomBytes(3).toString("hex")}@example.test`;
+
+    expect((await call("", "POST", "/contact", { body: { name: "Sven", email: email.toUpperCase(), company: "Nord", message: "Kan vi få en demo?\nVi är 40 säljare." } })).status).toBe(201);
     // A bot that fills the hidden field gets the same answer, and nothing is stored.
-    const bot = await call("", "POST", "/contact", { body: { name: "Bot", email: "bot@example.test", message: "x", website: "http://spam" } });
-    expect(bot.status).toBe(201);
-    expect((await call("", "POST", "/contact", { body: { name, email: "not-an-email", message: "x" } })).body.error).toBe("E-postadressen er ugyldig.");
-    expect((await call("", "POST", "/contact", { body: { name, email: "a@b.c" } })).status).toBe(400);
+    expect((await call("", "POST", "/contact", { body: { name: "Bot", email: "bot@example.test", message: "x", website: "http://spam" } })).status).toBe(201);
+    expect((await call("", "POST", "/contact", { body: { name: "Sven", email: "not-an-email", message: "x" } })).body.error).toBe("E-postadressen er ugyldig.");
+    await owner.query("update contact_requests set locale = 'sv' where lower(email) = $1", [email]);
 
-    const list = await call(admin, "GET", "/admin/contact-requests");
+    const list = await call(admin, "GET", "/admin/contact-threads");
     expect(list.status).toBe(200);
-    const mine = list.body.find((r: { name: string }) => r.name === name);
-    expect(mine).toMatchObject({ email: "kari@example.test", company: "Nord", phone: null, handledAt: null, locale: "nb" });
-    expect(list.body.some((r: { name: string }) => r.name === "Bot")).toBe(false);
+    expect(list.body).toMatchObject({ emailEnabled: false, inboundEmail: null });
+    expect(list.body.threads.some((x: { email: string }) => x.email === "bot@example.test")).toBe(false);
+    const thread = list.body.threads.find((x: { email: string }) => x.email === email);
+    expect(thread).toMatchObject({ name: "Sven", company: "Nord", locale: "sv", unread: 1 });
+    expect(thread.messages.map((m: { kind: string }) => m.kind)).toEqual(["form"]);
 
-    const handled = await call(admin, "PATCH", `/admin/contact-requests/${mine.id}`, { body: { handled: true } });
-    expect(handled.status).toBe(200);
-    expect(handled.body.handledByName).toBe("Melding Admin");
-    expect(handled.body.handledAt).toBeTruthy();
-    expect((await call(admin, "PATCH", `/admin/contact-requests/${mine.id}`, { body: { handled: false } })).body.handledAt).toBeNull();
+    setMailer(null);
+    expect((await call(admin, "POST", "/admin/contact-threads/reply", { body: { email, message: "Hej!" } })).body.error).toBe("E-post er ikke satt opp.");
+
+    const sent: Email[] = [];
+    setMailer(async (mail) => {
+      sent.push(mail);
+      return "msg-reply";
+    });
+    try {
+      // The preview is the e-mail as it will be sent, and sends nothing.
+      const preview = await call(admin, "POST", "/admin/contact-threads/preview", { body: { email, message: "Hej Sven, absolut." } });
+      expect(preview.body).toMatchObject({ to: email, replyTo: `svar-${userId.slice(0, 8)}@example.test`, subject: "Svar på din förfrågan till VeriQall" });
+      expect(preview.body.html).toContain("Veri<span");
+      expect(preview.body.html).toContain("Hej Sven, absolut.");
+      expect(sent).toHaveLength(0);
+
+      const replied = await call(admin, "POST", "/admin/contact-threads/reply", { body: { email, message: "Hej Sven, absolut." } });
+      expect(replied.status).toBe(201);
+      expect(sent[0]).toMatchObject({ to: email, replyTo: `svar-${userId.slice(0, 8)}@example.test`, subject: "Svar på din förfrågan till VeriQall" });
+      expect(sent[0]!.text).toContain("> Vi är 40 säljare.");
+      expect(sent[0]!.html).toBe(preview.body.html);
+      expect(replied.body.unread).toBe(0);
+      const reply = replied.body.messages.at(-1);
+      expect(reply).toMatchObject({ kind: "reply", body: "Hej Sven, absolut.", sent: true, sentByName: "Svar Admin" });
+
+      // Their answer by e-mail (stored by the worker), then ours again: one thread.
+      await worker.query("select app.contact_message_receive($1, 'Sven', 'Re: Svar på din förfrågan till VeriQall', 'Tack! Tisdag passar.', $2)", [email, `<a-${email}>`]);
+      const again = await call(admin, "GET", "/admin/contact-threads");
+      const t2 = again.body.threads.find((x: { email: string }) => x.email === email);
+      expect(t2.messages.map((m: { kind: string }) => m.kind)).toEqual(["form", "reply", "email"]);
+      expect(t2.unread).toBe(1);
+      const second = await call(admin, "POST", "/admin/contact-threads/preview", { body: { email, message: "Bra!" } });
+      // Answering an e-mail keeps its subject, and quotes it.
+      expect(second.body.subject).toBe("Re: Svar på din förfrågan till VeriQall");
+      expect(second.body.html).toContain("Tack! Tisdag passar.");
+
+      const shown = await call(admin, "GET", `/admin/contact-messages/${reply.id}/email`);
+      expect(shown.body).toMatchObject({ to: email, html: preview.body.html });
+
+      expect((await call(admin, "POST", "/admin/contact-threads/handled", { body: { email, handled: true } })).body.unread).toBe(0);
+      expect((await call(admin, "POST", "/admin/contact-threads/handled", { body: { email, handled: false } })).body.unread).toBe(1);
+      expect((await call(admin, "POST", "/admin/contact-threads/reply", { body: { email, message: "" } })).status).toBe(400);
+    } finally {
+      setMailer(undefined);
+    }
   });
 });

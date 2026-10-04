@@ -372,15 +372,32 @@
     "publish": "Publicera",
     "contact": {
       "title": "Förfrågningar",
-      "intro": "Från kontaktformuläret på landningssidan. Svara via e-post och markera förfrågan som hanterad.",
+      "intro": "Från kontaktformuläret på landningssidan, en tråd per e-postadress. Svar skickas som e-post, och svar tillbaka kommer till din inkorg.",
+      "introInbound": "Från kontaktformuläret och e-post till {email}, en tråd per e-postadress. Svar skickas som e-post, och svar tillbaka kommer hit.",
       "none": "Inga förfrågningar ännu.",
-      "open": "Ny",
-      "handled": "Hanterad {date} av {name}",
+      "choose": "Välj en konversation.",
+      "allThreads": "Alla konversationer",
+      "unread": "{count, plural, one {# ny} other {# nya}}",
       "markHandled": "Markera som hanterad",
-      "reopen": "Öppna igen",
+      "reopen": "Markera som ny",
       "phone": "Telefon",
       "company": "Företag",
-      "language": "Språk"
+      "language": "Språk",
+      "reply": "Svara",
+      "replyHint": "Skickas till {email} som e-post i VeriQalls design, på det språk personen skrev på.",
+      "preview": "Förhandsgranska e-post",
+      "send": "Skicka",
+      "sending": "Skickar …",
+      "notSent": "Inte skickat",
+      "noEmail": "E-post är inte konfigurerad, så svar kan inte skickas härifrån ännu.",
+      "showEmail": "Visa e-post",
+      "to": "Till",
+      "replyTo": "Svar till",
+      "kind": {
+        "form": "Kontaktformulär",
+        "email": "E-post",
+        "reply": "Svar"
+      }
     }
   },
   "security": {
