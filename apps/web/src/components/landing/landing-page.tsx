@@ -4,6 +4,7 @@ import { LOCALE_CODES, LOCALES } from "@veriqall/shared";
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { ChatBubble } from "@/components/landing/chat-bubble";
 import { ContactForm } from "@/components/landing/contact-form";
 import { LandingJsonLd } from "@/components/landing/landing-json-ld";
 import { Flag, type FlagLevel } from "@/components/flag";
@@ -36,6 +37,7 @@ export function LandingPage() {
       <Pricing demoHref={demoHref} />
       <Faq />
       <Contact />
+      <ChatBubble />
       <Footer />
     </div>
   );

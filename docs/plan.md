@@ -602,6 +602,7 @@ Påbegynt 3. oktober 2026 (Nadeems ønske). Siden skal ikke være synlig for noe
 
 **Innkommende e-post:** med `INBOUND_EMAIL_DOMAIN` (variabel på Environment, parameteren `InboundEmailDomain` i `infra/app.yml`) tar SES imot e-post for domenet (for eksempel `svar.staging.veriqall.no`), legger den i en egen bøtte i 30 dager og starter workeren (`apps/api/src/inbound.ts`). Workeren lagrer den nye delen av svaret (uten sitatet) i avsenderens tråd, dropper spam og virus, og varsler superadminene på e-post. Svarene vi sender, har da `kontakt@<domenet>` som svaradresse; uten domenet går svarene til superadminens egen innboks. Deploy aktiverer mottaksregelen (SES har én aktiv regel per konto og region, så staging og produksjon i samme konto må dele den) og skriver ut DNS-postene som skal inn hos one.com: MX til `inbound-smtp.eu-north-1.amazonaws.com` og tre DKIM-CNAME-er.
 6. Bunntekst med Hi4 Solutions AS og språkvelger.
+7. En chatboble nederst til høyre (`components/landing/chat-bubble.tsx`) som ruller ned til kontaktskjemaet og setter markøren i første felt. Den skjules mens skjemaet er synlig, og respekterer «redusert bevegelse».
 
 Siden bruker appens design: samme tokens, lys og mørk modus, og grønn, gul og rød bare i AI-flaggene i stillbildet.
 
