@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Carousel, CAROUSEL_ITEM } from "@/components/landing/carousel";
 import { ChatBubble } from "@/components/landing/chat-bubble";
 import { ContactForm } from "@/components/landing/contact-form";
@@ -123,8 +123,10 @@ function Hero() {
 
 // The AI control during a call: the lamps per required point light up one by one, the lines of the
 // transcript the yellow one points at come in, and last the customer's acceptance. Played once
-// on load, in CSS only (globals.css, .demo-in and .demo-lamp, delays in --d), so it ends as a
-// still and is a still with reduced motion. Green, yellow and red stay AI flags.
+// once, in CSS (globals.css, .demo-in and .demo-lamp, delays in --d), so it ends as a still and
+// is a still with reduced motion. It waits (data-demo="wait") until most of the card is on
+// screen, so on a phone, where it sits below the hero text, it plays when the visitor scrolls
+// to it. Green, yellow and red stay AI flags.
 function ProductDemo() {
   const t = useTranslations("landing.demo");
   const points: { key: "point1" | "point2" | "point3" | "point4"; level: FlagLevel; note?: "point3Note" }[] = [
@@ -139,8 +141,27 @@ function ProductDemo() {
     { time: "04:12", who: "seller", key: "line3", marked: true },
   ];
   const delay = (ms: number) => ({ "--d": `${ms}ms` }) as React.CSSProperties;
+  const figure = useRef<HTMLElement>(null);
+  const [waiting, setWaiting] = useState(true);
+  useEffect(() => {
+    const el = figure.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setWaiting(false);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setWaiting(false);
+        observer.disconnect();
+      },
+      { threshold: 0.4 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   return (
-    <figure className="min-w-0">
+    <figure ref={figure} data-demo={waiting ? "wait" : undefined} className="min-w-0">
       <div className="demo-in rounded-xl border border-line bg-surface p-4 shadow-lg shadow-black/5 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="font-semibold">{t("title")}</p>

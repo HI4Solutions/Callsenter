@@ -272,6 +272,14 @@ html:has([data-landing]) {
     animation: draw-1 0.6s ease-out calc(var(--d, 0ms) + 200ms) both;
   }
 }
+/* The demo waits, at its first frame, until it is on screen (landing-page.tsx, ProductDemo). Only
+   where scripts run, so without JavaScript it simply plays. */
+@media (scripting: enabled) {
+  [data-demo="wait"],
+  [data-demo="wait"] * {
+    animation-play-state: paused !important;
+  }
+}
 @keyframes demo-in {
   from {
     opacity: 0;
