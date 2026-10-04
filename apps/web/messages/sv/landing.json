@@ -7,7 +7,6 @@
     "label": "På den här sidan",
     "how": "Så fungerar det",
     "features": "Funktioner",
-    "pricing": "Pris",
     "faq": "Frågor",
     "contact": "Kontakt"
   },
@@ -108,21 +107,6 @@
     "t5": "Kundens godkännande lagras med dokumentet kunden såg, metod, tidpunkt och en kryptografisk kontrollsumma. En avgjord bekräftelse kan aldrig ändras.",
     "t6Title": "Radering enligt plan",
     "t6": "Inspelningar raderas automatiskt efter 3 till 12 månader, enligt vad ni väljer. Personnummer lagras aldrig i klartext."
-  },
-  "languages": {
-    "title": "På ert språk",
-    "text": "Appen finns på norska, engelska, svenska, danska och tyska, och varje användare väljer själv. Anteckningar och AI-kontroll skrivs på det språk callcentret bestämmer, eller det säljaren väljer per samtal. Transkriptionen känner igen över 60 språk, även när flera språk talas i samma samtal."
-  },
-  "pricing": {
-    "title": "Pris",
-    "intro": "Månadspris per callcenter efter paket och moduler, med förbrukning därutöver. Vi lämnar offert efter en genomgång av era behov.",
-    "p1Title": "Paket",
-    "p1": "Fast månadspris för callcentret, med de moduler ni väljer.",
-    "p2Title": "Förbrukning",
-    "p2": "Transkribering per timme ljud och AI-kontroll per samtal, fakturerat i efterskott varje månad.",
-    "p3Title": "Försäljningsverifiering",
-    "p3": "Tilläggsmodul. Varje godkännande med BankID eller Vipps faktureras per bekräftelse.",
-    "cta": "Begär offert"
   },
   "faq": {
     "title": "Frågor och svar",

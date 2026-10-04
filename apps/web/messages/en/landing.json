@@ -7,7 +7,6 @@
     "label": "On this page",
     "how": "How it works",
     "features": "Features",
-    "pricing": "Pricing",
     "faq": "Questions",
     "contact": "Contact"
   },
@@ -108,21 +107,6 @@
     "t5": "The customer’s acceptance is stored with the document the customer saw, the method, the time and a cryptographic checksum. A decided confirmation can never be changed.",
     "t6Title": "Deletion on schedule",
     "t6": "Recordings are deleted automatically after 3 to 12 months, as you choose. National identity numbers are never stored in plain text."
-  },
-  "languages": {
-    "title": "In your language",
-    "text": "The app is available in Norwegian, English, Swedish, Danish and German, and every user chooses for themselves. Notes and AI control are written in the language the call centre decides, or the one the seller chooses per call. Transcription recognises over 60 languages, even when several languages are spoken in the same call."
-  },
-  "pricing": {
-    "title": "Pricing",
-    "intro": "A monthly price per call centre by package and modules, with usage on top. We quote after reviewing your needs.",
-    "p1Title": "Package",
-    "p1": "A fixed monthly price for the call centre, with the modules you choose.",
-    "p2Title": "Usage",
-    "p2": "Transcription per hour of audio and AI control per call, invoiced in arrears each month.",
-    "p3Title": "Sale verification",
-    "p3": "Add-on module. Every acceptance with BankID or Vipps is invoiced per confirmation.",
-    "cta": "Request a quote"
   },
   "faq": {
     "title": "Questions and answers",

@@ -7,7 +7,6 @@
     "label": "På denne side",
     "how": "Sådan virker det",
     "features": "Funktioner",
-    "pricing": "Pris",
     "faq": "Spørgsmål",
     "contact": "Kontakt"
   },
@@ -108,21 +107,6 @@
     "t5": "Kundens accept gemmes med det dokument, kunden så, metode, tidspunkt og en kryptografisk kontrolsum. En afgjort bekræftelse kan aldrig ændres.",
     "t6Title": "Sletning efter plan",
     "t6": "Optagelser slettes automatisk efter 3 til 12 måneder, alt efter hvad I vælger. Personnumre gemmes aldrig i klartekst."
-  },
-  "languages": {
-    "title": "På jeres sprog",
-    "text": "Appen findes på norsk, engelsk, svensk, dansk og tysk, og hver bruger vælger selv. Notater og AI-kontrol skrives på det sprog, callcentret bestemmer, eller det, sælgeren vælger pr. samtale. Transskriptionen genkender over 60 sprog, også når der tales flere sprog i samme samtale."
-  },
-  "pricing": {
-    "title": "Pris",
-    "intro": "Månedspris pr. callcenter efter pakke og moduler, med forbrug oveni. Vi giver tilbud efter en gennemgang af jeres behov.",
-    "p1Title": "Pakke",
-    "p1": "Fast månedspris for callcentret, med de moduler I vælger.",
-    "p2Title": "Forbrug",
-    "p2": "Transskription pr. time lyd og AI-kontrol pr. samtale, faktureret bagud hver måned.",
-    "p3Title": "Salgsverificering",
-    "p3": "Tillægsmodul. Hver accept med BankID eller Vipps faktureres pr. bekræftelse.",
-    "cta": "Bed om tilbud"
   },
   "faq": {
     "title": "Spørgsmål og svar",

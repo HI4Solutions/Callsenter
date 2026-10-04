@@ -7,7 +7,6 @@
     "label": "Auf dieser Seite",
     "how": "So funktioniert es",
     "features": "Funktionen",
-    "pricing": "Preise",
     "faq": "Fragen",
     "contact": "Kontakt"
   },
@@ -108,21 +107,6 @@
     "t5": "Die Annahme des Kunden wird mit dem Dokument, das der Kunde gesehen hat, Methode, Zeitpunkt und einer kryptografischen Prüfsumme gespeichert. Eine entschiedene Bestätigung kann nie geändert werden.",
     "t6Title": "Löschung nach Plan",
     "t6": "Aufnahmen werden nach 3 bis 12 Monaten automatisch gelöscht, je nachdem, was Sie wählen. Persönliche Identifikationsnummern werden nie im Klartext gespeichert."
-  },
-  "languages": {
-    "title": "In Ihrer Sprache",
-    "text": "Die App gibt es auf Norwegisch, Englisch, Schwedisch, Dänisch und Deutsch, und jeder Benutzer wählt selbst. Notizen und KI-Prüfung werden in der Sprache geschrieben, die das Callcenter festlegt, oder in der, die der Verkäufer pro Gespräch wählt. Die Transkription erkennt über 60 Sprachen, auch wenn in einem Gespräch mehrere Sprachen gesprochen werden."
-  },
-  "pricing": {
-    "title": "Preis",
-    "intro": "Monatspreis pro Callcenter nach Paket und Modulen, plus Verbrauch. Wir erstellen ein Angebot nach einer Durchsicht Ihres Bedarfs.",
-    "p1Title": "Paket",
-    "p1": "Fester Monatspreis für das Callcenter, mit den Modulen Ihrer Wahl.",
-    "p2Title": "Verbrauch",
-    "p2": "Transkription pro Stunde Audio und KI-Prüfung pro Gespräch, monatlich nachträglich abgerechnet.",
-    "p3Title": "Verkaufsbestätigung",
-    "p3": "Zusatzmodul. Jede Annahme mit BankID oder Vipps wird pro Bestätigung abgerechnet.",
-    "cta": "Angebot anfragen"
   },
   "faq": {
     "title": "Fragen und Antworten",
