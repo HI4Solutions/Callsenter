@@ -1,10 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Arrow } from "@/components/landing/demo-link";
 import { API_URL } from "@/lib/auth";
 
-const inputClass = "min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-base placeholder:text-muted";
+// A clear focus: the border and outline in the brand colour, with a soft glow around the field.
+const inputClass =
+  "min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-base transition-[border-color,box-shadow] duration-200 placeholder:text-muted hover:border-[color-mix(in_srgb,var(--brand)_45%,var(--border))] focus:border-brand focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--brand)_18%,transparent)] focus-visible:outline-offset-0";
 
 type State = { status: "idle" | "sending" | "sent" } | { status: "failed"; message: string };
 
@@ -42,13 +45,7 @@ export function ContactForm() {
     }
   }
 
-  if (state.status === "sent") {
-    return (
-      <p role="status" className="rounded-xl border border-line bg-surface p-5 text-lg">
-        {t("sent")}
-      </p>
-    );
-  }
+  if (state.status === "sent") return <Sent text={t("sent")} />;
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -89,11 +86,28 @@ export function ContactForm() {
         <button
           type="submit"
           disabled={state.status === "sending"}
-          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-brand px-5 font-semibold text-on-brand disabled:opacity-60"
+          className="cta-glow inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand px-5 font-semibold text-on-brand disabled:opacity-60"
         >
           {state.status === "sending" ? t("sending") : t("send")}
+          {state.status !== "sending" && <Arrow />}
         </button>
       </div>
     </form>
+  );
+}
+
+// The thank-you, with a check mark that draws itself (globals.css, .sent-check). Takes the focus,
+// so keyboard and screen reader users are not left where the form was.
+function Sent({ text }: { text: string }) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => box.current?.focus(), []);
+  return (
+    <div ref={box} role="status" tabIndex={-1} className="sent-box flex items-center gap-4 rounded-xl border border-line bg-surface p-5 focus:outline-none">
+      <svg aria-hidden viewBox="0 0 52 52" className="sent-check size-12 flex-none text-brand" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="26" cy="26" r="23" pathLength={1} />
+        <path d="m15.5 27 7 7 14-15" pathLength={1} />
+      </svg>
+      <p className="text-lg">{text}</p>
+    </div>
   );
 }

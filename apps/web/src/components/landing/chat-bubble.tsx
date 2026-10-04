@@ -4,7 +4,9 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 // A round button in the bottom right corner of the landing page that takes the visitor to the
-// contact form (#kontakt). It hides while the form is on screen, so it never covers it.
+// contact form (#kontakt). It hides while the form is on screen, so it never covers it, and pulses
+// gently once a few seconds after load (globals.css, .bubble-pulse). On phones the bar at the
+// bottom (mobile-cta.tsx) takes its place.
 export function ChatBubble() {
   const t = useTranslations("landing.contact");
   const [formVisible, setFormVisible] = useState(false);
@@ -36,7 +38,7 @@ export function ChatBubble() {
       title={t("bubble")}
       tabIndex={formVisible ? -1 : 0}
       aria-hidden={formVisible}
-      className={`fixed right-4 bottom-4 z-40 flex size-14 items-center justify-center rounded-full bg-brand text-on-brand shadow-lg shadow-black/20 transition-[opacity,transform] duration-200 hover:scale-105 sm:right-6 sm:bottom-6 sm:size-16 print:hidden ${
+      className={`bubble-pulse fixed right-4 bottom-4 z-40 hidden size-14 items-center justify-center rounded-full bg-brand text-on-brand shadow-lg shadow-black/20 transition-[opacity,transform] duration-200 hover:scale-105 sm:right-6 sm:bottom-6 sm:flex sm:size-16 print:hidden ${
         formVisible ? "pointer-events-none translate-y-2 opacity-0" : "opacity-100"
       }`}
     >

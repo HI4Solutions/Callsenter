@@ -606,6 +606,19 @@ Påbegynt 3. oktober 2026 (Nadeems ønske). Siden skal ikke være synlig for noe
 
 Siden bruker appens design: samme tokens, lys og mørk modus, og grønn, gul og rød bare i AI-flaggene i stillbildet.
 
+**Flyt og bevegelse (4. oktober, Nadeems ønske):** bare CSS og nettleserens egne API-er, uten animasjonsbibliotek (`components/landing/motion.ts` og egen del nederst i `globals.css`). All bevegelse står bak `prefers-reduced-motion: no-preference`, og siden ser lik ut uten JavaScript og ved utskrift.
+
+- En meny under toppen som blir stående (Slik virker det, Funksjoner, Pris, Spørsmål, Kontakt) og markerer delen som vises (`section-nav.tsx`). På mobil kan raden sveipes og følger med. Når heltens knapper er rullet forbi, kommer «Be om en demo» til høyre (ikke på mobil).
+- En tynn fremdriftslinje i merkefargen helt øverst (`scroll-progress.tsx`).
+- «Be om en demo» har en glød i merkefargen, løftes litt og pilen glir ved peker eller trykk (`demo-link.tsx`); i helten pulserer den to ganger etter lasting. Knappen står også etter «Slik virker det» og etter «Bygget for å være bevis».
+- Stillbildet i helten spilles av én gang: lampene tennes én og én, transkripsjonen kommer, og til sist kundens aksept. Grønn, gul og rød er fortsatt bare AI-flagg.
+- «Slik virker det» er en tidslinje der streken fylles med merkefargen mens man ruller, og hvert nummer fylles når streken når det.
+- Deler og kort glir inn når de kommer til syne, litt forskjøvet.
+- På mobil er Funksjoner, «Laget for hele callsenteret» og «Bygget for å være bevis» sveipbare rader med fester og prikker (`carousel.tsx`).
+- På mobil står «Be om en demo» i en linje nederst når heltens knapper er rullet forbi, og forsvinner ved kontaktskjemaet (`mobile-cta.tsx`); den erstatter chatboblen på mobil. På større skjermer pulserer chatboblen én gang etter fire sekunder.
+- Spørsmål og svar: bare ett svar åpent om gangen (`<details name>`), og svaret glir åpent der nettleseren kan det.
+- Kontaktskjemaet har tydelig fokus i merkefargen, og takken vises med et hakemerke som tegnes. Takken får fokus.
+
 **Åpne punkter før publisering:**
 
 - Prisene står uten tall; tilbud etter avtale.
