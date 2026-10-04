@@ -17,6 +17,7 @@ import {
   callStatus,
   chunkUrl,
   completeCall,
+  discardCall,
   callLog,
   createCall,
   createReportTemplate,
@@ -85,7 +86,7 @@ const COMPLAINT = /^\/org\/complaints\/([^/]+)$/;
 const COMPLAINT_NOTES = /^\/org\/complaints\/([^/]+)\/notes$/;
 const SALE_CONFIRMATION_REVOKE = /^\/org\/sales\/([^/]+)\/confirmations\/([^/]+)\/revoke$/;
 const CALL = /^\/org\/calls\/([^/]+)$/;
-const CALL_ACTION = /^\/org\/calls\/([^/]+)\/(chunks|complete|retry|realtime-key|audio|log)$/;
+const CALL_ACTION = /^\/org\/calls\/([^/]+)\/(chunks|complete|discard|retry|realtime-key|audio|log)$/;
 const CALL_ANALYSIS = /^\/org\/calls\/([^/]+)\/analyses\/([^/]+)$/;
 const CALL_PIECES = /^\/org\/calls\/([^/]+)\/pieces$/;
 const CALL_PIECE_DONE = /^\/org\/calls\/([^/]+)\/pieces\/(\d+)\/uploaded$/;
@@ -301,6 +302,7 @@ export async function handleOrg(
           await requirePermission(deps.appDb, session, "calls.upload");
           if (name === "chunks") return reply(200, await chunkUrl(deps.appDb, session, services, id, body()));
           if (name === "complete") return reply(200, await completeCall(deps.appDb, session, services, id, body()));
+          if (name === "discard") return reply(200, await discardCall(deps.appDb, session, services, id));
           if (name === "retry") return reply(200, await retryCall(deps.appDb, session, services, id));
           if (name === "realtime-key") return reply(200, await renewRealtimeKey(deps.appDb, session, services, id));
         }

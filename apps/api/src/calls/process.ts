@@ -338,7 +338,7 @@ export async function processPiece(deps: WorkerDeps, callId: string, seq: number
     // Longer than the 90 seconds waiting for Soniox plus the upload, so two runs don't overlap.
     `update call_pieces p set lease_until = now() + interval '5 minutes', attempts = p.attempts + 1
      from calls c
-     where p.call_id = $1 and p.seq = $2 and c.id = p.call_id and p.status = 'pending'
+     where p.call_id = $1 and p.seq = $2 and c.id = p.call_id and p.status = 'pending' and c.status <> 'discarded'
        and (p.lease_until is null or p.lease_until < now())
      returning p.organization_id, p.start_ms, p.attempts, c.audio_mime`,
     [callId, seq],

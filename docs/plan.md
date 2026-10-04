@@ -520,9 +520,9 @@ Besluttet 2. oktober 2026: **Amazon SES**, ikke Resend. SES koster rundt 0,10 US
 
 Rekkefølge første gang: oppdater bootstrap-stacken (SES-rettigheter) → sett `EMAIL_DOMAIN` på Environment `staging` → deploy → legg inn DNS-postene hos one.com → søk SES om produksjonstilgang.
 
-## 18. Samtalestudio
+## 18. Salgsstudio (tidligere Samtalestudio)
 
-Bygget 2. oktober 2026 etter Nadeems beskrivelse av Notatstudio i MedSide, med VeriQalls forskjeller. `/samtaler/opptak` er nå Samtalestudio. Prinsippet er det samme: **transkripsjonen er råstoffet, og malen bestemmer hva samtalen sjekkes mot og hva notatet blir.**
+Bygget 2. oktober 2026 etter Nadeems beskrivelse av Notatstudio i MedSide, med VeriQalls forskjeller. `/samtaler/opptak` er nå Salgsstudio (omdøpt fra Samtalestudio 4. oktober, Nadeems ønske; adressen er den samme). Prinsippet er det samme: **transkripsjonen er råstoffet, og malen bestemmer hva samtalen sjekkes mot og hva notatet blir.**
 
 Forskjeller fra Notatstudio (besluttet av Nadeem 2. oktober):
 
@@ -548,12 +548,20 @@ Regler:
 - **Rapportmaler heter nå notatmaler** i appen, og standardnotatet heter «Standardnotat». Rettigheten og modulen har samme nøkkel som før.
 - **Alt spores:** forespørsler om notat og justeringer skrives til `audit_log` uten teksten, så teksten ikke overlever lagringstiden. Notater og justeringer slettes med samtalen.
 
+**Pause, flere samtaler, forkast og mikrofon (4. oktober, Nadeems ønske):**
+
+- **Mikrofon:** en nedtrekksliste med mikrofonene på maskinen (navnene vises når nettleseren har fått lov til å bruke mikrofonen), valget huskes i nettleseren, og mikrofonen kan byttes under opptaket uten brudd. Finnes ingen mikrofon, står det tydelig, og «Start opptak» er sperret. Nektet tilgang og frakoblet mikrofon har egne meldinger.
+- **Ingen lyd:** et lydnivå vises ved tiden. Er mikrofonen stille i 8 sekunder (eller dempet), får selgeren beskjed om å sjekke mikrofonen. Har to biter (30 sekunder) blitt transkribert uten ett ord, får selgeren beskjed om at transkripsjonen er tom.
+- **Pause:** «Pause» laster opp det som er tatt opp, slipper mikrofonen (og fanen) og stopper tiden. «Fortsett» tar opp videre i samme opptak, med samme mikrofon. Sanntidstekst avsluttes ved pause, og teksten kommer bitvis etterpå. Et opptak som står på pause i tre timer, avsluttes og behandles av ryddejobben som før.
+- **Flere samtaler:** fanene øverst i studioet («Samtale 1», «Samtale 2» …) og «+ Ny samtale» (høyst seks). Hver fane er sin egen samtale med egne valg, og viser om den tar opp eller står på pause, med tid. Bare én samtale tar opp om gangen: starter eller fortsetter selgeren en, settes den som tar opp, på pause. En fane kan lukkes når den ikke tar opp eller står på pause, og siden spør før den lukkes med en åpen samtale.
+- **Forkast:** under opptak eller pause, med bekreftelse. Samtalen avsluttes uten å sendes til transkripsjon av hele opptaket, AI-kontroll eller notat. Bare selgeren som tar den opp, kan forkaste den (`app.discard_call`, migrasjonen `0039_discard_calls.sql`). Den får status `discarded`, skjules med en gang (`expires_at` settes til nå), og ryddejobben, som API-et starter med en gang, sletter lyd, biter og tekst. Biter som venter, sendes ikke til Soniox. Endringen står i revisjonsloggen.
+
 | Del | Innhold |
 |---|---|
 | Database | `0022_call_studio.sql`: `calls.note_templates`; `reports` får status (`pending`, `done`, `failed`), `requested_by`, lease og forsøk; `report_edits` (append-only); `studio_preferences` (standardmal per medlem); grense på 10 notater og ett om gangen |
-| API | `POST /org/calls/{id}/notes`, `PATCH /org/calls/{id}/notes/{noteId}`, `GET /org/calls/{id}/notes/{noteId}/history`, `GET`/`PUT /org/studio`; `GET /org/calls/{id}` gir `requiredPoints`, `isOwn` og notatene med justeringer |
+| API | `POST /org/calls/{id}/discard` (forkast), `POST /org/calls/{id}/notes`, `PATCH /org/calls/{id}/notes/{noteId}`, `GET /org/calls/{id}/notes/{noteId}/history`, `GET`/`PUT /org/studio`; `GET /org/calls/{id}` gir `requiredPoints`, `isOwn` og notatene med justeringer |
 | Worker | `{reportId}` skriver et notat; notater som ble hengende, plukkes opp av ryddejobben |
-| Web | `/samtaler/opptak` (Samtalestudio), `components/calls/` (varsellamper, transkripsjon, tilleggsinformasjon, notater), samtalesiden og dokumentasjonen |
+| Web | `/samtaler/opptak` (Salgsstudio med faner, `components/calls/studio-session.tsx` per samtale), `lib/recorder.ts` (pause, mikrofonvalg, lydnivå, forkast), `components/calls/` (varsellamper, transkripsjon, tilleggsinformasjon, notater), samtalesiden og dokumentasjonen |
 
 ## 19. Språk
 

@@ -50,7 +50,7 @@
   "how": {
     "title": "Så fungerar det",
     "step1Title": "Spela in i webbläsaren",
-    "step1": "Säljaren spelar in samtalet i Samtalsstudion, från mikrofonen eller från fliken där telefonilösningen eller Teams körs. Ingen installation, och inget byte av telefonisystem.",
+    "step1": "Säljaren spelar in samtalet i Säljstudion, från mikrofonen eller från fliken där telefonilösningen eller Teams körs. Ingen installation, och inget byte av telefonisystem.",
     "step2Title": "Transkription medan samtalet pågår",
     "step2": "Texten kommer inom några sekunder, med tidsstämpel och koppling till ljudet. Över 60 språk, och en sökning som hittar varje samtal igen.",
     "step3Title": "AI-kontroll mot produktmallen",
@@ -64,7 +64,7 @@
   "features": {
     "title": "Allt callcentret behöver",
     "intro": "Modulerna slås på per callcenter, så ni betalar för det ni använder.",
-    "f1Title": "Samtalsstudio",
+    "f1Title": "Säljstudio",
     "f1": "Varningslampor per obligatorisk punkt, transkription live, en anteckning som skrivs medan du pratar, och en referens du klistrar in i ert eget säljsystem.",
     "f2Title": "Produktmallar",
     "f2": "Pris, villkor, obligatoriska punkter och förbjudna formuleringar per produkt. Versionerade, så att varje samtal mäts mot mallen som gällde då.",
