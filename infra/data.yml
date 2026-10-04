@@ -417,22 +417,30 @@ Resources:
             Condition:
               Bool:
                 aws:SecureTransport: "false"
+          # Uploads without encryption headers (the browser's presigned PUTs, the worker) get the
+          # bucket's default: SSE-KMS with the environment's key. Only a request that asks for
+          # something else is refused. (With StringNotEqualsIfExists a missing header counted as
+          # "something else", so every upload was denied.)
           - Sid: DenyOtherEncryption
             Effect: Deny
             Principal: "*"
             Action: s3:PutObject
             Resource: !Sub ${AudioBucket.Arn}/*
             Condition:
-              StringNotEqualsIfExists:
+              StringNotEquals:
                 s3:x-amz-server-side-encryption: aws:kms
+              "Null":
+                s3:x-amz-server-side-encryption: "false"
           - Sid: DenyOtherKeys
             Effect: Deny
             Principal: "*"
             Action: s3:PutObject
             Resource: !Sub ${AudioBucket.Arn}/*
             Condition:
-              StringNotEqualsIfExists:
+              StringNotEquals:
                 s3:x-amz-server-side-encryption-aws-kms-key-id: !GetAtt Key.Arn
+              "Null":
+                s3:x-amz-server-side-encryption-aws-kms-key-id: "false"
 
 Outputs:
   KeyArn:
