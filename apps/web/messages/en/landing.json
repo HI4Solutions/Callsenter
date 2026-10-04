@@ -3,6 +3,14 @@
     "title": "Documented and verified telephone sales",
     "description": "VeriQall records, transcribes and checks sales calls with AI, lets the customer confirm the purchase with BankID or Vipps, and gathers the documentation for follow-up, complaints and coaching."
   },
+  "nav": {
+    "label": "On this page",
+    "how": "How it works",
+    "features": "Features",
+    "pricing": "Pricing",
+    "faq": "Questions",
+    "contact": "Contact"
+  },
   "hero": {
     "eyebrow": "For call centres that sell by phone",
     "title": "Every call documented. Every sale verified.",
@@ -148,5 +156,12 @@
     "sent": "Thank you for your message. We will be in touch as soon as we can.",
     "failed": "The message was not sent. Try again in a moment.",
     "bubble": "Contact us"
+  },
+  "cta": {
+    "afterHow": "See how it works with your own products and calls.",
+    "afterTrust": "Want to see the documentation from a real sales call?"
+  },
+  "carousel": {
+    "goTo": "Show card {n} of {total}"
   }
 }

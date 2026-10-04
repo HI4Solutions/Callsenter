@@ -3,6 +3,14 @@
     "title": "Dokumentert og verifisert telefonsalg",
     "description": "VeriQall tar opp, transkriberer og kontrollerer salgssamtaler med AI, lar kunden bekrefte kjøpet med BankID eller Vipps, og samler dokumentasjonen for oppfølging, klager og coaching."
   },
+  "nav": {
+    "label": "Innhold på siden",
+    "how": "Slik virker det",
+    "features": "Funksjoner",
+    "pricing": "Pris",
+    "faq": "Spørsmål",
+    "contact": "Kontakt"
+  },
   "hero": {
     "eyebrow": "For callsentre som selger på telefon",
     "title": "Hver samtale dokumentert. Hvert salg verifisert.",
@@ -148,5 +156,12 @@
     "sent": "Takk for henvendelsen. Vi tar kontakt så snart vi kan.",
     "failed": "Meldingen ble ikke sendt. Prøv igjen om litt.",
     "bubble": "Kontakt oss"
+  },
+  "cta": {
+    "afterHow": "Se hvordan det virker med deres egne produkter og samtaler.",
+    "afterTrust": "Vil dere se dokumentasjonen fra en ekte salgssamtale?"
+  },
+  "carousel": {
+    "goTo": "Vis kort {n} av {total}"
   }
 }

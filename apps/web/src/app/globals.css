@@ -136,3 +136,257 @@ html {
     radial-gradient(farthest-side at 0 50%, var(--scroll-shadow), transparent) left center / 0.875rem 100% no-repeat scroll,
     radial-gradient(farthest-side at 100% 50%, var(--scroll-shadow), transparent) right center / 0.875rem 100% no-repeat scroll;
 }
+
+/* ---------------------------------------------------------------------------------------------
+   Landing page (components/landing, docs/plan.md, section 20). CSS and native APIs only. Every
+   movement is behind prefers-reduced-motion: no-preference, and the page reads the same without
+   JavaScript, with reduced motion and in print.
+   --------------------------------------------------------------------------------------------- */
+
+/* Anchors clear the header and the section menu, and scroll smoothly. */
+html:has([data-landing]) {
+  scroll-padding-top: 8rem;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:has([data-landing]) {
+    scroll-behavior: smooth;
+  }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* The section menu sticks under the header (its height is measured into --landing-header). The
+   background reaches the edges of the window without making the page wider. */
+.landing-nav {
+  top: var(--landing-header, 3.8rem);
+  box-shadow:
+    0 0 0 100vmax var(--surface),
+    0 1px 0 100vmax var(--border);
+  clip-path: inset(0 -100vmax -1px);
+}
+
+/* On narrow screens the menu row fades out at the edges, so it is clear that it can be swiped. */
+@media (width < 40rem) {
+  .landing-nav ul {
+    mask-image: linear-gradient(to right, transparent, #000 0.75rem, #000 calc(100% - 1.5rem), transparent);
+  }
+}
+
+/* Sections and cards fade in when scrolled to (motion.ts, useReveal), staggered by --i. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-motion] [data-reveal] {
+    transition:
+      opacity 0.6s ease,
+      transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition-delay: calc(min(var(--i, 0), 5) * 70ms);
+  }
+  [data-motion] [data-reveal]:not([data-shown]) {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+}
+
+/* "Be om en demo": a glow in the brand colour, a lift and a sliding arrow. */
+.cta-glow {
+  position: relative;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--brand) 16%, transparent),
+    0 8px 22px -8px color-mix(in srgb, var(--brand) 75%, transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cta-glow {
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .cta-glow .cta-arrow {
+    transition: transform 0.2s ease;
+  }
+  .cta-glow:hover,
+  .cta-glow:focus-visible {
+    transform: translateY(-2px);
+    box-shadow:
+      0 0 0 6px color-mix(in srgb, var(--brand) 22%, transparent),
+      0 14px 28px -8px color-mix(in srgb, var(--brand) 80%, transparent);
+  }
+  .cta-glow:active {
+    transform: translateY(0) scale(0.98);
+  }
+  .cta-glow:hover .cta-arrow,
+  .cta-glow:focus-visible .cta-arrow,
+  .cta-glow:active .cta-arrow {
+    transform: translateX(3px);
+  }
+  /* Two soft rings shortly after load, on the hero's button. */
+  .cta-pulse::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    animation: cta-ring 1.8s ease-out 1.6s 2;
+  }
+  /* The chat bubble pulses once, a few seconds after load. */
+  .bubble-pulse::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    animation: cta-ring 1.6s ease-out 4s 1;
+  }
+}
+@keyframes cta-ring {
+  0% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 55%, transparent);
+  }
+  100% {
+    opacity: 0;
+    box-shadow: 0 0 0 16px color-mix(in srgb, var(--brand) 0%, transparent);
+  }
+}
+
+/* The product demo in the hero, played once on load (landing-page.tsx, ProductDemo). */
+@media (prefers-reduced-motion: no-preference) {
+  .demo-in {
+    animation: demo-in 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) var(--d, 0ms) both;
+  }
+  .demo-lamp {
+    display: inline-flex;
+    animation: demo-lamp 0.45s cubic-bezier(0.3, 1.5, 0.5, 1) var(--d, 0ms) both;
+  }
+  .demo-lamp > .flag {
+    animation: demo-glow 0.9s ease-out var(--d, 0ms) both;
+  }
+  .demo-check circle,
+  .demo-check path {
+    stroke-dasharray: 1;
+    animation: draw-1 0.6s ease-out calc(var(--d, 0ms) + 200ms) both;
+  }
+}
+@keyframes demo-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+@keyframes demo-lamp {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+@keyframes demo-glow {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--flag-color) 50%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--flag-color) 0%, transparent);
+  }
+}
+
+/* "Slik virker det" as a timeline: the line fills as --progress goes from 0 to 1. */
+.timeline-track {
+  position: absolute;
+  top: var(--track-top, 1.375rem);
+  height: var(--track-height, calc(100% - 2.75rem));
+  left: calc(1.375rem - 1px);
+  width: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.timeline-track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--brand);
+  transform-origin: top;
+  transform: scaleY(var(--progress, 1));
+}
+.timeline-dot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--brand);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+[data-reached] > .timeline-dot {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: var(--on-brand);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--brand) 16%, transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .timeline-dot {
+    transition:
+      background-color 0.3s ease,
+      border-color 0.3s ease,
+      color 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+}
+
+/* The FAQ answer slides open where the browser can animate to auto height, and fades in elsewhere. */
+@media (prefers-reduced-motion: no-preference) {
+  .faq {
+    interpolate-size: allow-keywords;
+  }
+  .faq::details-content {
+    height: 0;
+    overflow: clip;
+    transition:
+      height 0.3s ease,
+      content-visibility 0.3s allow-discrete;
+  }
+  .faq[open]::details-content {
+    height: auto;
+  }
+  .faq[open] .faq-answer {
+    animation: demo-in 0.35s ease both;
+  }
+}
+
+/* The contact form's thank-you: the box settles and the check mark draws itself. */
+@media (prefers-reduced-motion: no-preference) {
+  .sent-box {
+    animation: demo-in 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .sent-check circle,
+  .sent-check path {
+    stroke-dasharray: 1;
+    animation: draw-1 0.6s ease-out both;
+  }
+  .sent-check path {
+    animation-delay: 0.45s;
+  }
+}
+@keyframes draw-1 {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media print {
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

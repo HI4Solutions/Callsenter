@@ -3,6 +3,14 @@
     "title": "Dokumentierter und bestätigter Telefonverkauf",
     "description": "VeriQall nimmt Verkaufsgespräche auf, transkribiert und prüft sie mit KI, lässt den Kunden den Kauf mit BankID oder Vipps bestätigen und sammelt die Dokumentation für Nachverfolgung, Beschwerden und Coaching."
   },
+  "nav": {
+    "label": "Auf dieser Seite",
+    "how": "So funktioniert es",
+    "features": "Funktionen",
+    "pricing": "Preise",
+    "faq": "Fragen",
+    "contact": "Kontakt"
+  },
   "hero": {
     "eyebrow": "Für Callcenter, die am Telefon verkaufen",
     "title": "Jedes Gespräch dokumentiert. Jeder Verkauf bestätigt.",
@@ -148,5 +156,12 @@
     "sent": "Vielen Dank für Ihre Nachricht. Wir melden uns so bald wie möglich.",
     "failed": "Die Nachricht wurde nicht gesendet. Versuchen Sie es gleich noch einmal.",
     "bubble": "Kontakt aufnehmen"
+  },
+  "cta": {
+    "afterHow": "Sehen Sie, wie es mit Ihren eigenen Produkten und Gesprächen funktioniert.",
+    "afterTrust": "Möchten Sie die Dokumentation eines echten Verkaufsgesprächs sehen?"
+  },
+  "carousel": {
+    "goTo": "Karte {n} von {total} anzeigen"
   }
 }

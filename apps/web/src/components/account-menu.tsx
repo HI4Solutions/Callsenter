@@ -50,7 +50,7 @@ export function AccountMenu() {
   if (state.status === "signed-out") {
     return (
       <div className="flex items-center gap-2">
-        <Link href="/logg-inn" className="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold">
+        <Link href="/logg-inn" className="inline-flex min-h-11 items-center rounded-lg px-3 font-semibold whitespace-nowrap">
           {t("login")}
         </Link>
         <ThemeToggle />
