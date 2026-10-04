@@ -9,7 +9,6 @@ import { prefersReducedMotion, scrolledPast, useScrollFrame } from "@/components
 export const SECTIONS = [
   { id: "slik-virker-det", key: "how" },
   { id: "funksjoner", key: "features" },
-  { id: "pris", key: "pricing" },
   { id: "sporsmal", key: "faq" },
   { id: "kontakt", key: "contact" },
 ] as const;

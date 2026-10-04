@@ -7,7 +7,6 @@
     "label": "Innhold på siden",
     "how": "Slik virker det",
     "features": "Funksjoner",
-    "pricing": "Pris",
     "faq": "Spørsmål",
     "contact": "Kontakt"
   },
@@ -108,21 +107,6 @@
     "t5": "Kundens aksept lagres med dokumentet kunden så, metode, tidspunkt og en kryptografisk sjekksum. En avgjort bekreftelse kan aldri endres.",
     "t6Title": "Sletting etter plan",
     "t6": "Opptak slettes automatisk etter 3 til 12 måneder, etter hva dere velger. Fødselsnummer lagres aldri i klartekst."
-  },
-  "languages": {
-    "title": "På deres språk",
-    "text": "Appen finnes på norsk, engelsk, svensk, dansk og tysk, og hver bruker velger selv. Notater og AI-kontroll skrives på språket callsenteret bestemmer, eller det selgeren velger per samtale. Transkripsjonen kjenner igjen over 60 språk, også når det snakkes flere språk i samme samtale."
-  },
-  "pricing": {
-    "title": "Pris",
-    "intro": "Månedspris per callsenter etter pakke og moduler, med forbruk i tillegg. Vi gir tilbud etter en gjennomgang av behovet deres.",
-    "p1Title": "Pakke",
-    "p1": "Fast månedspris for callsenteret, med modulene dere velger.",
-    "p2Title": "Forbruk",
-    "p2": "Transkribering per time lyd og AI-kontroll per samtale, fakturert etterskuddsvis hver måned.",
-    "p3Title": "Salgsverifisering",
-    "p3": "Tilleggsmodul. Hver aksept med BankID eller Vipps faktureres per bekreftelse.",
-    "cta": "Be om tilbud"
   },
   "faq": {
     "title": "Spørsmål og svar",

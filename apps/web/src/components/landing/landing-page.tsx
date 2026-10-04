@@ -1,6 +1,5 @@
 "use client";
 
-import { LOCALE_CODES, LOCALES } from "@veriqall/shared";
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -8,7 +7,7 @@ import { useEffect, useRef } from "react";
 import { Carousel, CAROUSEL_ITEM } from "@/components/landing/carousel";
 import { ChatBubble } from "@/components/landing/chat-bubble";
 import { ContactForm } from "@/components/landing/contact-form";
-import { DEMO_HREF, DemoLink } from "@/components/landing/demo-link";
+import { DemoLink } from "@/components/landing/demo-link";
 import { LandingJsonLd } from "@/components/landing/landing-json-ld";
 import { MobileCta } from "@/components/landing/mobile-cta";
 import { prefersReducedMotion, useReveal, useScrollFrame } from "@/components/landing/motion";
@@ -19,7 +18,7 @@ import { LanguagePicker } from "@/components/language-picker";
 
 const secondaryButton = "inline-flex min-h-11 items-center justify-center rounded-lg border border-line bg-surface px-5 font-semibold";
 const card = "rounded-xl border border-line bg-surface p-5";
-// A soft tint of the brand colour, for the hero, the languages and the closing call to action.
+// A soft tint of the brand colour, for the hero, the calls to action and the contact form.
 const tint = "bg-[color-mix(in_srgb,var(--brand)_7%,var(--surface))]";
 
 // The public front page (docs/plan.md, section 20). A client component, so the superadmin preview
@@ -52,8 +51,6 @@ export function LandingPage() {
       <Features />
       <Roles />
       <Trust />
-      <Languages />
-      <Pricing />
       <Faq />
       <Contact />
       <ChatBubble />
@@ -312,44 +309,6 @@ function Trust() {
       </Section>
       <CtaBand text={tc("afterTrust")} />
     </div>
-  );
-}
-
-function Languages() {
-  const t = useTranslations("landing.languages");
-  return (
-    <section data-reveal className={`rounded-2xl border border-line ${tint} p-6 sm:p-10`}>
-      <h2 className="text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">{t("title")}</h2>
-      <p className="mt-3 max-w-3xl text-lg text-muted">{t("text")}</p>
-      <ul className="mt-6 flex flex-wrap gap-2">
-        {LOCALE_CODES.map((code) => (
-          <li key={code} lang={LOCALES[code].tag} className="rounded-full border border-line bg-surface px-3 py-1 text-sm font-medium">
-            {LOCALES[code].name}
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function Pricing() {
-  const t = useTranslations("landing.pricing");
-  return (
-    <Section id="pris" title={t("title")} intro={t("intro")}>
-      <ul data-reveal-group className="grid gap-4 sm:grid-cols-3">
-        {([1, 2, 3] as const).map((n) => (
-          <li key={n} data-reveal style={stagger(n - 1)} className={card}>
-            <h3 className="text-lg font-semibold">{t(`p${n}Title`)}</h3>
-            <p className="mt-2 text-muted">{t(`p${n}`)}</p>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-6">
-        <a href={DEMO_HREF} className={secondaryButton}>
-          {t("cta")}
-        </a>
-      </div>
-    </Section>
   );
 }
 
