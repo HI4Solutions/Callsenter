@@ -533,12 +533,17 @@ Forskjeller fra Notatstudio (besluttet av Nadeem 2. oktober):
 - **Notatmaler i stedet for tilleggsmaler** (Nadeem 2. oktober: «Hovedvalget skal være produktmal. Tilleggsmal kan her erstattes av notatmal.»). Rett under «Mal» slår selgeren notatmaler av og på, flere samtidig (høyst fem). Hver notatmal som er på, gir sitt eget notat etter samtalen, og «Regenerer» lager nye notater med dem som er på. Er ingen valgt, brukes callsenterets standard notatmal (eller VeriQalls standardnotat). Valget huskes i fanen og lagres på samtalen (`calls.note_templates`), og kan endres til notatene er skrevet.
 - **Ingen fraser og ikke språkvalg.** Notatet skrives på norsk bokmål.
 
-Skjermbildet:
+Skjermbildet (forenklet 15. oktober etter Nadeems beskrivelse, én kolonne ovenfra og ned i den rekkefølgen selgeren jobber):
 
-- **Øverst:** «Mal» (produktmalen) med stjerne, notatmalene rett under, opptaksknappen (mikrofon eller fanelyd), «Last opp lydfil», og kunde, salg og tittel (valgfritt, kan kobles etterpå).
-- **Midten:** Varsellamper, Transkripsjon (sanntidstekst under opptaket, den lagrede transkripsjonen etterpå, med søk) og Tilleggsinformasjon.
-- **Til høyre:** Notater, med alle notatene fra samtalen, «Regenerer» (med notatmalene som er på), «Kopier» og «Rediger» (bare selgerens egen samtale). På samtalesiden velges notatmalene i panelet.
-- **Etter opptaket** blir selgeren i studioet til notatet er klart, med «Åpne samtalen» og «Ny samtale». Samtalesiden (`/samtaler/[id]`) har de samme panelene, i tillegg til avspilling og behandling av flagg.
+1. **Salgsstudio** øverst, med påminnelsen om at kunden skal vite at samtalen tas opp.
+2. **To store knapper:** «Start opptak» (mikrofonen) og «Del lyd fra fane» (lyden fra en annen fane i samme Chrome-vindu, for eksempel nettbasert telefoni eller Teams, sammen med mikrofonen). Chrome åpner delingen rett på listen over faner og viser ikke VeriQall-fanen selv. Under knappene står valg av mikrofon og en kort forklaring av fanedeling, med stegene bak «Slik deler du lyd fra en fane». Under opptaket blir knappene til «Stopp og send», «Pause»/«Fortsett» og «Forkast», med tid og lydnivå.
+3. **Produkt:** «Hvilket produkt selger du?» (med stjerne for eget standardprodukt). Når produktet er valgt, er produktmalen aktiv, og punktene selgeren må huske å si, står rett under.
+4. **Tilleggsinformasjon.**
+5. **Transkripsjon:** teksten så langt under opptaket, og den endelige transkripsjonen etterpå.
+6. **Etter «Stopp og send»** kommer resultatet rett under knappene: referansen med «Kopier», «Ny samtale» og «Åpne samtalen», deretter **Vurdering av salget** og **Notater**. Vurderingen viser totalflagget i ord («Bra! Samtalen fulgte produktmalen.», «Samtalen har avvik som bør følges opp.» eller «Noe påkrevd mangler, eller noe ble sagt feil.»), hvor mange av de påkrevde punktene som er oppfylt, AI-ens vurdering med det viktigste å gjøre bedre, og varsellampene (grønn, gul eller rød per punkt, med sitat). Mens samtalen transkriberes og sjekkes, står lampene grå med «Sjekkes …». Notatpanelet har notatene, «Regenerer», «Kopier» og «Rediger». På mobil ruller siden opp til resultatet.
+7. **Flere valg** (lukket som standard): notatmaler, språk, kunde, salg og tittel, og opplasting av et opptak gjort et annet sted.
+
+«+ Ny samtale» øverst til høyre vises når en samtale pågår, og fanene med samtalene vises først når det er to eller flere. Samtalesiden (`/samtaler/[id]`) har de samme panelene, i tillegg til avspilling og behandling av flagg.
 
 Regler:
 
