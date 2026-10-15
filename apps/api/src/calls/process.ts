@@ -5,8 +5,10 @@ import { AI_MODELS, DEFAULT_AI_MODEL, isAiModelKey, type Locale, localeFromSonio
 import type pg from "pg";
 import { localeOr, WORKER_TEXTS, writeIn } from "../i18n/worker.ts";
 import type { Ai } from "./ai.ts";
+import { plainText } from "./plain-text.ts";
 import { mainLanguage, type Segment, type Soniox, toSegments } from "./soniox.ts";
 import { audioKey, callPrefix, pieceKey, type AudioStore } from "./store.ts";
+import { withDuration } from "./webm.ts";
 
 export interface WorkerDeps {
   db: pg.Pool;
@@ -143,6 +145,11 @@ async function joinChunks(deps: WorkerDeps, call: CallRow): Promise<{ key: strin
   if (chunks.reduce((n, c) => n + c.size, 0) > MAX_RECORDING_BYTES) throw new CallFailure(FAILED.tooLarge);
   // Chunks from one MediaRecorder are pieces of one file: joined in order they play as one.
   const parts = await Promise.all(chunks.map((c) => deps.store.get(c.key)));
+  // The browser leaves the length out of a WebM recording, so players cannot show the timeline:
+  // it is written into the header, in the first chunk, from the recorded time. An uploaded file
+  // has no recorded time and is kept as it is.
+  const recordedMs = (call.audio_mime ?? "audio/webm").startsWith("audio/webm") ? call.duration_ms : null;
+  if (recordedMs) parts[0] = withDuration(parts[0]!, recordedMs);
   const bytes = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let offset = 0;
   for (const p of parts) {
@@ -575,7 +582,7 @@ async function outputLocale(db: pg.Pool, callId: string): Promise<Locale> {
 
 // The instructions for notes. The note template may be written in any language; the note is
 // written in the language asked for.
-const reportSystem = (locale: Locale) => `You write notes about recorded telephone sales calls for a call centre. Follow the call centre's note instructions. Base everything on the transcript and say so when something is unclear; never invent facts. The seller may add information that was not said in the call (additional_information): use it as context, but never present it as something said in the call, and mark it as the seller's information where you use it. Write plain text with short headings, without Markdown tables. ${writeIn(locale)} Quotes from the call stay in the language of the call.`;
+const reportSystem = (locale: Locale) => `You write notes about recorded telephone sales calls for a call centre. Follow the call centre's note instructions. Base everything on the transcript and say so when something is unclear; never invent facts. The seller may add information that was not said in the call (additional_information): use it as context, but never present it as something said in the call, and mark it as the seller's information where you use it. Write plain text only: no Markdown or other formatting, so no asterisks, # signs, underscores for emphasis, tables or code. A heading is a line of its own followed by its text; lists use "- " or "1. " at the start of the line. ${writeIn(locale)} Quotes from the call stay in the language of the call.`;
 
 // The note's prompt: the template's instructions, the product template, the transcript and the
 // seller's additional information. The AI control never sees the additional information.
@@ -639,7 +646,11 @@ async function analyse(deps: WorkerDeps, call: CallRow, enabled: Set<string>) {
       `<template>\n${template}\n</template>\n\n<transcript>\n${transcript}\n</transcript>`,
       FINDINGS_SCHEMA,
     );
-    const checkedFindings = checkFindings(result.data.findings ?? [], points, locale);
+    // The model's texts as plain text; the quotes are the call's words and stay as they are.
+    const raw = (result.data.findings ?? []).map(
+      (f) => f && { ...f, label: plainText(String(f.label ?? "")), comment: plainText(String(f.comment ?? "")) },
+    );
+    const checkedFindings = checkFindings(raw, points, locale);
     const findings = checkedFindings.map((f) => ({
       ...f,
       startMs: Number.isInteger(f.startMs) && f.startMs >= 0 ? f.startMs : null,
@@ -654,7 +665,7 @@ async function analyse(deps: WorkerDeps, call: CallRow, enabled: Set<string>) {
         call.template_version_id,
         result.model,
         worstLevel(checkedFindings),
-        result.data.summary,
+        plainText(String(result.data.summary ?? "")),
         JSON.stringify(findings),
         result.inputTokens,
         result.outputTokens,
@@ -687,7 +698,7 @@ async function analyse(deps: WorkerDeps, call: CallRow, enabled: Set<string>) {
       await deps.db.query(
         `insert into reports (organization_id, call_id, template_id, template_name, content, model, input_tokens, output_tokens, locale)
          values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [call.organization_id, call.id, t.id, t.name, result.data.trim(), result.model, result.inputTokens, result.outputTokens, locale],
+        [call.organization_id, call.id, t.id, t.name, plainText(result.data), result.model, result.inputTokens, result.outputTokens, locale],
       );
       await usage(deps.db, call, "report", result);
     }
@@ -756,7 +767,7 @@ export async function processReport(deps: WorkerDeps, reportId: string): Promise
       `update reports set content = $2, model = $3, input_tokens = $4, output_tokens = $5, locale = $6, status = 'done', error = null,
          lease_until = null
        where id = $1`,
-      [report.id, result.data.trim(), result.model, result.inputTokens, result.outputTokens, locale],
+      [report.id, plainText(result.data), result.model, result.inputTokens, result.outputTokens, locale],
     );
     await usage(deps.db, { id: report.call_id, organization_id: report.organization_id }, "report", result);
   } catch (error) {

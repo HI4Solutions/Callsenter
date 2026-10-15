@@ -77,9 +77,9 @@ const ai: Ai = {
     const pointId = /\[([a-z0-9]+)\] Opplys om angreretten/.exec(prompt)?.[1] ?? "";
     return {
       data: {
-        summary: "Selgeren brukte en forbudt formulering og nevnte ikke angreretten.",
+        summary: "Selgeren brukte en **forbudt formulering** og nevnte ikke angreretten.",
         findings: [
-          { kind: "required_point", pointId, label: "Angrerett", level: "red", quote: "", startMs: -1, comment: "Ikke nevnt." },
+          { kind: "required_point", pointId, label: "**Angrerett**", level: "red", quote: "", startMs: -1, comment: "*Ikke* nevnt." },
           { kind: "forbidden_phrase", pointId: "", label: "«gratis»", level: "red", quote: "Det er helt gratis.", startMs: 40_000, comment: "" },
         ],
       } as T,
@@ -92,7 +92,8 @@ const ai: Ai = {
     models.push(model);
     systems.push(system);
     prompts.push(prompt);
-    return { data: "Sammendrag: Kari ringte om fastpris.", model: "test-model", inputTokens: 900, outputTokens: 100 };
+    // Markdown, as the model sometimes writes despite being told not to.
+    return { data: "## **Sammendrag:** Kari ringte om fastpris.\n", model: "test-model", inputTokens: 900, outputTokens: 100 };
   },
 };
 
@@ -278,7 +279,11 @@ describe("calls: recording to report", () => {
       ["1", "Det er helt gratis."],
     ]);
     expect(detail.body.analyses[0].findings[1]).toMatchObject({ level: "red", quote: "Det er helt gratis.", startMs: 40_000 });
+    // The note and the control's texts are stored as plain text, whatever the model wrote.
+    expect(detail.body.analyses[0]).toMatchObject({ summary: "Selgeren brukte en forbudt formulering og nevnte ikke angreretten." });
+    expect(detail.body.analyses[0].findings[0]).toMatchObject({ label: "Angrerett", comment: "Ikke nevnt." });
     expect(detail.body.reports[0]).toMatchObject({ templateName: "Standardnotat", content: "Sammendrag: Kari ringte om fastpris." });
+    expect(systems.at(-1)).toContain("Write plain text only");
 
     const audio = await call(seller, "GET", `/org/calls/${id}/audio`);
     expect(audio.body.url).toBe(`https://s3.test/get/${s.org}/${id}/audio`);
