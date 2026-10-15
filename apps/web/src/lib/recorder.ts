@@ -227,6 +227,8 @@ export class CallRecorder {
     this.#callbacks = cb;
     this.#context = new AudioContext();
     this.#destination = this.#context.createMediaStreamDestination();
+    // A phone call is one voice channel: recorded in mono, the bitrate all goes to the sound.
+    this.#destination.channelCount = 1;
     this.#analyser = this.#context.createAnalyser();
     this.#analyser.fftSize = 1024;
     this.#stream = this.#destination.stream;
