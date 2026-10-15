@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import { beforeEach, describe, expect, it } from "vitest";
+import { seedTestData, TEST_NOTE_TEMPLATE, TEST_PRODUCT } from "../../../packages/db/src/test-data.ts";
 import { api, auth, createOrg, createUser, makePlatformAdmin, member, owner, worker } from "../../../packages/db/test/helpers.ts";
 import { createHandler } from "../src/api.ts";
 import { sha256 } from "../src/auth/crypto.ts";
@@ -250,6 +251,31 @@ describe("calls: languages", () => {
 });
 
 describe("calls: recording to report", () => {
+  it("works with staging's test data: the AI control checks the test product, and the note follows the test template", async () => {
+    const s = await setup();
+    const client = await owner.connect();
+    try {
+      await seedTestData(client, [s.org]);
+    } finally {
+      client.release();
+    }
+    const seller = await sessionFor(await member(s.org, "seller"), s.org, "vipps");
+    const product = (await call(seller, "GET", "/org/products")).body.find((p: { name: string }) => p.name === TEST_PRODUCT.name);
+    expect(product).toMatchObject({ publishedVersion: 1, priceMonthly: "49.00", bindingMonths: 12 });
+
+    const { id } = await record(seller, { productId: product.id });
+    await processCall(workerDeps, id);
+    // The AI control gets the test product's points and forbidden phrases; the note, the test
+    // note template, which is the call centre's default.
+    expect(prompts.at(-2)).toContain(`] ${TEST_PRODUCT.requiredPoints[1]}`);
+    expect(prompts.at(-2)).toContain("- ingen binding");
+    expect(prompts.at(-1)).toContain(TEST_NOTE_TEMPLATE.instructions);
+    const detail = (await call(seller, "GET", `/org/calls/${id}`)).body;
+    expect(detail).toMatchObject({ status: "analyzed", templateVersion: 1, productName: TEST_PRODUCT.name });
+    expect(detail.analyses[0].findings.filter((f: { kind: string }) => f.kind === "required_point")).toHaveLength(6);
+    expect(detail.reports.map((r: { templateName: string }) => r.templateName)).toEqual([TEST_NOTE_TEMPLATE.name]);
+  });
+
   it("records in realtime mode, transcribes, checks against the template and writes a report", async () => {
     const s = await setup();
     const sellerId = await member(s.org, "seller");

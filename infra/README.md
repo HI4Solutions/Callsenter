@@ -106,6 +106,17 @@ Superadmins opprettes bare via migrator-Lambdaen, aldri fra API-et. I AWS-konsol
 
 Svaret inneholder en invitasjonslenke som varer i 72 timer og bare kan brukes én gang. Lenken skrives ikke til loggen. Åpne den og logg inn med BankID (eller Vipps med samme mobilnummer). Superadmin-rettighetene gjelder bare i økter startet med BankID. Kjøres hendelsen på nytt for samme nummer, lages en ny lenke til samme bruker.
 
+## Testdata i staging
+
+Hver deploy til staging gir hvert callsenter i staging testdata, så Salgsstudio, AI-kontrollen og notatene kan prøves med en gang (`packages/db/src/test-data.ts`):
+
+- **Produktet «Testkraft Fastpris 12 (fiktiv)»** med en publisert produktmal. Det inneholder strøm til fastpris fra det oppdiktede selskapet Testkraft AS, seks obligatoriske punkter, godkjente og forbudte formuleringer og fiktive vilkår.
+- **Notatmalen «Salgsnotat (test)»**. Den blir standard bare der callsenteret ikke har en standard notatmal fra før.
+
+Hvert callsenter får dataene én gang. Har callsenteret allerede et produkt eller en notatmal med samme navn, også arkivert, legges ingenting inn på nytt, så det som er arkivert, forblir arkivert. Får testproduktet eller notatmalen et nytt navn, legges en ny kopi inn ved neste deploy.
+
+Migratoren nekter å legge inn testdata utenfor staging (miljøvariabelen `ENVIRONMENT`), og `deploy.sh` kjører det bare for staging. Det kan også kjøres for hånd: Lambda → `veriqall-staging-migrator` → **Test**, med hendelsen `{ "action": "seed-test-data" }`.
+
 ## Hvis en stack feiler første gang
 
 Feiler en stack allerede ved opprettelsen, havner den i `ROLLBACK_COMPLETE` og kan bare slettes. GitHub-rollen har ikke lov til å slette stacker, så en admin sletter den (den inneholder ingen ressurser da), og neste deploy oppretter den på nytt.

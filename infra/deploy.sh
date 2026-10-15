@@ -130,6 +130,23 @@ if [[ -n "${INBOUND_EMAIL_DOMAIN:-}" ]]; then
   output "veriqall-$env-app" InboundDnsRecords | tr '|' '\n'
 fi
 
+# Staging has test data in every call centre: a fictitious product with a published template,
+# and a note template (packages/db/src/test-data.ts). Added once per call centre; what was
+# archived or renamed is left as it is. A failure here does not stop the deploy.
+if [[ "$env" == staging ]]; then
+  echo "::group::test data"
+  seeded=$(mktemp)
+  meta=$(aws lambda invoke --region "$region" --function-name "$migrator" \
+    --cli-read-timeout 330 --cli-binary-format raw-in-base64-out \
+    --payload '{"action":"seed-test-data"}' "$seeded")
+  cat "$seeded"
+  echo
+  if grep -q FunctionError <<<"$meta"; then
+    echo "::warning::The test data could not be added; see the migrator's log."
+  fi
+  echo "::endgroup::"
+fi
+
 echo "::group::smoke test"
 endpoint=$(output "veriqall-$env-app" DefaultEndpoint)
 for attempt in 1 2 3 4 5 6; do
