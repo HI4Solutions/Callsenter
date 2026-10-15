@@ -110,9 +110,15 @@ async function openTab(): Promise<MediaStream> {
     // Chrome only shares audio together with video; the video track is stopped at once, so no
     // picture of the screen is ever recorded.
     display = await navigator.mediaDevices.getDisplayMedia({
-      video: true,
-      audio: true,
-    });
+      // Chrome opens the picker on its tab list ("Chrome-fane"), leaves out the VeriQall tab
+      // itself, and ticks "Del fanelyd". Browsers that do not know an option ignore it.
+      video: { displaySurface: "browser" },
+      audio: { suppressLocalAudioPlayback: false },
+      preferCurrentTab: false,
+      selfBrowserSurface: "exclude",
+      surfaceSwitching: "include",
+      systemAudio: "include",
+    } as DisplayMediaStreamOptions);
   } catch {
     throw new RecorderError("tabCancelled");
   }

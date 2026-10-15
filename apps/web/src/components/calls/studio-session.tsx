@@ -26,10 +26,13 @@ import { NotesPanel } from "@/components/calls/notes-panel";
 import { TranscriptPanel } from "@/components/calls/transcript-panel";
 import { useCall } from "@/components/calls/use-call";
 import { WarningLamps } from "@/components/calls/warning-lamps";
+import { Flag } from "@/components/flag";
 import { CustomerPicker } from "@/components/work/customer-picker";
 import { useWorkMe } from "@/components/work/work-shell";
 import {
+  type CallDetail,
   type CreatedCall,
+  FLAG_LEVEL,
   formatDuration,
   type RequiredPoint,
   recordingMime,
@@ -167,11 +170,15 @@ function writeTabNotes(ids: string[]) {
   }
 }
 
-// One call in Salgsstudio (docs/plan.md, section 18): record the call, see the transcript and the
-// warning lamps for the product template, add information that was not said, and get the note.
-// The transcript is made from the recording and cannot be changed; the seller may adjust the
-// note. The call can be paused (and goes on later where it stopped) or discarded. Each tab in the
-// studio is one session; sessions stay mounted while another tab is shown.
+// One call in Salgsstudio (docs/plan.md, section 18), laid out top to bottom the way the seller
+// works (Nadeem, 15 October): the two buttons (record from the microphone, or share the sound of
+// another tab), the product whose template the call is checked against, additional information,
+// and the transcript so far. After "Stopp og send" the assessment with the lamps and the note
+// appear under the buttons. Everything else (note templates, languages, customer, sale, title,
+// uploading a file) is under "Flere valg". The transcript is made from the recording and cannot be
+// changed; the seller may adjust the note. The call can be paused (and goes on later where it
+// stopped) or discarded. Each tab in the studio is one session; sessions stay mounted while
+// another tab is shown.
 export function StudioSession({
   tabId,
   onStatus,
@@ -228,6 +235,8 @@ export function StudioSession({
   });
   const [elapsed, setElapsed] = useState(0);
   const recorder = useRef<CallRecorder | null>(null);
+  // The top of the session: after "Stopp og send" the page scrolls here, where the result shows.
+  const top = useRef<HTMLElement | null>(null);
   const [tabSupported] = useState(() => tabAudioSupported());
   const [tabShared, setTabShared] = useState(() => tabShareActive());
   const { call, load, waiting } = useCall(doneId);
@@ -497,8 +506,10 @@ export function StudioSession({
     }
   }
 
-  async function start() {
+  // "Start opptak" (microphone) or "Del lyd fra fane" (the microphone and another tab's sound).
+  async function start(source: Capture) {
     reset();
+    setCapture(source);
     setState({ step: "starting" });
     await claimMicrophone(tabId);
     const mime = recordingMime(
@@ -509,7 +520,7 @@ export function StudioSession({
     let rec: CallRecorder;
     try {
       rec = await CallRecorder.open(
-        capture,
+        source,
         mime,
         {
         onLiveText: (final, partial) => setLiveText({ final, partial }),
@@ -552,7 +563,7 @@ export function StudioSession({
     try {
       const created = await orgFetch<CreatedCall>("/calls", {
         method: "POST",
-        body: { source: capture, mime, ...links() },
+        body: { source, mime, ...links() },
       });
       recorder.current = rec;
       rec.start(created);
@@ -586,6 +597,13 @@ export function StudioSession({
     setLevel(0);
     setSilent(false);
     setState({ step: "idle" });
+    // On a phone the seller pressed Stopp at the bottom of the screen: bring the result into view.
+    requestAnimationFrame(() => {
+      const el = top.current;
+      if (!el || el.getBoundingClientRect().top >= 0) return;
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    });
   }
 
   // Pauses the recording and lets go of the microphone; "Fortsett" goes on where it stopped.
@@ -676,13 +694,11 @@ export function StudioSession({
   }
 
   const lampPoints = call?.templateVersionId ? call.requiredPoints : points;
-  const lampState = recording
-    ? "recording"
-    : !call
-      ? "before"
-      : waiting
-        ? "checking"
-        : "off";
+  const analysis = call?.analyses[0];
+  const done = Boolean(doneId) && !busy;
+  const controlOn = me.modules?.includes("ai_control") ?? false;
+  // While the final transcript is being made, the live text stays on screen.
+  const showLive = recording || Boolean(liveText.final && !call?.segments.length);
   const statusText = !call
     ? undefined
     : call.status === "failed"
@@ -692,205 +708,159 @@ export function StudioSession({
             status: td(`callStatus.${call.status}`),
           })
         : undefined;
+  const chosenProduct = sale ? sale.productId : productId;
 
   return (
     <div className="flex flex-col gap-6">
-
-      <div className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-6">
-        <div className="flex min-w-0 items-end gap-2">
-          <div className="min-w-0 flex-1 sm:max-w-md">
-            <Field label={t("studio.template")}>
-              <select
-                className={`${inputClass} w-full`}
-                value={sale ? sale.productId : productId}
-                disabled={Boolean(sale) || analysed}
-                onChange={(e) => void chooseProduct(e.target.value)}
-              >
-                <option value="">
-                  {products ? t("studio.noTemplate") : tc("loading")}
-                </option>
-                {products?.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                    {p.id === starred ? " ★" : ""}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-          {productId && !sale && (
-            <button
-              type="button"
-              className={`${secondaryButton} px-3`}
-              aria-pressed={starred === productId}
-              onClick={toggleStar}
-              title={
-                starred === productId ? t("studio.unstar") : t("studio.star")
-              }
-            >
-              <span aria-hidden="true">
-                {starred === productId ? "★" : "☆"}
-              </span>
-              <span className="sr-only">
-                {starred === productId ? t("studio.unstar") : t("studio.star")}
-              </span>
-            </button>
-          )}
-        </div>
-        {me.modules?.includes("reports") && (
-          <NoteTemplatePicker
-            templates={noteTemplates}
-            chosen={chosenNotes}
-            onChange={(ids) => void chooseNotes(ids)}
-          />
-        )}
-        {!recording && (
-          <fieldset className="flex min-w-0 flex-wrap gap-x-6 gap-y-2">
-            <legend className="mb-1 text-sm font-semibold">
-              {t("studio.where")}
-            </legend>
-            <label className="flex min-h-11 items-center gap-2">
-              <input
-                type="radio"
-                name={`capture-${tabId}`}
-                checked={capture === "microphone"}
-                onChange={() => setCapture("microphone")}
-              />
-              {t("studio.microphone")}
-            </label>
-            <label className="flex min-h-11 items-center gap-2">
-              <input
-                type="radio"
-                name={`capture-${tabId}`}
-                disabled={!tabSupported}
-                checked={capture === "tab"}
-                onChange={() => setCapture("tab")}
-              />
-              {t("studio.tab")}
-            </label>
-          </fieldset>
-        )}
-        <MicrophonePicker
-          microphones={microphones}
-          value={microphoneId}
-          disabled={state.step !== "idle" && state.step !== "recording"}
-          onChange={(id) => void chooseMicrophone(id)}
-        />
-        {!recording && capture === "tab" && (
-          <ol className="list-decimal space-y-1 rounded-lg bg-bg p-3 pl-8 text-sm">
-            {tabShared ? (
-              <li>{t("studio.tabShared")}</li>
-            ) : (
-              <>
-                <li>{t("studio.tabStep1")}</li>
-                <li>{t("studio.tabStep2")}</li>
-                <li>{t("studio.tabStep3")}</li>
-                <li>{t("studio.tabStep4")}</li>
-              </>
+      {/* 1. The buttons: record from the microphone, or share the sound of another tab. */}
+      <section
+        ref={top}
+        aria-label={t("studio.controls")}
+        className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-6"
+      >
+        {done ? (
+          <div className="flex flex-col gap-4">
+            {!error && <p className="text-lg font-semibold">{t("studio.saved")}</p>}
+            {call && (
+              <div className="flex flex-col gap-1">
+                <CallReference reference={call.reference} />
+                <p className="text-sm text-muted">{t("studio.referenceHint")}</p>
+              </div>
             )}
-          </ol>
-        )}
-        <div
-          className={`flex flex-wrap items-center gap-3 ${
-            // While recording on a phone, the buttons stay in reach at the bottom of the screen.
-            recording
-              ? "sticky bottom-0 z-10 -mx-4 border-t border-line bg-surface px-4 py-3 sm:static sm:mx-0 sm:border-0 sm:p-0"
-              : ""
-          }`}
-        >
-          {recording ? (
-            <>
+            <div className="flex flex-wrap gap-3">
               <button
                 type="button"
                 className={primaryButton}
-                disabled={state.step !== "recording" && state.step !== "paused"}
-                onClick={stop}
+                onClick={() => reset(true)}
               >
-                {state.step === "stopping"
-                  ? t("studio.stopping")
-                  : t("studio.stop")}
+                {t("studio.newCall")}
               </button>
-              {paused ? (
-                <button
-                  type="button"
-                  className={secondaryButton}
-                  disabled={state.step !== "paused"}
-                  onClick={() => void resume()}
-                >
-                  {state.step === "resuming"
-                    ? t("studio.resuming")
-                    : t("studio.resume")}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className={secondaryButton}
-                  disabled={state.step !== "recording"}
-                  onClick={() => void pause()}
-                >
-                  {state.step === "pausing"
-                    ? t("studio.pausing")
-                    : t("studio.pause")}
-                </button>
-              )}
+              <Link href={`/samtaler/${doneId}`} className={secondaryButton}>
+                {t("studio.openCall")}
+              </Link>
+            </div>
+          </div>
+        ) : recording ? (
+          <div
+            className={
+              // On a phone the buttons stay in reach at the bottom of the screen.
+              "sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center gap-3 border-t border-line bg-surface px-4 py-3 sm:static sm:mx-0 sm:border-0 sm:p-0"
+            }
+          >
+            <button
+              type="button"
+              className={`${primaryButton} gap-2`}
+              disabled={state.step !== "recording" && state.step !== "paused"}
+              onClick={stop}
+            >
+              <span aria-hidden className="size-3 rounded-sm bg-current" />
+              {state.step === "stopping" ? t("studio.stopping") : t("studio.stop")}
+            </button>
+            {paused ? (
               <button
                 type="button"
                 className={secondaryButton}
-                disabled={state.step !== "recording" && state.step !== "paused"}
-                aria-expanded={confirmDiscard}
-                onClick={() => setConfirmDiscard((v) => !v)}
+                disabled={state.step !== "paused"}
+                onClick={() => void resume()}
               >
-                {state.step === "discarding"
-                  ? t("studio.discarding")
-                  : t("studio.discard")}
+                {state.step === "resuming" ? t("studio.resuming") : t("studio.resume")}
               </button>
-              <span className="flex items-center gap-2">
-                <span className="text-2xl font-bold" aria-live="off">
-                  {formatDuration(elapsed)}
-                </span>
-                {paused ? (
-                  <span className="rounded-full border border-line px-2 py-0.5 text-sm font-semibold">
-                    {t("studio.pausedBadge")}
-                  </span>
-                ) : (
-                  <LevelMeter level={level} label={t("studio.level")} />
-                )}
-              </span>
-            </>
-          ) : (
-            <>
+            ) : (
               <button
                 type="button"
-                className={primaryButton}
-                disabled={busy || microphones?.length === 0}
-                onClick={start}
+                className={secondaryButton}
+                disabled={state.step !== "recording"}
+                onClick={() => void pause()}
               >
-                {state.step === "starting"
+                {state.step === "pausing" ? t("studio.pausing") : t("studio.pause")}
+              </button>
+            )}
+            <button
+              type="button"
+              className={secondaryButton}
+              disabled={state.step !== "recording" && state.step !== "paused"}
+              aria-expanded={confirmDiscard}
+              onClick={() => setConfirmDiscard((v) => !v)}
+            >
+              {state.step === "discarding" ? t("studio.discarding") : t("studio.discard")}
+            </button>
+            <span className="flex items-center gap-2">
+              <span className="text-2xl font-bold" aria-live="off">
+                {formatDuration(elapsed)}
+              </span>
+              {paused ? (
+                <span className="rounded-full border border-line px-2 py-0.5 text-sm font-semibold">
+                  {t("studio.pausedBadge")}
+                </span>
+              ) : (
+                <LevelMeter level={level} label={t("studio.level")} />
+              )}
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                className={`${primaryButton} min-h-14 gap-3 text-lg`}
+                disabled={busy || microphones?.length === 0}
+                onClick={() => void start("microphone")}
+              >
+                <MicIcon />
+                {state.step === "starting" && capture === "microphone"
                   ? t("studio.starting")
                   : t("studio.start")}
               </button>
-              <label className={`${secondaryButton} cursor-pointer`}>
-                {state.step === "uploading"
-                  ? t("studio.uploading")
-                  : t("studio.upload")}
-                <input
-                  type="file"
-                  accept="audio/*"
-                  className="sr-only"
-                  disabled={busy}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    e.target.value = "";
-                    if (file) void upload(file);
-                  }}
-                />
-              </label>
-            </>
-          )}
-        </div>
+              <button
+                type="button"
+                className={`${secondaryButton} min-h-14 gap-3 border-2 border-brand text-lg text-brand`}
+                disabled={busy || !tabSupported || microphones?.length === 0}
+                onClick={() => void start("tab")}
+              >
+                <TabIcon />
+                {state.step === "starting" && capture === "tab"
+                  ? t("studio.starting")
+                  : t("studio.startTab")}
+              </button>
+            </div>
+            <p className="text-sm text-muted">
+              {tabSupported
+                ? tabShared
+                  ? t("studio.tabShared")
+                  : t("studio.startTabHint")
+                : t("studio.tabUnsupported")}
+            </p>
+            {tabSupported && !tabShared && (
+              <details className="text-sm">
+                <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold text-brand">
+                  {t("studio.tabHowTo")}
+                </summary>
+                <ol className="mt-1 list-decimal space-y-1 rounded-lg bg-bg p-3 pl-8">
+                  <li>{t("studio.tabStep1")}</li>
+                  <li>{t("studio.tabStep2")}</li>
+                  <li>{t("studio.tabStep3")}</li>
+                  <li>{t("studio.tabStep4")}</li>
+                </ol>
+              </details>
+            )}
+          </div>
+        )}
+
+        {!done && (
+          <MicrophonePicker
+            microphones={microphones}
+            value={microphoneId}
+            disabled={state.step !== "idle" && state.step !== "recording"}
+            onChange={(id) => void chooseMicrophone(id)}
+          />
+        )}
 
         {confirmDiscard && (state.step === "recording" || state.step === "paused") && (
-          <div role="alertdialog" aria-labelledby={`discard-${tabId}`} className="flex flex-col gap-3 rounded-lg border border-line bg-bg p-3">
+          <div
+            role="alertdialog"
+            aria-labelledby={`discard-${tabId}`}
+            className="flex flex-col gap-3 rounded-lg border border-line bg-bg p-3"
+          >
             <p id={`discard-${tabId}`}>{t("studio.discardConfirm")}</p>
             <div className="flex flex-wrap gap-2">
               <button type="button" className={primaryButton} onClick={() => void discard()}>
@@ -908,7 +878,6 @@ export function StudioSession({
           </p>
         )}
         {paused && <p className="text-sm text-muted">{t("studio.pausedHint")}</p>}
-
         {recording && !paused && (
           <p className="text-sm text-muted" role="status">
             {capture === "tab"
@@ -925,19 +894,160 @@ export function StudioSession({
             {uploads.failing && ` ${t("studio.uploadsFailing")}`}
           </p>
         )}
-        {notice && (
-          <p className="rounded-lg border border-line p-3">{notice}</p>
-        )}
+        {notice && <p className="rounded-lg border border-line p-3">{notice}</p>}
         <ErrorMessage message={error} />
+      </section>
 
-        {!activeId && (
-          <details className="rounded-lg border border-line p-3">
-            <summary className="min-h-11 cursor-pointer content-center font-semibold">
-              {customer
-                ? t("studio.detailsCustomer", { customer: customer.name })
-                : t("studio.details")}
-            </summary>
-            <div className="mt-3 flex flex-col gap-4">
+      {/* After "Stopp og send": the assessment with the lamps, and the note. */}
+      {done && call && (
+        <>
+          <Card title={t("studio.resultTitle")}>
+            <Assessment
+              analysis={analysis}
+              points={lampPoints}
+              status={call.status}
+              error={call.status === "failed" ? (call.error ?? t("studio.processingFailed")) : null}
+              hasTemplate={Boolean(call.templateVersionId)}
+              controlOn={controlOn}
+              waiting={waiting}
+            />
+          </Card>
+          <NotesPanel call={call} onChanged={load} chosen={chosenNotes} />
+        </>
+      )}
+
+      {/* 2. The product: its template is what the call is checked against. */}
+      <Card title={t("studio.productTitle")}>
+        <div className="flex flex-col gap-4">
+          <div className="flex min-w-0 items-end gap-2">
+            <div className="min-w-0 flex-1 sm:max-w-md">
+              <Field label={t("studio.productLabel")}>
+                <select
+                  className={`${inputClass} w-full`}
+                  value={chosenProduct}
+                  disabled={Boolean(sale) || analysed}
+                  onChange={(e) => void chooseProduct(e.target.value)}
+                >
+                  <option value="">
+                    {products ? t("studio.noProduct") : tc("loading")}
+                  </option>
+                  {products?.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                      {p.id === starred ? " ★" : ""}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            {productId && !sale && (
+              <button
+                type="button"
+                className={`${secondaryButton} px-3`}
+                aria-pressed={starred === productId}
+                onClick={toggleStar}
+                title={starred === productId ? t("studio.unstar") : t("studio.star")}
+              >
+                <span aria-hidden="true">{starred === productId ? "★" : "☆"}</span>
+                <span className="sr-only">
+                  {starred === productId ? t("studio.unstar") : t("studio.star")}
+                </span>
+              </button>
+            )}
+          </div>
+          {done ? null : !chosenProduct && !call?.templateVersionId ? (
+            <p className="text-sm text-muted">{t("studio.productHint")}</p>
+          ) : lampPoints.length > 0 ? (
+            <div>
+              <p className="text-sm font-semibold">{t("studio.remember")}</p>
+              <ul className="mt-2 flex flex-col gap-1.5">
+                {lampPoints.map((p) => (
+                  <li key={p.id} className="flex items-start gap-2">
+                    <span
+                      aria-hidden
+                      className="mt-1.5 size-2.5 flex-none rounded-full border-2 border-muted"
+                    />
+                    <span className="min-w-0 [overflow-wrap:anywhere]">{p.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      </Card>
+
+      {/* 3. What the seller knows that was not said in the call. */}
+      <AdditionalInfo
+        key={activeId ?? "new"}
+        value={call?.note ?? extraInfo}
+        canEdit={!call || call.isOwn}
+        onChange={setExtraInfo}
+        onSave={
+          activeId
+            ? async (text) => {
+                await orgFetch(`/calls/${activeId}`, {
+                  method: "PATCH",
+                  body: { note: text.trim() || null },
+                });
+              }
+            : null
+        }
+        hint={
+          call?.reports.some((r) => r.status === "done")
+            ? t("studio.infoHintRegenerate")
+            : undefined
+        }
+      />
+
+      {/* 4. The transcript so far, and the final one when the call is done. */}
+      <TranscriptPanel
+        segments={call?.segments ?? []}
+        live={
+          showLive
+            ? { ...liveText, on: state.step === "recording" && state.live }
+            : null
+        }
+        status={statusText ?? (call ? undefined : t("studio.transcriptEmpty"))}
+      />
+
+      {/* Everything else, out of the way: note templates, languages, customer, sale and title,
+          and uploading a recording made elsewhere. */}
+      <details className="rounded-xl border border-line bg-surface p-4 sm:p-6">
+        <summary className="min-h-11 cursor-pointer content-center text-lg font-bold">
+          {t("studio.moreOptions")}
+        </summary>
+        <div className="mt-4 flex flex-col gap-6">
+          <p className="text-sm text-muted">{t("studio.moreOptionsIntro")}</p>
+          {me.modules?.includes("reports") && (
+            <NoteTemplatePicker
+              templates={noteTemplates}
+              chosen={chosenNotes}
+              onChange={(ids) => void chooseNotes(ids)}
+            />
+          )}
+          {(!activeId || (call && !call.reports.length)) && (
+            <div className="flex flex-col gap-2">
+              <h3 className="font-semibold">{tl("title")}</h3>
+              <CallLanguages
+                value={languages}
+                defaults={{
+                  outputLocale: me.contentLocale ?? "nb",
+                  outputLocaleLocked: me.contentLocaleLocked ?? false,
+                  spokenLanguages: me.transcriptionLanguages?.length
+                    ? me.transcriptionLanguages
+                    : ["no"],
+                }}
+                onChange={chooseLanguages}
+              />
+            </div>
+          )}
+          {!activeId && (
+            <div className="flex flex-col gap-4">
+              <h3 className="font-semibold">
+                {customer
+                  ? t("studio.detailsCustomer", { customer: customer.name })
+                  : t("studio.details")}
+              </h3>
               <CustomerPicker
                 value={customer}
                 onChange={(c) => {
@@ -973,103 +1083,114 @@ export function StudioSession({
                 />
               </Field>
             </div>
-          </details>
-        )}
-        {(!activeId || (call && !call.reports.length)) && (
-          <details className="rounded-lg border border-line p-3">
-            <summary className="min-h-11 cursor-pointer content-center font-semibold">
-              {tl("title")}
-            </summary>
-            <div className="mt-3">
-              <CallLanguages
-                value={languages}
-                defaults={{
-                  outputLocale: me.contentLocale ?? "nb",
-                  outputLocaleLocked: me.contentLocaleLocked ?? false,
-                  spokenLanguages: me.transcriptionLanguages?.length
-                    ? me.transcriptionLanguages
-                    : ["no"],
-                }}
-                onChange={chooseLanguages}
-              />
+          )}
+          {!recording && (
+            <div className="flex flex-col gap-2">
+              <h3 className="font-semibold">{t("studio.uploadTitle")}</h3>
+              <p className="text-sm text-muted">{t("studio.uploadHint")}</p>
+              <div>
+                <label className={`${secondaryButton} cursor-pointer`}>
+                  {state.step === "uploading" ? t("studio.uploading") : t("studio.upload")}
+                  <input
+                    type="file"
+                    accept="audio/*"
+                    className="sr-only"
+                    disabled={busy}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = "";
+                      if (file) void upload(file);
+                    }}
+                  />
+                </label>
+              </div>
             </div>
-          </details>
-        )}
-        {doneId && !busy && call && (
-          <div className="flex flex-col gap-1">
-            <CallReference reference={call.reference} />
-            <p className="text-sm text-muted">{t("studio.referenceHint")}</p>
-          </div>
-        )}
-        {doneId && !busy && (
-          <div className="flex flex-wrap gap-2">
-            <Link href={`/samtaler/${doneId}`} className={secondaryButton}>
-              {t("studio.openCall")}
-            </Link>
-            <button
-              type="button"
-              className={secondaryButton}
-              onClick={() => reset(true)}
-            >
-              {t("studio.newCall")}
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col gap-6">
-          <Card title={t("studio.lamps")}>
-            <WarningLamps
-              points={lampPoints}
-              analysis={call?.analyses[0]}
-              state={lampState}
-            />
-          </Card>
-          <TranscriptPanel
-            segments={call?.segments ?? []}
-            live={
-              recording || (!call && liveText.final)
-                ? { ...liveText, on: state.step === "recording" && state.live }
-                : null
-            }
-            status={
-              statusText ?? (call ? undefined : t("studio.transcriptEmpty"))
-            }
-          />
-          <AdditionalInfo
-            key={activeId ?? "new"}
-            value={call?.note ?? extraInfo}
-            canEdit={!call || call.isOwn}
-            onChange={setExtraInfo}
-            onSave={
-              activeId
-                ? async (text) => {
-                    await orgFetch(`/calls/${activeId}`, {
-                      method: "PATCH",
-                      body: { note: text.trim() || null },
-                    });
-                  }
-                : null
-            }
-            hint={
-              call?.reports.some((r) => r.status === "done")
-                ? t("studio.infoHintRegenerate")
-                : undefined
-            }
-          />
-        </div>
-        <div className="flex min-w-0 flex-col gap-6">
-          {call ? (
-            <NotesPanel call={call} onChanged={load} chosen={chosenNotes} />
-          ) : (
-            <Card title={t("studio.notes")}>
-              <p className="text-muted">{t("studio.notesBefore")}</p>
-            </Card>
           )}
         </div>
-      </div>
+      </details>
     </div>
+  );
+}
+
+// The assessment after the call: the overall flag in words, how many of the template's mandatory
+// points were met, the AI's assessment, and the lamps. While the call is transcribed and checked,
+// the lamps are grey and the step being worked on is shown.
+function Assessment({
+  analysis,
+  points,
+  status,
+  error,
+  hasTemplate,
+  controlOn,
+  waiting,
+}: {
+  analysis: CallDetail["analyses"][number] | undefined;
+  points: RequiredPoint[];
+  status: CallDetail["status"];
+  error: string | null;
+  hasTemplate: boolean;
+  controlOn: boolean;
+  waiting: boolean;
+}) {
+  const t = useTranslations("calls.studio");
+  if (error) return <p role="alert" className="font-medium">{error}</p>;
+  if (!hasTemplate) return <p className="text-muted">{t("noTemplateResult")}</p>;
+  if (!controlOn && !analysis) return <p className="text-muted">{t("controlOff")}</p>;
+  if (!analysis) {
+    // Done, but nothing was checked (for example an empty transcript).
+    if (!waiting && (status === "transcribed" || status === "analyzed")) {
+      return (
+        <div className="flex flex-col gap-4">
+          <p className="text-muted">{t("notChecked")}</p>
+          <WarningLamps points={points} analysis={undefined} state="off" />
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-col gap-4">
+        <p role="status" className="flex items-center gap-3 font-semibold">
+          <span aria-hidden className="size-2.5 animate-pulse rounded-full bg-brand motion-reduce:animate-none" />
+          {status === "recording" || status === "processing" ? t("progressTranscribing") : t("progressChecking")}
+        </p>
+        <WarningLamps points={points} analysis={undefined} state="checking" />
+      </div>
+    );
+  }
+  const required = analysis.findings.filter((f) => f.kind === "required_point");
+  const ok = required.filter((f) => f.level === "green").length;
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-2 rounded-lg bg-bg p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <Flag level={FLAG_LEVEL[analysis.flag]} />
+          <p className="text-lg font-bold">{t(`verdict.${analysis.flag}`)}</p>
+        </div>
+        {required.length > 0 && (
+          <p className="font-medium">{t("pointsOk", { ok, total: required.length })}</p>
+        )}
+        {analysis.summary && <p className="[overflow-wrap:anywhere]">{analysis.summary}</p>}
+      </div>
+      <WarningLamps points={points} analysis={analysis} state="off" />
+    </div>
+  );
+}
+
+function MicIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" className="size-6 flex-none" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+    </svg>
+  );
+}
+
+function TabIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" className="size-6 flex-none" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 9h18M8 5v4" />
+      <path d="M10 14.5h1.5l2-1.5v4l-2-1.5H10z" />
+    </svg>
   );
 }
 
@@ -1098,23 +1219,27 @@ function MicrophonePicker({
   const named = microphones.some((m) => m.label);
   const current = value && microphones.some((m) => m.id === value) ? value : "";
   return (
-    <Field label={t("microphoneLabel")} hint={named ? undefined : t("microphoneNamesHint")}>
-      <select
-        className={`${inputClass} w-full sm:max-w-md`}
-        value={current}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">{t("microphoneDefault")}</option>
-        {microphones
-          .filter((m) => m.id && m.id !== "default" && m.id !== "communications")
-          .map((m, i) => (
-            <option key={m.id} value={m.id}>
-              {m.label || t("microphoneNumber", { n: i + 1 })}
-            </option>
-          ))}
-      </select>
-    </Field>
+    <div className="flex flex-col gap-1">
+      <label className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-semibold">{t("microphoneLabel")}</span>
+        <select
+          className={`${inputClass} min-w-0 flex-1 sm:max-w-sm`}
+          value={current}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value="">{t("microphoneDefault")}</option>
+          {microphones
+            .filter((m) => m.id && m.id !== "default" && m.id !== "communications")
+            .map((m, i) => (
+              <option key={m.id} value={m.id}>
+                {m.label || t("microphoneNumber", { n: i + 1 })}
+              </option>
+            ))}
+        </select>
+      </label>
+      {!named && <p className="text-sm text-muted">{t("microphoneNamesHint")}</p>}
+    </div>
   );
 }
 
