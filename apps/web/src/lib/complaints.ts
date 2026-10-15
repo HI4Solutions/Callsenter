@@ -1,7 +1,7 @@
 // Sale documentation and complaints (apps/api/src/org/documentation.ts and complaints.ts).
 import type { Finding, Level } from "./calls";
 import type { Confirmation, OfferDocument } from "./work";
-import type { SaleStatus } from "@veriqall/shared";
+import type { Locale, SaleStatus } from "@veriqall/shared";
 
 export interface SaleDocumentation {
   sale: {
@@ -86,10 +86,13 @@ export interface ComplaintSummary {
   receivedOn: string;
   summary: string;
   closedAt: string | null;
-  customerId: string;
+  // null for a complaint about a call without a customer in VeriQall.
+  customerId: string | null;
   // null without access to customers.
   customerName: string | null;
   saleId: string | null;
+  // The reference of the call the complaint is about (kept after the call is deleted).
+  callReference: string | null;
   productName: string | null;
   assignedName: string | null;
   updatedAt: string;
@@ -114,4 +117,64 @@ export interface ComplaintDetail extends Omit<ComplaintSummary, "productName" | 
   }[];
   documentation: SaleDocumentation | null;
   documentationHidden: boolean;
+  callId: string | null;
+  // False when the case handler may not see the call (another seller's call needs BankID).
+  callVisible: boolean;
+  ai: ComplaintAi[];
+}
+
+// The AI's assessment of a complaint against its call (apps/api/src/calls/complaints.ts).
+export type Verdict = "justified" | "partly" | "not_justified" | "unclear";
+export type ClaimFinding = "supported" | "contradicted" | "not_found";
+
+export interface ComplaintAssessment {
+  verdict: Verdict;
+  summary: string;
+  claims: {
+    claim: string;
+    finding: ClaimFinding;
+    quote: string | null;
+    startMs: number | null;
+    comment: string;
+  }[];
+  nextSteps: string;
+}
+
+export interface ComplaintAi {
+  id: string;
+  kind: "assessment" | "reply";
+  status: "pending" | "done" | "failed";
+  error: string | null;
+  locale: Locale;
+  result: ComplaintAssessment | null;
+  // A reply as the case handler last adjusted it, else the AI's draft.
+  content: string | null;
+  aiContent: string | null;
+  instructions: string | null;
+  complaintText: string;
+  createdAt: string;
+  editedAt: string | null;
+  requestedByName: string | null;
+  editedByName: string | null;
+}
+
+// A call found by its reference, with the complaints already registered about it.
+export interface CallLookup {
+  call: {
+    id: string;
+    reference: string;
+    status: string;
+    startedAt: string;
+    durationMs: number | null;
+    userName: string | null;
+    productName: string | null;
+    customerId: string | null;
+    customerName: string | null;
+  };
+  complaints: {
+    id: string;
+    summary: string;
+    status: ComplaintStatus;
+    receivedOn: string;
+  }[];
 }

@@ -77,7 +77,7 @@ export function extension(mime: string | null): string {
   return known[type] ?? "webm";
 }
 
-async function modules(db: pg.Pool, orgId: string): Promise<Set<string>> {
+export async function modules(db: pg.Pool, orgId: string): Promise<Set<string>> {
   const { rows } = await db.query<{ module: string }>(
     "select module from organization_modules where organization_id = $1 and enabled",
     [orgId],
@@ -434,7 +434,7 @@ export function timestamp(ms: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
-async function transcriptForAi(db: pg.Pool, callId: string): Promise<string> {
+export async function transcriptForAi(db: pg.Pool, callId: string): Promise<string> {
   const { rows } = await db.query<{ speaker: string | null; start_ms: number; text: string }>(
     "select speaker, start_ms, text from transcript_segments where call_id = $1 order by seq",
     [callId],
@@ -597,13 +597,13 @@ function notePrompt(instructions: string, templateText: string, transcript: stri
     .join("\n\n");
 }
 
-async function chosenModel(db: pg.Pool): Promise<string> {
+export async function chosenModel(db: pg.Pool): Promise<string> {
   // The model chosen by superadmins under System.
   const chosen = (await db.query<{ value: unknown }>("select value from platform_settings where key = 'ai_model'")).rows[0]?.value;
   return AI_MODELS[isAiModelKey(chosen) ? chosen : DEFAULT_AI_MODEL].bedrockId;
 }
 
-async function templateText(db: pg.Pool, versionId: string | null): Promise<string> {
+export async function templateText(db: pg.Pool, versionId: string | null): Promise<string> {
   return (await templateFor(db, versionId)).text;
 }
 
@@ -788,7 +788,7 @@ export async function pendingReports(db: pg.Pool): Promise<string[]> {
   return rows.map((r) => r.id);
 }
 
-async function usage(db: pg.Pool, call: Pick<CallRow, "id" | "organization_id">, kind: string, r: { model: string; inputTokens: number; outputTokens: number }) {
+export async function usage(db: pg.Pool, call: Pick<CallRow, "id" | "organization_id">, kind: string, r: { model: string; inputTokens: number; outputTokens: number }) {
   await db.query(
     "insert into usage_events (organization_id, call_id, kind, input_tokens, output_tokens, model) values ($1, $2, $3, $4, $5, $6)",
     [call.organization_id, call.id, kind, r.inputTokens, r.outputTokens, r.model],

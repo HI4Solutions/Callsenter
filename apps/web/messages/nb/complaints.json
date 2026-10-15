@@ -1,7 +1,7 @@
 {
   "noAccess": "Du har ikke tilgang til klager i dette callsenteret.",
   "title": "Klager",
-  "intro": "Hver klage samler salget, kundens aksept og samtalene, så saken kan avgjøres på dokumentasjonen.",
+  "intro": "Hent samtalen klagen gjelder med referansen fra salgssystemet. Saken samler opptak, transkripsjon og notat, AI-en vurderer klagen mot samtalen og skriver et utkast til tilsvar.",
   "new": "Ny klage",
   "show": "Vis",
   "openCases": "Åpne saker",
@@ -11,6 +11,16 @@
   "customer": "Kunde",
   "received": "{channel}, mottatt {date}",
   "limit": "Viser de 200 første. Bruk filteret for å finne flere.",
+  "lookup": {
+    "title": "Hent sak med samtalereferanse",
+    "intro": "Skriv referansen selgeren limte inn i salgssystemet, for eksempel VQ-7K3M-Q9TX. Du finner bare samtaler du har tilgang til.",
+    "label": "Referanse",
+    "find": "Hent",
+    "customer": "kunde: {name}",
+    "existing": "Klager på denne samtalen",
+    "none": "Ingen klager er registrert på denne samtalen ennå.",
+    "newOnCall": "Ny klage på denne samtalen"
+  },
   "newComplaint": {
     "needCustomers": "Du trenger tilgang til kunder for å registrere klager.",
     "customerHint": "Søk på navn, telefon, e-post eller org.nr. Finnes ikke kunden, opprett den under Kunder først.",
@@ -23,7 +33,12 @@
     "summary": "Kort beskrivelse",
     "description": "Hva klager kunden på?",
     "descriptionHint": "Valgfritt. Gjengi kundens egne ord så godt du kan.",
-    "submit": "Registrer klage"
+    "submit": "Registrer klage",
+    "call": "Samtale",
+    "customerOptional": "Kunde (valgfritt)",
+    "customerOptionalHint": "Kunden kan stå i callsenterets eget system. Velg kunden her hvis den finnes i VeriQall.",
+    "customerFromCall": "{name} (fra samtalen)",
+    "descriptionCallHint": "Lim inn kundens egne ord. AI-en vurderer klagen mot det som ble sagt i samtalen."
   },
   "detail": {
     "actions": {
@@ -63,6 +78,71 @@
     "newNoteHint": "Notater kan ikke endres eller slettes etterpå.",
     "addNote": "Legg til notat",
     "created": "Klagen registrert",
-    "note": "Notat"
-  }
+    "note": "Notat",
+    "call": "Samtale",
+    "callTitle": "Samtalen",
+    "noCustomer": "Ikke registrert (klagen gjelder samtalen)",
+    "callHidden": "Du har ikke tilgang til samtalen. Andre selgeres samtaler krever tilgang til alle samtaler og innlogging med BankID eller passkey.",
+    "callGone": "Samtalen er slettet etter lagringstiden. Referansen står fortsatt på saken.",
+    "linkCall": "Koble til samtalen",
+    "linkCallIntro": "Hent samtalen klagen gjelder med referansen fra salgssystemet. Da kan du høre opptaket, lese transkripsjonen og få AI-ens vurdering.",
+    "link": "Koble klagen til denne samtalen",
+    "openCall": "Åpne samtalen",
+    "recording": "Opptak",
+    "play": "Spill av opptaket",
+    "notes": "Notater fra samtalen",
+    "noNotes": "Samtalen har ingen notater.",
+    "control": "AI-kontroll av samtalen",
+    "complaintText": "Klagen",
+    "complaintTextLabel": "Kundens klage",
+    "complaintTextHint": "Lim inn kundens egne ord, for eksempel fra e-posten. AI-en vurderer klagen mot det som ble sagt i samtalen.",
+    "saveText": "Lagre klagen",
+    "saved": "Lagret.",
+    "assessment": {
+      "title": "Vurdering av klagen",
+      "intro": "AI-en sammenligner klagen med transkripsjonen og notatet, punkt for punkt. Hør opptaket før du avgjør saken.",
+      "run": "Vurder klagen",
+      "again": "Vurder på nytt",
+      "needCall": "Koble klagen til samtalen først.",
+      "needText": "Skriv inn klagen først.",
+      "working": "AI-en vurderer klagen …",
+      "failed": "Vurderingen feilet: {error}",
+      "verdict": {
+        "justified": "Kunden har rett",
+        "partly": "Kunden har delvis rett",
+        "not_justified": "Samtalen støtter ikke klagen",
+        "unclear": "Samtalen avgjør det ikke"
+      },
+      "finding": {
+        "supported": "Samtalen støtter kunden",
+        "contradicted": "Samtalen viser noe annet",
+        "not_found": "Ikke i samtalen"
+      },
+      "claims": "Det kunden sier",
+      "nextSteps": "Neste steg",
+      "playAt": "Spill av fra {time}",
+      "madeBy": "Bestilt {date} av {name}",
+      "changed": "Klagen er endret etter denne vurderingen. Vurder på nytt for å ta med endringen.",
+      "earlier": "Tidligere vurderinger ({count})"
+    },
+    "reply": {
+      "title": "Utkast til tilsvar",
+      "intro": "AI-en skriver et utkast til svar til kunden, basert på klagen, vurderingen og samtalen. Les det, juster det og send det fra din egen e-post.",
+      "instructions": "Instrukser (valgfritt)",
+      "instructionsHint": "For eksempel «Avslå klagen, men tilby å heve avtalen uten gebyr». AI-en lover ingenting du ikke skriver her.",
+      "language": "Språk",
+      "make": "Lag utkast",
+      "again": "Lag nytt utkast",
+      "working": "AI-en skriver utkastet …",
+      "failed": "Utkastet feilet: {error}",
+      "draft": "Utkast",
+      "placeholders": "Bytt ut feltene i hakeparentes, som kundens navn og ditt navn, før du sender.",
+      "copy": "Kopier",
+      "copied": "Kopiert",
+      "save": "Lagre endringer",
+      "edited": "Endret {date} av {name}",
+      "earlier": "Tidligere utkast ({count})"
+    }
+  },
+  "callRef": "Samtale {reference}"
 }

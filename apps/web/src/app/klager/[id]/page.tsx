@@ -13,10 +13,22 @@ import {
   secondaryButton,
   LoadState,
 } from "@/components/admin/field";
+import { CallReference } from "@/components/calls/call-reference";
+import {
+  AssessmentCard,
+  ComplaintText,
+  ReplyCard,
+} from "@/components/work/complaint-ai";
+import { ComplaintCall, useCallPlayer } from "@/components/work/complaint-call";
 import { ComplaintStatusBadge } from "@/components/work/complaint-status";
+import { FoundCall, ReferenceLookup } from "@/components/work/reference-lookup";
 import { SaleDocumentationView } from "@/components/work/sale-documentation";
 import { useWorkMe } from "@/components/work/work-shell";
-import type { ComplaintDetail, ComplaintStatus } from "@/lib/complaints";
+import type {
+  CallLookup,
+  ComplaintDetail,
+  ComplaintStatus,
+} from "@/lib/complaints";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { orgFetch } from "@/lib/org";
 import { formatPhone } from "@/lib/work";
@@ -35,8 +47,17 @@ export default function ComplaintPage() {
   const td = useTranslations("domain");
   const tc = useTranslations("common");
   const canSeeCustomers = me?.permissions.includes("customers.read") ?? false;
+  const canPlay = me?.permissions.includes("calls.audio.play") ?? false;
   const [complaint, setComplaint] = useState<ComplaintDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const {
+    audio,
+    error: audioError,
+    attach,
+    play,
+    loaded,
+    expired,
+  } = useCallPlayer(complaint?.callVisible ? complaint.callId : null);
 
   const load = useCallback(
     () =>
@@ -56,6 +77,15 @@ export default function ComplaintPage() {
     };
   }, [id]);
 
+  // While the AI assesses the complaint or writes a draft, the case is loaded again every few
+  // seconds until it is done.
+  const working = complaint?.ai.some((a) => a.status === "pending") ?? false;
+  useEffect(() => {
+    if (!working) return;
+    const timer = setInterval(() => void load(), 3000);
+    return () => clearInterval(timer);
+  }, [working, load]);
+
   if (!complaint) return <LoadState error={error} />;
   const k = complaint;
 
@@ -74,8 +104,18 @@ export default function ComplaintPage() {
 
   const rows: [string, React.ReactNode][] = [
     [
+      t("call"),
+      k.callReference ? (
+        <CallReference key="c" reference={k.callReference} />
+      ) : (
+        tc("none")
+      ),
+    ],
+    [
       t("customer"),
-      canSeeCustomers ? (
+      !k.customerId ? (
+        t("noCustomer")
+      ) : canSeeCustomers ? (
         <Link
           href={`/kunder/${k.customerId}`}
           className="font-semibold text-brand"
@@ -174,30 +214,73 @@ export default function ComplaintPage() {
         onChanged={load}
         onError={setError}
       />
-      <Card title={t("case")}>
-        <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[12rem_1fr]">
-          {rows.map(([label, value]) => (
-            <div key={label} className="contents">
-              <dt className="text-sm font-semibold text-muted">{label}</dt>
-              <dd className="break-words">{value}</dd>
-            </div>
-          ))}
-        </dl>
-        {k.description && (
-          <p className="mt-4 whitespace-pre-wrap [overflow-wrap:anywhere] rounded-lg bg-bg p-3">
-            {k.description}
-          </p>
-        )}
-        {k.outcome && (
-          <div className="mt-4">
-            <p className="text-sm font-semibold text-muted">{t("outcome")}</p>
-            <p className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">
-              {k.outcome}
-            </p>
-          </div>
-        )}
-      </Card>
-      <History complaint={k} onChanged={load} />
+      {/* On a phone the page follows the work: the case, the call (recording, notes and
+          transcript), then the complaint, the assessment and the reply. From lg the call stays
+          in the right column while the case and the AI work fill the left. The second row takes
+          any extra height, so a tall call column never opens a gap under the case. */}
+      <div className="grid gap-8 lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:items-start [&>*]:min-w-0">
+        <div className="lg:col-start-1 lg:row-start-1">
+          <Card title={t("case")}>
+            <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[12rem_1fr]">
+              {rows.map(([label, value]) => (
+                <div key={label} className="contents">
+                  <dt className="text-sm font-semibold text-muted">{label}</dt>
+                  <dd className="break-words">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            {k.outcome && (
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-muted">
+                  {t("outcome")}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere]">
+                  {k.outcome}
+                </p>
+              </div>
+            )}
+          </Card>
+        </div>
+        <div className="flex flex-col gap-8 lg:sticky lg:top-20 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+          {k.callId && k.callVisible ? (
+            <ComplaintCall
+              callId={k.callId}
+              canPlay={canPlay}
+              audio={audio}
+              audioError={audioError}
+              audioRef={attach}
+              onPlay={play}
+              onLoaded={loaded}
+              onExpired={expired}
+            />
+          ) : k.callId ? (
+            <Card title={t("callTitle")}>
+              <p>{t("callHidden")}</p>
+            </Card>
+          ) : k.callReference ? (
+            <Card title={t("callTitle")}>
+              <p>{t("callGone")}</p>
+            </Card>
+          ) : (
+            <LinkCall complaint={k} onChanged={load} />
+          )}
+        </div>
+        <div className="flex flex-col gap-8 lg:col-start-1 lg:row-start-2">
+          <ComplaintText key={k.description} complaint={k} onChanged={load} />
+          <AssessmentCard
+            complaint={k}
+            onChanged={load}
+            onSeek={k.callVisible && canPlay ? play : undefined}
+          />
+          <ReplyCard
+            complaint={k}
+            onChanged={load}
+            defaultLocale={me?.contentLocale ?? "nb"}
+            localeLocked={me?.contentLocaleLocked ?? false}
+          />
+          <History complaint={k} onChanged={load} />
+        </div>
+      </div>
       {k.saleId && (
         <div className="flex flex-col gap-4">
           <h2 className="text-2xl font-extrabold tracking-tight">
@@ -394,6 +477,68 @@ function History({
           </li>
         ))}
       </ol>
+    </Card>
+  );
+}
+
+// A complaint registered without its call: the call is found with the reference from the call
+// centre's own sales system and linked.
+function LinkCall({
+  complaint,
+  onChanged,
+}: {
+  complaint: ComplaintDetail;
+  onChanged: () => Promise<unknown>;
+}) {
+  const t = useTranslations("complaints.detail");
+  const tl = useTranslations("complaints.lookup");
+  const [found, setFound] = useState<CallLookup | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function link() {
+    if (!found) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await orgFetch(`/complaints/${complaint.id}`, {
+        method: "PATCH",
+        body: { callId: found.call.id },
+      });
+      await onChanged();
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card title={t("linkCall")}>
+      <div className="flex flex-col gap-4 print:hidden">
+        <p className="text-muted">{t("linkCallIntro")}</p>
+        <ReferenceLookup
+          label={tl("label")}
+          submit={tl("find")}
+          onFound={setFound}
+        />
+        {found && (
+          <div className="flex flex-col gap-3 rounded-lg border border-line p-3">
+            <p className="font-mono font-semibold">{found.call.reference}</p>
+            <FoundCall call={found.call} />
+            <ErrorMessage message={error} />
+            <div>
+              <button
+                type="button"
+                disabled={busy}
+                className={primaryButton}
+                onClick={link}
+              >
+                {t("link")}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </Card>
   );
 }

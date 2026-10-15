@@ -1,7 +1,7 @@
 {
   "noAccess": "You do not have access to complaints in this call centre.",
   "title": "Complaints",
-  "intro": "Each complaint brings together the sale, the customer’s acceptance and the calls, so the case can be decided on the documentation.",
+  "intro": "Fetch the call the complaint is about with the reference from the sales system. The case brings together the recording, transcript and note; the AI assesses the complaint against the call and drafts a reply.",
   "new": "New complaint",
   "show": "Show",
   "openCases": "Open cases",
@@ -11,6 +11,16 @@
   "customer": "Customer",
   "received": "{channel}, received {date}",
   "limit": "Showing the first 200. Use the filter to find more.",
+  "lookup": {
+    "title": "Fetch a case by call reference",
+    "intro": "Enter the reference the seller pasted into the sales system, for example VQ-7K3M-Q9TX. You only find calls you have access to.",
+    "label": "Reference",
+    "find": "Fetch",
+    "customer": "customer: {name}",
+    "existing": "Complaints about this call",
+    "none": "No complaints have been registered about this call yet.",
+    "newOnCall": "New complaint about this call"
+  },
   "newComplaint": {
     "needCustomers": "You need access to customers to register complaints.",
     "customerHint": "Search by name, phone, email or org. no. If the customer does not exist, create it under Customers first.",
@@ -23,7 +33,12 @@
     "summary": "Short description",
     "description": "What is the customer complaining about?",
     "descriptionHint": "Optional. Repeat the customer’s own words as closely as you can.",
-    "submit": "Register complaint"
+    "submit": "Register complaint",
+    "call": "Call",
+    "customerOptional": "Customer (optional)",
+    "customerOptionalHint": "The customer may only be in the call centre's own system. Choose the customer here if they are in VeriQall.",
+    "customerFromCall": "{name} (from the call)",
+    "descriptionCallHint": "Paste the customer's own words. The AI assesses the complaint against what was said in the call."
   },
   "detail": {
     "actions": {
@@ -63,6 +78,71 @@
     "newNoteHint": "Notes cannot be edited or deleted afterwards.",
     "addNote": "Add note",
     "created": "Complaint registered",
-    "note": "Note"
-  }
+    "note": "Note",
+    "call": "Call",
+    "callTitle": "The call",
+    "noCustomer": "Not registered (the complaint is about the call)",
+    "callHidden": "You do not have access to the call. Other sellers' calls require access to all calls and signing in with BankID or a passkey.",
+    "callGone": "The call was deleted at the end of its retention period. The reference is still on the case.",
+    "linkCall": "Link the call",
+    "linkCallIntro": "Fetch the call the complaint is about with the reference from the sales system. Then you can listen to the recording, read the transcript and get the AI's assessment.",
+    "link": "Link the complaint to this call",
+    "openCall": "Open the call",
+    "recording": "Recording",
+    "play": "Play the recording",
+    "notes": "Notes from the call",
+    "noNotes": "The call has no notes.",
+    "control": "AI control of the call",
+    "complaintText": "The complaint",
+    "complaintTextLabel": "The customer's complaint",
+    "complaintTextHint": "Paste the customer's own words, for example from the e-mail. The AI assesses the complaint against what was said in the call.",
+    "saveText": "Save the complaint",
+    "saved": "Saved.",
+    "assessment": {
+      "title": "Assessment of the complaint",
+      "intro": "The AI compares the complaint with the transcript and the note, point by point. Listen to the recording before you decide the case.",
+      "run": "Assess the complaint",
+      "again": "Assess again",
+      "needCall": "Link the complaint to the call first.",
+      "needText": "Enter the complaint first.",
+      "working": "The AI is assessing the complaint …",
+      "failed": "The assessment failed: {error}",
+      "verdict": {
+        "justified": "The customer is right",
+        "partly": "The customer is partly right",
+        "not_justified": "The call does not support the complaint",
+        "unclear": "The call does not settle it"
+      },
+      "finding": {
+        "supported": "The call supports the customer",
+        "contradicted": "The call shows otherwise",
+        "not_found": "Not in the call"
+      },
+      "claims": "What the customer says",
+      "nextSteps": "Next steps",
+      "playAt": "Play from {time}",
+      "madeBy": "Requested {date} by {name}",
+      "changed": "The complaint has changed since this assessment. Assess again to include the change.",
+      "earlier": "Earlier assessments ({count})"
+    },
+    "reply": {
+      "title": "Draft reply",
+      "intro": "The AI drafts a reply to the customer based on the complaint, the assessment and the call. Read it, adjust it and send it from your own e-mail.",
+      "instructions": "Instructions (optional)",
+      "instructionsHint": "For example “Reject the complaint, but offer to cancel the agreement without a fee”. The AI promises nothing you do not write here.",
+      "language": "Language",
+      "make": "Draft a reply",
+      "again": "Draft a new reply",
+      "working": "The AI is writing the draft …",
+      "failed": "The draft failed: {error}",
+      "draft": "Draft",
+      "placeholders": "Replace the fields in square brackets, such as the customer's name and your name, before you send it.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "save": "Save changes",
+      "edited": "Changed {date} by {name}",
+      "earlier": "Earlier drafts ({count})"
+    }
+  },
+  "callRef": "Call {reference}"
 }

@@ -1,7 +1,7 @@
 {
   "noAccess": "Sie haben keinen Zugriff auf Beschwerden in diesem Callcenter.",
   "title": "Beschwerden",
-  "intro": "Jede Beschwerde bündelt den Verkauf, die Annahme durch den Kunden und die Gespräche, sodass der Fall anhand der Dokumentation entschieden werden kann.",
+  "intro": "Rufen Sie den Anruf, den die Beschwerde betrifft, mit der Referenz aus dem Verkaufssystem ab. Der Fall bündelt Aufnahme, Transkript und Notiz; die KI bewertet die Beschwerde anhand des Anrufs und entwirft eine Antwort.",
   "new": "Neue Beschwerde",
   "show": "Anzeigen",
   "openCases": "Offene Fälle",
@@ -11,6 +11,16 @@
   "customer": "Kunde",
   "received": "{channel}, eingegangen am {date}",
   "limit": "Die ersten 200 werden angezeigt. Verwenden Sie den Filter, um weitere zu finden.",
+  "lookup": {
+    "title": "Fall per Anrufreferenz abrufen",
+    "intro": "Geben Sie die Referenz ein, die der Verkäufer ins Verkaufssystem eingefügt hat, zum Beispiel VQ-7K3M-Q9TX. Sie finden nur Anrufe, auf die Sie Zugriff haben.",
+    "label": "Referenz",
+    "find": "Abrufen",
+    "customer": "Kunde: {name}",
+    "existing": "Beschwerden zu diesem Anruf",
+    "none": "Zu diesem Anruf sind noch keine Beschwerden erfasst.",
+    "newOnCall": "Neue Beschwerde zu diesem Anruf"
+  },
   "newComplaint": {
     "needCustomers": "Sie benötigen Zugriff auf Kunden, um Beschwerden zu erfassen.",
     "customerHint": "Suche nach Name, Telefon, E-Mail oder Org.-Nr. Gibt es den Kunden nicht, legen Sie ihn zuerst unter Kunden an.",
@@ -23,7 +33,12 @@
     "summary": "Kurzbeschreibung",
     "description": "Worüber beschwert sich der Kunde?",
     "descriptionHint": "Optional. Geben Sie die Worte des Kunden so genau wie möglich wieder.",
-    "submit": "Beschwerde erfassen"
+    "submit": "Beschwerde erfassen",
+    "call": "Anruf",
+    "customerOptional": "Kunde (optional)",
+    "customerOptionalHint": "Der Kunde steht möglicherweise nur im eigenen System des Callcenters. Wählen Sie den Kunden hier, wenn er in VeriQall erfasst ist.",
+    "customerFromCall": "{name} (aus dem Anruf)",
+    "descriptionCallHint": "Fügen Sie die eigenen Worte des Kunden ein. Die KI bewertet die Beschwerde anhand dessen, was im Anruf gesagt wurde."
   },
   "detail": {
     "actions": {
@@ -63,6 +78,71 @@
     "newNoteHint": "Notizen können nachträglich nicht geändert oder gelöscht werden.",
     "addNote": "Notiz hinzufügen",
     "created": "Beschwerde erfasst",
-    "note": "Notiz"
-  }
+    "note": "Notiz",
+    "call": "Anruf",
+    "callTitle": "Der Anruf",
+    "noCustomer": "Nicht erfasst (die Beschwerde betrifft den Anruf)",
+    "callHidden": "Sie haben keinen Zugriff auf den Anruf. Anrufe anderer Verkäufer erfordern Zugriff auf alle Anrufe und die Anmeldung mit BankID oder Passkey.",
+    "callGone": "Der Anruf wurde nach Ablauf der Aufbewahrungsfrist gelöscht. Die Referenz steht weiterhin beim Fall.",
+    "linkCall": "Anruf verknüpfen",
+    "linkCallIntro": "Rufen Sie den Anruf, den die Beschwerde betrifft, mit der Referenz aus dem Verkaufssystem ab. Dann können Sie die Aufnahme anhören, das Transkript lesen und die Bewertung der KI erhalten.",
+    "link": "Beschwerde mit diesem Anruf verknüpfen",
+    "openCall": "Anruf öffnen",
+    "recording": "Aufnahme",
+    "play": "Aufnahme abspielen",
+    "notes": "Notizen zum Anruf",
+    "noNotes": "Der Anruf hat keine Notizen.",
+    "control": "KI-Prüfung des Anrufs",
+    "complaintText": "Die Beschwerde",
+    "complaintTextLabel": "Beschwerde des Kunden",
+    "complaintTextHint": "Fügen Sie die eigenen Worte des Kunden ein, zum Beispiel aus der E-Mail. Die KI bewertet die Beschwerde anhand dessen, was im Anruf gesagt wurde.",
+    "saveText": "Beschwerde speichern",
+    "saved": "Gespeichert.",
+    "assessment": {
+      "title": "Bewertung der Beschwerde",
+      "intro": "Die KI vergleicht die Beschwerde Punkt für Punkt mit dem Transkript und der Notiz. Hören Sie die Aufnahme an, bevor Sie den Fall entscheiden.",
+      "run": "Beschwerde bewerten",
+      "again": "Erneut bewerten",
+      "needCall": "Verknüpfen Sie die Beschwerde zuerst mit dem Anruf.",
+      "needText": "Geben Sie zuerst die Beschwerde ein.",
+      "working": "Die KI bewertet die Beschwerde …",
+      "failed": "Die Bewertung ist fehlgeschlagen: {error}",
+      "verdict": {
+        "justified": "Der Kunde hat recht",
+        "partly": "Der Kunde hat teilweise recht",
+        "not_justified": "Der Anruf stützt die Beschwerde nicht",
+        "unclear": "Der Anruf klärt es nicht"
+      },
+      "finding": {
+        "supported": "Der Anruf stützt den Kunden",
+        "contradicted": "Der Anruf zeigt etwas anderes",
+        "not_found": "Nicht im Anruf"
+      },
+      "claims": "Was der Kunde sagt",
+      "nextSteps": "Nächste Schritte",
+      "playAt": "Ab {time} abspielen",
+      "madeBy": "Angefordert am {date} von {name}",
+      "changed": "Die Beschwerde wurde nach dieser Bewertung geändert. Bewerten Sie erneut, um die Änderung zu berücksichtigen.",
+      "earlier": "Frühere Bewertungen ({count})"
+    },
+    "reply": {
+      "title": "Antwortentwurf",
+      "intro": "Die KI entwirft eine Antwort an den Kunden auf Grundlage der Beschwerde, der Bewertung und des Anrufs. Lesen Sie sie, passen Sie sie an und senden Sie sie aus Ihrem eigenen E-Mail-Postfach.",
+      "instructions": "Anweisungen (optional)",
+      "instructionsHint": "Zum Beispiel „Beschwerde ablehnen, aber anbieten, den Vertrag ohne Gebühr aufzuheben“. Die KI verspricht nichts, was Sie hier nicht schreiben.",
+      "language": "Sprache",
+      "make": "Entwurf erstellen",
+      "again": "Neuen Entwurf erstellen",
+      "working": "Die KI schreibt den Entwurf …",
+      "failed": "Der Entwurf ist fehlgeschlagen: {error}",
+      "draft": "Entwurf",
+      "placeholders": "Ersetzen Sie die Felder in eckigen Klammern, etwa den Namen des Kunden und Ihren Namen, bevor Sie senden.",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "save": "Änderungen speichern",
+      "edited": "Geändert am {date} von {name}",
+      "earlier": "Frühere Entwürfe ({count})"
+    }
+  },
+  "callRef": "Anruf {reference}"
 }

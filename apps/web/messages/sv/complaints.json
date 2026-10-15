@@ -1,7 +1,7 @@
 {
   "noAccess": "Du har inte tillgång till klagomål i detta callcenter.",
   "title": "Klagomål",
-  "intro": "Varje klagomål samlar försäljningen, kundens godkännande och samtalen, så att ärendet kan avgöras utifrån dokumentationen.",
+  "intro": "Hämta samtalet som klagomålet gäller med referensen från försäljningssystemet. Ärendet samlar inspelning, transkription och anteckning, AI:n bedömer klagomålet mot samtalet och skriver ett utkast till svar.",
   "new": "Nytt klagomål",
   "show": "Visa",
   "openCases": "Öppna ärenden",
@@ -11,6 +11,16 @@
   "customer": "Kund",
   "received": "{channel}, mottaget {date}",
   "limit": "Visar de 200 första. Använd filtret för att hitta fler.",
+  "lookup": {
+    "title": "Hämta ärende med samtalsreferens",
+    "intro": "Skriv referensen som säljaren klistrade in i försäljningssystemet, till exempel VQ-7K3M-Q9TX. Du hittar bara samtal som du har åtkomst till.",
+    "label": "Referens",
+    "find": "Hämta",
+    "customer": "kund: {name}",
+    "existing": "Klagomål på det här samtalet",
+    "none": "Inga klagomål har registrerats på det här samtalet ännu.",
+    "newOnCall": "Nytt klagomål på det här samtalet"
+  },
   "newComplaint": {
     "needCustomers": "Du behöver tillgång till kunder för att registrera klagomål.",
     "customerHint": "Sök på namn, telefon, e-post eller org.nr. Finns inte kunden, skapa den under Kunder först.",
@@ -23,7 +33,12 @@
     "summary": "Kort beskrivning",
     "description": "Vad klagar kunden på?",
     "descriptionHint": "Valfritt. Återge kundens egna ord så gott du kan.",
-    "submit": "Registrera klagomål"
+    "submit": "Registrera klagomål",
+    "call": "Samtal",
+    "customerOptional": "Kund (valfritt)",
+    "customerOptionalHint": "Kunden kan finnas i callcentrets eget system. Välj kunden här om den finns i VeriQall.",
+    "customerFromCall": "{name} (från samtalet)",
+    "descriptionCallHint": "Klistra in kundens egna ord. AI:n bedömer klagomålet mot det som sades i samtalet."
   },
   "detail": {
     "actions": {
@@ -63,6 +78,71 @@
     "newNoteHint": "Anteckningar kan inte ändras eller raderas efteråt.",
     "addNote": "Lägg till anteckning",
     "created": "Klagomålet registrerat",
-    "note": "Anteckning"
-  }
+    "note": "Anteckning",
+    "call": "Samtal",
+    "callTitle": "Samtalet",
+    "noCustomer": "Inte registrerad (klagomålet gäller samtalet)",
+    "callHidden": "Du har inte åtkomst till samtalet. Andra säljares samtal kräver åtkomst till alla samtal och inloggning med BankID eller passkey.",
+    "callGone": "Samtalet har raderats efter lagringstiden. Referensen finns kvar på ärendet.",
+    "linkCall": "Koppla samtalet",
+    "linkCallIntro": "Hämta samtalet som klagomålet gäller med referensen från försäljningssystemet. Då kan du lyssna på inspelningen, läsa transkriptionen och få AI:ns bedömning.",
+    "link": "Koppla klagomålet till det här samtalet",
+    "openCall": "Öppna samtalet",
+    "recording": "Inspelning",
+    "play": "Spela upp inspelningen",
+    "notes": "Anteckningar från samtalet",
+    "noNotes": "Samtalet har inga anteckningar.",
+    "control": "AI-kontroll av samtalet",
+    "complaintText": "Klagomålet",
+    "complaintTextLabel": "Kundens klagomål",
+    "complaintTextHint": "Klistra in kundens egna ord, till exempel från e-postmeddelandet. AI:n bedömer klagomålet mot det som sades i samtalet.",
+    "saveText": "Spara klagomålet",
+    "saved": "Sparat.",
+    "assessment": {
+      "title": "Bedömning av klagomålet",
+      "intro": "AI:n jämför klagomålet med transkriptionen och anteckningen, punkt för punkt. Lyssna på inspelningen innan du avgör ärendet.",
+      "run": "Bedöm klagomålet",
+      "again": "Bedöm igen",
+      "needCall": "Koppla först klagomålet till samtalet.",
+      "needText": "Skriv in klagomålet först.",
+      "working": "AI:n bedömer klagomålet …",
+      "failed": "Bedömningen misslyckades: {error}",
+      "verdict": {
+        "justified": "Kunden har rätt",
+        "partly": "Kunden har delvis rätt",
+        "not_justified": "Samtalet stöder inte klagomålet",
+        "unclear": "Samtalet avgör det inte"
+      },
+      "finding": {
+        "supported": "Samtalet stöder kunden",
+        "contradicted": "Samtalet visar något annat",
+        "not_found": "Inte i samtalet"
+      },
+      "claims": "Det kunden säger",
+      "nextSteps": "Nästa steg",
+      "playAt": "Spela upp från {time}",
+      "madeBy": "Beställd {date} av {name}",
+      "changed": "Klagomålet har ändrats efter den här bedömningen. Bedöm igen för att ta med ändringen.",
+      "earlier": "Tidigare bedömningar ({count})"
+    },
+    "reply": {
+      "title": "Utkast till svar",
+      "intro": "AI:n skriver ett utkast till svar till kunden, baserat på klagomålet, bedömningen och samtalet. Läs det, justera det och skicka det från din egen e-post.",
+      "instructions": "Instruktioner (valfritt)",
+      "instructionsHint": "Till exempel ”Avslå klagomålet, men erbjud att häva avtalet utan avgift”. AI:n lovar inget som du inte skriver här.",
+      "language": "Språk",
+      "make": "Skapa utkast",
+      "again": "Skapa nytt utkast",
+      "working": "AI:n skriver utkastet …",
+      "failed": "Utkastet misslyckades: {error}",
+      "draft": "Utkast",
+      "placeholders": "Byt ut fälten inom hakparentes, som kundens namn och ditt namn, innan du skickar.",
+      "copy": "Kopiera",
+      "copied": "Kopierat",
+      "save": "Spara ändringar",
+      "edited": "Ändrat {date} av {name}",
+      "earlier": "Tidigare utkast ({count})"
+    }
+  },
+  "callRef": "Samtal {reference}"
 }

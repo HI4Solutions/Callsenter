@@ -35,6 +35,7 @@ const MODULE_NAMES: Record<string, string> = {
   transcription_realtime: "Sanntidstekst",
   ai_control: "AI-kontroll",
   report: "Rapporter",
+  complaint: "Klagehåndtering",
 };
 
 async function summary(c: pg.PoolClient, from: string | null, to: string | null, org: string | null) {
@@ -54,7 +55,7 @@ async function summary(c: pg.PoolClient, from: string | null, to: string | null,
        (select json_build_object(
           'calls', count(*), 'inputTokens', coalesce(sum(input_tokens), 0), 'outputTokens', coalesce(sum(output_tokens), 0),
           'usd', round(coalesce(sum(ai_usd), 0), 4), 'unpriced', count(*) filter (where ai_usd is null))
-        from u where kind in ('ai_control', 'report')) as ai,
+        from u where kind in ('ai_control', 'report', 'complaint')) as ai,
        (select json_build_object(
           'transcriptions', count(distinct coalesce(call_id::text, id::text)) filter (where kind = 'transcription_async'),
           'asyncHours', round(coalesce(sum(audio_seconds) filter (where kind = 'transcription_async'), 0) / 3600.0, 2),

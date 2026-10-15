@@ -55,7 +55,7 @@ async function transcriptionMode(c: pg.PoolClient): Promise<{ mode: "realtime" |
 }
 
 // A language for the notes (one of VeriQall's); null follows the call centre.
-function localeParam(body: Body, key: string): Locale | null | undefined {
+export function localeParam(body: Body, key: string): Locale | null | undefined {
   const value = body[key];
   if (value === undefined) return undefined;
   if (value === null || value === "") return null;
@@ -64,7 +64,7 @@ function localeParam(body: Body, key: string): Locale | null | undefined {
 }
 
 // A call centre that has locked the language of its notes takes no other.
-async function assertLanguageOpen(c: pg.PoolClient, locale: Locale | null | undefined) {
+export async function assertLanguageOpen(c: pg.PoolClient, locale: Locale | null | undefined) {
   if (!locale) return;
   const { rows } = await c.query<{ locked: boolean; locale: string }>(
     "select content_locale_locked as locked, content_locale as locale from organizations where id = app.current_org_id()",

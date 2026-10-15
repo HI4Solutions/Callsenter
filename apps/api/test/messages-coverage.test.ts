@@ -7,6 +7,7 @@ import { join, relative } from "node:path";
 import { MODULES } from "@veriqall/shared";
 import { describe, expect, it } from "vitest";
 import { BILLING_ERRORS } from "../src/admin/billing.ts";
+import { COMPLAINT_FAILED } from "../src/calls/complaints.ts";
 import { FAILED, NOTE_FAILED } from "../src/calls/process.ts";
 import { LABELS, MESSAGES } from "../src/i18n/messages.ts";
 
@@ -136,6 +137,8 @@ function allMessages(): Map<string, string> {
     found.set(text, "calls/process.ts FAILED");
   for (const text of Object.values(NOTE_FAILED))
     found.set(text, "calls/process.ts NOTE_FAILED");
+  for (const text of Object.values(COMPLAINT_FAILED))
+    found.set(text, "calls/complaints.ts COMPLAINT_FAILED");
   for (const text of SQL_NOTES) found.set(text, "SQL note");
   return found;
 }

@@ -13,4 +13,6 @@ export interface CallServices {
   startWorker(callId?: string, reportId?: string): Promise<void>;
   // Starts the worker for one piece of a recording that is still going on.
   startPiece(callId: string, seq: number): Promise<void>;
+  // Starts the worker for an assessment of a complaint or a draft reply.
+  startComplaintAi(id: string): Promise<void>;
 }

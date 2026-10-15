@@ -26,6 +26,7 @@ const deps: AuthDeps = {
     soniox: null,
     startWorker: async () => undefined,
     startPiece: async () => undefined,
+    startComplaintAi: async () => undefined,
   },
 };
 const handler = createHandler({ checkDatabase: async () => true, auth: async () => deps });
