@@ -4,22 +4,29 @@
 //
 // Invoked by hand with {"action": "invite-platform-admin", "fullName": "...", "phone": "+47...",
 // "email": "..."} it creates a superadmin invitation and returns the link (see infra/README.md).
+// With {"action": "seed-test-data"}, run by the staging deploy, it gives every call centre in
+// staging a fictitious product and note template to test with; it refuses in any other
+// environment.
 import path from "node:path";
 import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
-import { invitePlatformAdmin, loadMigrations, migrate, provision } from "@veriqall/db";
+import { invitePlatformAdmin, loadMigrations, migrate, provision, seedTestData } from "@veriqall/db";
 import pg from "pg";
 import { required } from "./env.ts";
 
 const secrets = new SecretsManagerClient({});
 
 export interface MigratorEvent {
-  action?: "migrate" | "invite-platform-admin";
+  action?: "migrate" | "invite-platform-admin" | "seed-test-data";
   fullName?: string;
   phone?: string;
   email?: string;
 }
 
 export async function handler(event?: MigratorEvent | null) {
+  // Test data belongs in staging, never in production.
+  if (event?.action === "seed-test-data" && process.env.ENVIRONMENT !== "staging") {
+    throw new Error("seed-test-data runs only in staging");
+  }
   const { SecretString } = await secrets.send(
     new GetSecretValueCommand({ SecretId: required("DB_MASTER_SECRET_ARN") }),
   );
@@ -48,6 +55,12 @@ export async function handler(event?: MigratorEvent | null) {
       const link = new URL("/logg-inn", required("APP_ORIGIN"));
       link.searchParams.set("invitasjon", invitation.token);
       return { userId: invitation.userId, link: link.toString(), expiresAt: invitation.expiresAt };
+    }
+    if (event?.action === "seed-test-data") {
+      const { rows } = await client.query<{ id: string }>("select id from organizations order by created_at");
+      const seeded = await seedTestData(client, rows.map((r) => r.id));
+      console.log(JSON.stringify({ action: event.action, ...seeded }));
+      return seeded;
     }
     const applied = await migrate(client, await loadMigrations(path.join(import.meta.dirname, "migrations")));
     const provisioned = await provision(client);

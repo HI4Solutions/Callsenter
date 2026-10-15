@@ -154,6 +154,8 @@ Resources:
           NODE_EXTRA_CA_CERTS: /var/runtime/ca-cert.pem
           # For superadmin invitation links.
           APP_ORIGIN: !Ref AppOrigin
+          # Test data is only added in staging.
+          ENVIRONMENT: !Ref Environment
       Tags:
         - Key: project
           Value: veriqall
