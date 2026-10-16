@@ -342,6 +342,25 @@ Beslutninger 2. oktober:
 
 Modulene Salgsverifisering, Dokumentasjon og Klagehåndtering slås på per callsenter og sjekkes i API-et. «Åpnet» på en lenke betyr at lenken er åpnet, ikke nødvendigvis av kunden (selgeren kan ha åpnet den selv).
 
+**Klagehåndtering med samtalereferanse (Nadeem, 15. oktober).** Ønsket var at en sak skal kunne hentes med et «token nr.». Det er tolket som samtalens referanse (`VQ-7K3M-Q9TX`, seksjon 13), som selgeren limer inn i callsenterets eget salgssystem. De fleste callsentre har kundene og salgene der, ikke i VeriQall.
+
+- **Saken hentes med referansen** øverst på `/klager`. Bindestreker og store eller små bokstaver spiller ingen rolle. Svaret viser samtalen (tidspunkt, selger, produkt og eventuell kunde), klagene som allerede gjelder den, og «Ny klage på denne samtalen». Søket finner bare samtaler saksbehandleren kan se, og hvert oppslag logges i `access_log` (`call_search`).
+- **En klage kan gjelde en samtale uten kunde eller salg i VeriQall.** Har samtalen en kunde, følger kunden med. En kunde kan legges til senere, men aldri byttes, og en klage kan ikke kobles fra kunden eller samtalen. En klage som er registrert uten samtale, kobles til samtalen med referansen inne i saken.
+- **Saken samler samtalen:** opptaket, notatene slik selgeren sist justerte dem, AI-kontrollen og transkripsjonen. Opptaket spilles av via en kortlevd lenke, og hver visning og avspilling logges som før. Et klikk på et tidspunkt i transkripsjonen eller i vurderingen spiller av derfra. På PC står samtalen i høyre kolonne. På mobil kommer saken, samtalen, klagen, vurderingen og utkastet etter hverandre.
+- **Klagen** er kundens egne ord, limt inn i saken (for eksempel fra e-posten).
+- **Vurderingen** lages av AI-en (Claude via Bedrock, i workeren). Den deler klagen opp i det kunden sier skjedde. For hvert punkt sier den om transkripsjonen støtter kunden, viser noe annet eller ikke viser det, med sitat og tidspunkt. Så kommer en samlet vurdering, en oppsummering og neste steg. Den samlede vurderingen er én av fire: kunden har rett, delvis rett, samtalen støtter ikke klagen, eller samtalen avgjør det ikke. Grunnlaget er transkripsjonen, notatene, AI-kontrollen og produktmalen som gjaldt for samtalen, og transkripsjonen veier tyngst. En vurdering kan ikke endres. Endres klagen, vurderer saksbehandleren på nytt, og de tidligere vurderingene blir liggende i saken.
+- **Utkast til tilsvar.** AI-en skriver et brev til kunden på valgt språk. Det bygger på klagen, den siste vurderingen, samtalen og saksbehandlerens instrukser. Brevet lover ikke penger tilbake, kompensasjon, heving eller annet med mindre instruksene sier det, og nevner ikke AI eller interne notater. Det har plassholdere i hakeparentes for kundens og saksbehandlerens navn. Utkastet er ren tekst og kan justeres i saken, og AI-teksten beholdes. VeriQall sender ikke svaret: saksbehandleren kopierer det til sin egen e-post.
+- **Tilgang:** `complaints.manage`, og saksbehandleren må kunne se samtalen. Andre selgeres samtaler krever `calls.read.all` og innlogging med BankID eller passkey. I en Vipps-økt ser saksbehandleren derfor bare egne samtaler og teamets (med de rettighetene).
+- **Grenser og kostnad:** høyst 3 jobber samtidig og 50 i alt per klage. Hver vurdering og hvert utkast telles som `complaint` i forbruket, og vises som KI under Økonomi → Forbruk.
+- **Lagring:** vurderinger og utkast siterer samtalen, så de slettes med den når lagringstiden er ute. Klagen blir stående med referansen, og saken sier at samtalen er slettet. Revisjonsloggen viser hvem som ba om hva og når, men aldri teksten.
+
+Migrasjonen `0040_complaint_handling.sql` (`complaints.call_id` og `call_reference`, valgfri kunde, tabellen `complaint_ai`). API-et har `GET /org/complaints/lookup`, `POST /org/complaints/{id}/ai` og `PATCH /org/complaints/{id}/ai/{aiId}`, og workeren bruker `apps/api/src/calls/complaints.ts`.
+
+Åpent:
+
+- Skal en åpen klage holde samtalen fra sletting til saken er lukket (rettslig hold)? I dag slettes samtalen etter lagringstiden, også når klagen er åpen.
+- Klager som gjelder en samtale og ikke et salg, telles ikke per selger eller team i dashboardene ennå. De telles bare i callsenterets totaler.
+
 **Besluttet 2. oktober (Nadeem):** bekreftelse og signering av salg gjøres ikke av VeriQall foreløpig. Modulen Salgsverifisering står av, koden blir liggende, og salg settes til «bekreftet» for hånd. Ingen SMS.
 
 Må sjekkes hvis modulen tas i bruk: at lenke med BankID- eller Vipps-aksept oppfyller kravet om skriftlig aksept (juridisk vurdering), hvilken tekst bekreftelsessiden skal ha om angreretten (angrerettskjema), og om Vipps Logg inn er godkjent brukt til aksept (Vipps sier selv at Login ikke er en elektronisk ID; BankID er sikrest).

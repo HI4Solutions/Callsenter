@@ -1,13 +1,15 @@
 // Worker Lambda (docs/plan.md, section 13). Started by the API when a recording is done
 // ({callId}), it transcribes and analyses that call, then tidies up: deletes calls past their
 // retention, finishes abandoned recordings and frees calls a crashed run left behind. With
-// {reportId} it writes a note asked for in the studio (docs/plan.md, section 18), and with
+// {reportId} it writes a note asked for in the studio (docs/plan.md, section 18), with
+// {complaintAiId} an assessment of a complaint or a draft reply (section 14), and with
 // {callId, piece} it transcribes one piece of a call that is still being recorded. Every
 // morning ({task: "daily"}, EventBridge) it also runs invoicing (docs/plan.md, section 16), and
 // SES starts it with each e-mail received for the inbound address (src/inbound.ts).
 import type pg from "pg";
 import { deliverInvoice } from "./admin/billing.ts";
 import { updateUsdNok } from "./exchange.ts";
+import { pendingComplaintAi, processComplaintAi } from "./calls/complaints.ts";
 import { type WorkerDeps, housekeeping, pendingReports, processCall, processPiece, processReport } from "./calls/process.ts";
 import { loadAi, loadSoniox } from "./calls/runtime.ts";
 import { s3Store } from "./calls/store.ts";
@@ -55,7 +57,10 @@ export async function billingDaily(db: pg.Pool) {
   return { sent: sent.length, emailed };
 }
 
-export async function handler(event: { callId?: unknown; reportId?: unknown; piece?: unknown; task?: unknown }, context?: { getRemainingTimeInMillis(): number }) {
+export async function handler(
+  event: { callId?: unknown; reportId?: unknown; complaintAiId?: unknown; piece?: unknown; task?: unknown },
+  context?: { getRemainingTimeInMillis(): number },
+) {
   // E-mail received by SES for the inbound address (src/inbound.ts): only that.
   if (isSesEvent(event)) return receiveEmails((inboundDb ??= iamPool("veriqall_worker")), event, required("INBOUND_BUCKET"));
   deps ??= load();
@@ -85,6 +90,14 @@ export async function handler(event: { callId?: unknown; reportId?: unknown; pie
   for (const id of await pendingReports(d.db)) {
     if (remaining() < 3 * 60_000) break;
     await processReport(d, id);
+  }
+  // An assessment of a complaint or a draft reply.
+  if (typeof event.complaintAiId === "string" && /^[0-9a-f-]{36}$/.test(event.complaintAiId)) {
+    await processComplaintAi(d, event.complaintAiId);
+  }
+  for (const id of await pendingComplaintAi(d.db)) {
+    if (remaining() < 3 * 60_000) break;
+    await processComplaintAi(d, id);
   }
   const more = await housekeeping(d, () => remaining() > 60_000);
   for (const id of more) {

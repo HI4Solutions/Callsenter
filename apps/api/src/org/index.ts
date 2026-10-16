@@ -39,7 +39,16 @@ import {
   updateCall,
   updateReportTemplate,
 } from "./calls.ts";
-import { addComplaintNote, createComplaint, getComplaint, listComplaints, updateComplaint } from "./complaints.ts";
+import {
+  addComplaintNote,
+  createComplaint,
+  editComplaintReply,
+  findCall,
+  getComplaint,
+  listComplaints,
+  requestComplaintAi,
+  updateComplaint,
+} from "./complaints.ts";
 import { createConfirmation, revokeConfirmation } from "./confirmations.ts";
 import { createCustomer, getCustomer, listCustomers, updateCustomer } from "./customers.ts";
 import { createCoaching, getBenchmark, getDashboard, getQualityDashboard, getTeamDashboard, listCoaching, readCoaching } from "./dashboard.ts";
@@ -84,6 +93,8 @@ const INVOICE_PDF = /^\/org\/invoices\/([^/]+)\/pdf$/;
 const COACHING_READ = /^\/org\/coaching\/([^/]+)\/read$/;
 const COMPLAINT = /^\/org\/complaints\/([^/]+)$/;
 const COMPLAINT_NOTES = /^\/org\/complaints\/([^/]+)\/notes$/;
+const COMPLAINT_AI = /^\/org\/complaints\/([^/]+)\/ai$/;
+const COMPLAINT_AI_ONE = /^\/org\/complaints\/([^/]+)\/ai\/([^/]+)$/;
 const SALE_CONFIRMATION_REVOKE = /^\/org\/sales\/([^/]+)\/confirmations\/([^/]+)\/revoke$/;
 const CALL = /^\/org\/calls\/([^/]+)$/;
 const CALL_ACTION = /^\/org\/calls\/([^/]+)\/(chunks|complete|discard|retry|realtime-key|audio|log)$/;
@@ -364,6 +375,12 @@ export async function handleOrg(
         return reply(200, await listComplaints(deps.appDb, session, event.queryStringParameters ?? {}));
       }
       if (method === "POST" && path === "/org/complaints") return reply(201, await createComplaint(deps.appDb, session, body()));
+      // A call by the reference the seller pasted into the call centre's own system.
+      if (method === "GET" && path === "/org/complaints/lookup") {
+        const found = await findCall(deps.appDb, session, event.queryStringParameters?.reference, meta);
+        if (found) return reply(200, found);
+        return reply(404, { error: "Fant ingen samtale med den referansen. Sjekk at den er riktig skrevet, og at du har tilgang til samtalen." });
+      }
       const one = COMPLAINT.exec(path);
       if (one && isUuid(one[1])) {
         if (method === "GET") return reply(200, await getComplaint(deps.appDb, session, one[1], meta));
@@ -371,6 +388,15 @@ export async function handleOrg(
       }
       const notes = COMPLAINT_NOTES.exec(path);
       if (notes && isUuid(notes[1]) && method === "POST") return reply(201, await addComplaintNote(deps.appDb, session, notes[1], body()));
+      const ai = COMPLAINT_AI.exec(path);
+      if (ai && isUuid(ai[1]) && method === "POST") {
+        if (!deps.calls) return reply(503, { error: "Opptak er ikke satt opp ennå." });
+        return reply(201, await requestComplaintAi(deps.appDb, session, deps.calls, ai[1], body()));
+      }
+      const aiOne = COMPLAINT_AI_ONE.exec(path);
+      if (aiOne && isUuid(aiOne[1]) && isUuid(aiOne[2]) && method === "PATCH") {
+        return reply(200, await editComplaintReply(deps.appDb, session, aiOne[1], aiOne[2], body()));
+      }
       return reply(404, { error: "Fant ikke ressursen." });
     }
     // The call centre's own invoices from VeriQall (billing.read, which needs BankID or a passkey).

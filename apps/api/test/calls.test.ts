@@ -104,6 +104,7 @@ const services: CallServices = {
   store,
   soniox,
   startPiece: async (id, seq) => void startedPieces.push(`${id}:${seq}`),
+  startComplaintAi: async () => undefined,
   startWorker: async (id, reportId) => {
     if (id) started.push(id);
     if (reportId) startedNotes.push(reportId);

@@ -34,6 +34,15 @@ export async function loadCallServices(): Promise<CallServices | undefined> {
         }),
       );
     },
+    async startComplaintAi(complaintAiId) {
+      await lambda.send(
+        new InvokeCommand({
+          FunctionName: workerFunction,
+          InvocationType: "Event",
+          Payload: new TextEncoder().encode(JSON.stringify({ complaintAiId })),
+        }),
+      );
+    },
     async startWorker(callId, reportId) {
       await lambda.send(
         new InvokeCommand({
